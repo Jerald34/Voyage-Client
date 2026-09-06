@@ -2,6 +2,7 @@
  * Normalizer functions for SSE stream payloads.
  * Extracted from useAgentRunStream.js for testability.
  */
+import { normalizeBusinessStatus } from "../trip-dashboard/placeStatus.js";
 
 function toNumber(value) {
   const number = Number(value);
@@ -43,6 +44,13 @@ export function normalizeMapMarker(payload, index) {
     lat,
     lng,
     provider: payload?.provider ?? null,
+    // The display id above can be a synthesized fallback, so keep the snapshot id
+    // separately: reconciling a live marker against a saved stop needs the real one.
+    placeSnapshotId: payload?.placeSnapshotId ?? null,
+    // A missing status stays undefined rather than becoming anything the UI could
+    // read as "open".
+    businessStatus: normalizeBusinessStatus(payload?.businessStatus),
+    businessStatusCheckedAt: payload?.businessStatusCheckedAt ?? null,
   };
 }
 

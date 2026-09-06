@@ -1,4 +1,5 @@
 import { getSnapshotPhotoUrl } from "../../../lib/trip-dashboard/richItinerary.js";
+import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
 
 export default function CompactPlaceCard({
   item,
@@ -41,6 +42,11 @@ export default function CompactPlaceCard({
         <span className="text-[0.875rem] font-semibold text-text-primary leading-tight line-clamp-2">
           {placeName}
         </span>
+        <PlaceStatusBadge
+          businessStatus={snapshot?.businessStatus}
+          placeAdvisory={item?.placeAdvisory}
+          className="self-start"
+        />
         {timeLabel && (
           <span className="text-[0.75rem] text-secondary font-semibold leading-tight">
             {timeLabel}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { getPlaceStatusLabel, mergePlaceStatus, normalizeBusinessStatus } from "../../../lib/trip-dashboard/placeStatus.js";
 import {
   APIProvider,
   Map,
@@ -45,7 +46,7 @@ export function normalizeAgencyFallbackLocation(agencyLocation) {
   };
 }
 
-function mapItemToPoint(item, index) {
+export function mapItemToPoint(item, index) {
   const snapshot = item?.placeSnapshot ?? null;
   const rawLat = Number(item?.lat ?? item?.latitude ?? item?.placeSnapshot?.latitude);
   const rawLng = Number(item?.lng ?? item?.longitude ?? item?.placeSnapshot?.longitude);
@@ -64,13 +65,25 @@ function mapItemToPoint(item, index) {
       userRatingCount: Number.isFinite(userRatingCount) ? userRatingCount : null,
       dayLabel: item?.__dayNumber ? `Day ${item.__dayNumber}` : "",
       timeLabel: item?.startTime && item?.endTime ? `${item.startTime} - ${item.endTime}` : item?.startTime || "",
+      // Keep the real snapshot id alongside the display id so a live marker for
+      // the same place can be reconciled against this saved stop.
+      placeSnapshotId: item?.placeSnapshotId || snapshot?.id || null,
+      businessStatus: normalizeBusinessStatus(snapshot?.businessStatus),
+      businessStatusCheckedAt: snapshot?.businessStatusCheckedAt ?? null,
+      placeAdvisory: item?.placeAdvisory ?? null,
     };
   }
 
   return null;
 }
 
-function normalizeLiveMarker(marker, index) {
+/**
+ * A live marker is a historical observation from the run stream. When it refers
+ * to a snapshot the authenticated itinerary also has, the newer recognized
+ * observation wins — a stale "operational" marker must never erase a current
+ * closure. Selection ids stay stable regardless.
+ */
+export function normalizeLiveMarker(marker, index, savedStatusBySnapshotId) {
   const rawLat = Number(marker?.lat ?? marker?.latitude);
   const rawLng = Number(marker?.lng ?? marker?.longitude);
 
@@ -78,17 +91,46 @@ function normalizeLiveMarker(marker, index) {
     return null;
   }
 
+  const placeSnapshotId = marker?.placeSnapshotId || null;
+  const saved = placeSnapshotId ? savedStatusBySnapshotId?.get(placeSnapshotId) : undefined;
+  const { businessStatus, businessStatusCheckedAt } = mergePlaceStatus(saved, {
+    businessStatus: marker?.businessStatus,
+    businessStatusCheckedAt: marker?.businessStatusCheckedAt ?? null
+  });
+
   return {
     id: `live:${marker?.id || marker?.placeSnapshotId || `live-marker-${index}`}`,
     name: marker?.name || marker?.formattedAddress || marker?.address || `Resolved location ${index + 1}`,
     formattedAddress: marker?.formattedAddress || marker?.address || "",
     lat: rawLat,
     lng: rawLng,
+    placeSnapshotId,
+    businessStatus,
+    businessStatusCheckedAt,
+    placeAdvisory: saved?.placeAdvisory ?? null,
   };
 }
 
 export function getMapPinGlyph(index) {
   return String(index + 1);
+}
+
+/**
+ * A closed stop keeps its numbered place in the itinerary but gets a distinct
+ * glyph so it reads as "needs attention" at a glance rather than disappearing.
+ */
+export function getClosedPinGlyph(index) {
+  return `${index + 1}!`;
+}
+
+/** Accessible pin title: the place name plus its closure label when there is one. */
+export function getPinTitle(point, index) {
+  const name = point?.title || point?.name || `Stop ${index + 1}`;
+  const label = getPlaceStatusLabel({
+    businessStatus: point?.businessStatus,
+    placeAdvisory: point?.placeAdvisory
+  });
+  return label ? `${name} — ${label}` : name;
 }
 
 function getRouteCoordinate(point) {
@@ -341,8 +383,28 @@ export default function ItineraryLiveMap({
   const isDark = theme === "dark";
 
   const points = useMemo(() => items.map((item, index) => mapItemToPoint(item, index)).filter(Boolean), [items]);
+  // Current authenticated status per snapshot, used to reconcile historical live
+  // markers that refer to the same place.
+  const savedStatusBySnapshotId = useMemo(() => {
+    const map = new Map();
+    for (const point of points) {
+      if (point?.placeSnapshotId && !map.has(point.placeSnapshotId)) {
+        map.set(point.placeSnapshotId, {
+          businessStatus: point.businessStatus,
+          businessStatusCheckedAt: point.businessStatusCheckedAt,
+          placeAdvisory: point.placeAdvisory ?? null
+        });
+      }
+    }
+    return map;
+  }, [points]);
   const liveMarkerPoints = useMemo(
-    () => (Array.isArray(liveMarkers) ? liveMarkers.map((marker, index) => normalizeLiveMarker(marker, index)).filter(Boolean) : []),
+    () =>
+      Array.isArray(liveMarkers)
+        ? liveMarkers
+            .map((marker, index) => normalizeLiveMarker(marker, index, savedStatusBySnapshotId))
+            .filter(Boolean)
+        : [],
     [liveMarkers],
   );
   const latestRouteEstimate = useMemo(() => (
@@ -380,6 +442,10 @@ export default function ItineraryLiveMap({
       name: selectedPlace.name,
       description: selectedPlace.description,
       formattedAddress: selectedPlace.formattedAddress,
+      placeSnapshotId: selectedPlace.placeSnapshotId ?? null,
+      businessStatus: selectedPlace.businessStatus,
+      businessStatusCheckedAt: selectedPlace.businessStatusCheckedAt ?? null,
+      placeAdvisory: selectedPlace.placeAdvisory ?? null,
     });
   }, [selectedPlace]);
 
@@ -485,10 +551,18 @@ export default function ItineraryLiveMap({
           {/* Itinerary Markers */}
           {points.map((point, index) => {
             const isActive = activeIndex === index || selectedPlaceId === point.id;
+            // A closed stop stays visible and selectable; only its styling differs.
+            const isClosed = Boolean(
+              getPlaceStatusLabel({
+                businessStatus: point.businessStatus,
+                placeAdvisory: point.placeAdvisory
+              })
+            );
             return (
               <AdvancedMarker
                 key={`point-${index}-${point.lat}-${point.lng}`}
                 position={{ lat: point.lat, lng: point.lng }}
+                title={getPinTitle(point, index)}
                 onMouseEnter={() => onHoverItem?.(index)}
                 onClick={() => {
                   handleMarkerClick(point);
@@ -496,10 +570,10 @@ export default function ItineraryLiveMap({
                 }}
               >
                 <Pin
-                  background={isActive ? "#2563eb" : "#ffffff"}
-                  borderColor={isActive ? "#1e3a8a" : "#1e293b"}
-                  glyphColor={isActive ? "#ffffff" : "#1e293b"}
-                  glyph={getMapPinGlyph(index)}
+                  background={isActive ? "#2563eb" : isClosed ? "#fef3c7" : "#ffffff"}
+                  borderColor={isActive ? "#1e3a8a" : isClosed ? "#92400e" : "#1e293b"}
+                  glyphColor={isActive ? "#ffffff" : isClosed ? "#92400e" : "#1e293b"}
+                  glyph={isClosed ? getClosedPinGlyph(index) : getMapPinGlyph(index)}
                   scale={isActive ? 1.2 : 1.0}
                 />
               </AdvancedMarker>

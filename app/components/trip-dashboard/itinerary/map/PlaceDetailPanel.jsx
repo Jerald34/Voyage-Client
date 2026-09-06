@@ -1,6 +1,7 @@
 "use client";
 
 import { getGoogleMapsPlaceUrl } from "../../../../lib/trip-dashboard/placeEntities.js";
+import PlaceStatusBadge from "../PlaceStatusBadge.jsx";
 
 export default function PlaceDetailPanel({ place, onClose }) {
   if (!place) return null;
@@ -18,6 +19,11 @@ export default function PlaceDetailPanel({ place, onClose }) {
             {place.source === "live" ? "Live map result" : place.dayLabel || "Itinerary stop"}
           </span>
           <h3 className="mt-0.5 text-xl leading-tight text-white font-serif">{place.name}</h3>
+          <PlaceStatusBadge
+            businessStatus={place?.businessStatus}
+            placeAdvisory={place?.placeAdvisory}
+            className="mt-1"
+          />
         </div>
         <button
           type="button"

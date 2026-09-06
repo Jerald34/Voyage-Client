@@ -11,6 +11,16 @@ import jsPDF from "jspdf";
  * @param {string} [params.agencyName]  - Agency branding name
  * @returns {jsPDF} The jsPDF document — caller does doc.save(filename)
  */
+/**
+ * Provider-only closure text for an exported document. Agency overlays are
+ * deliberately not consulted here: an export is a client-facing artifact.
+ */
+function getProviderClosureLabel(businessStatus) {
+  if (businessStatus === "CLOSED_PERMANENTLY") return "Permanently closed";
+  if (businessStatus === "CLOSED_TEMPORARILY") return "Temporarily closed";
+  return "";
+}
+
 export async function generateItineraryPdf({
   title,
   summary,
@@ -172,12 +182,22 @@ export async function generateItineraryPdf({
         ? doc.splitTextToSize(item.placeSnapshot.formattedAddress, contentWidth - 8)
         : [];
 
+      // Provider closure only. Staff notes and agency overlays are internal and
+      // must never reach an exported client document.
+      const closureText = getProviderClosureLabel(item.placeSnapshot?.businessStatus);
+      const closureLines = closureText
+        ? doc.splitTextToSize(closureText, contentWidth - 8)
+        : [];
+
       const estimatedHeight =
         (timeStr ? 5 : 0) +
         titleLines.length * 5.5 +
         descLines.length * 4.5 +
         placeLines.length * 4.5 +
         addrLines.length * 4 +
+        // Counted BEFORE the page-break check: a line drawn but not measured is
+        // exactly how an item overflows the bottom of a page.
+        closureLines.length * 4 +
         8; // padding
 
       checkPageBreak(estimatedHeight);
@@ -227,6 +247,15 @@ export async function generateItineraryPdf({
         doc.setTextColor(140, 155, 165);
         doc.text(addrLines, margin + 10, y);
         y += addrLines.length * 4 + 1;
+      }
+
+      // Provider closure notice
+      if (closureLines.length > 0) {
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(146, 64, 14);
+        doc.text(closureLines, margin + 10, y);
+        y += closureLines.length * 4 + 1;
       }
 
       y += 5; // spacing between items

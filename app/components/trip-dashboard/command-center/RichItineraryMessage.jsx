@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
 import { buildRichItinerarySections } from "../../../lib/trip-dashboard/richItinerary.js";
 
 function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
@@ -23,9 +24,12 @@ function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
             {stop.timeLabel}
           </span>
         </div>
-        <span className={`text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 ${isSelected ? "text-secondary" : "text-text-soft"}`}>
-          {stop.statusLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          <PlaceStatusBadge businessStatus={stop.businessStatus} placeAdvisory={stop.placeAdvisory} />
+          <span className={`text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 ${isSelected ? "text-secondary" : "text-text-soft"}`}>
+            {stop.statusLabel}
+          </span>
+        </div>
       </div>
 
       {/* Identity Block - Image & Title */}
