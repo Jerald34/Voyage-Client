@@ -8,6 +8,11 @@ import Sparkline from "./Sparkline";
  * Whole tile is a button (≥44pt effective hit area). On click, the
  * parent opens the side-panel listing of contributing trips.
  *
+ * A null `value` means the period has no signal (renders "—", not a fake 0);
+ * a null `deltaVsPrior` means there is nothing to compare against. Set
+ * `lowerIsBetter` for metrics like response time, so a rise reads as a
+ * regression.
+ *
  * Spec §6.4
  */
 export default function KpiTile({
@@ -19,22 +24,37 @@ export default function KpiTile({
   subtitle,
   ariaLabel,
   onClick,
+  lowerIsBetter = false,
   formatValue = (v) => v.toString()
 }) {
-  const formatted = formatValue(value);
-  const isPositive = deltaVsPrior > 0;
-  const isNegative = deltaVsPrior < 0;
-  const deltaIcon = isPositive ? "▲" : isNegative ? "▼" : "•";
-  const deltaColor = isPositive
+  const hasValue = value != null;
+  const hasDelta = hasValue && deltaVsPrior != null;
+  const formatted = hasValue ? formatValue(value) : "—";
+  const isUp = hasDelta && deltaVsPrior > 0;
+  const isDown = hasDelta && deltaVsPrior < 0;
+  const isImprovement = lowerIsBetter ? isDown : isUp;
+  const isRegression = lowerIsBetter ? isUp : isDown;
+  const deltaIcon = isUp ? "▲" : isDown ? "▼" : "•";
+  const deltaColor = isImprovement
     ? "text-[color:var(--success)]"
-    : isNegative
+    : isRegression
       ? "text-[color:var(--danger)]"
       : "text-text-muted";
-  const deltaText = `${Math.abs(deltaVsPrior).toFixed(1)}${unit === "%" ? " pts" : ""}`;
+  const deltaText = hasDelta
+    ? `${Math.abs(deltaVsPrior).toFixed(1)}${unit === "%" ? " pts" : ""}`
+    : hasValue
+      ? "No prior data"
+      : "No data yet";
 
   const a11yLabel =
     ariaLabel ??
-    `${label}: ${formatted}${unit ?? ""}, ${isPositive ? "up" : isNegative ? "down" : "unchanged"} ${deltaText} vs prior period`;
+    (!hasValue
+      ? `${label}: no data yet`
+      : `${label}: ${formatted}${unit ?? ""}, ${
+          hasDelta
+            ? `${isUp ? "up" : isDown ? "down" : "unchanged"} ${deltaText} vs prior period`
+            : "no prior period data"
+        }`);
 
   return (
     <button
@@ -50,13 +70,13 @@ export default function KpiTile({
       <div className="flex items-end justify-between gap-2">
         <div className="flex items-baseline gap-1">
           <span className="text-[28px] font-semibold leading-none tabular-nums text-text-primary">{formatted}</span>
-          {unit ? <span className="text-sm text-text-muted">{unit}</span> : null}
+          {unit && hasValue ? <span className="text-sm text-text-muted">{unit}</span> : null}
         </div>
         <Sparkline values={sparkline} />
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className={`flex items-center gap-1 tabular-nums font-bold ${deltaColor}`}>
-          <span aria-hidden="true">{deltaIcon}</span>
+          {hasDelta ? <span aria-hidden="true">{deltaIcon}</span> : null}
           {deltaText}
         </span>
         {subtitle ? <span className="text-text-muted">{subtitle}</span> : null}

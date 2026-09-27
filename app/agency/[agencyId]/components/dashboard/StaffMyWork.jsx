@@ -22,6 +22,7 @@ import HeroContinueCard from "./widgets/HeroContinueCard";
 import WorklistRow from "./widgets/WorklistRow";
 import EmptyState from "./widgets/EmptyState";
 import PeriodSwitcher from "./widgets/PeriodSwitcher";
+import JoinedNotice from "./widgets/JoinedNotice";
 import TeamPage from "@/app/components/team/TeamPage";
 import TripSlideOver from "./TripSlideOver";
 
@@ -65,6 +66,7 @@ const STATUS_COLOR = {
 };
 
 function StatusChip({ status }) {
+  if (!status) return null;
   return (
     <span
       className="inline-flex items-center rounded-lg px-3 py-1 text-xs font-extrabold uppercase tracking-[0.04em]"
@@ -144,7 +146,7 @@ function SecondaryCard({ trip, onClick }) {
         <span className="truncate text-[14px] font-extrabold text-text-primary leading-snug">
           {trip.tripTitle}
         </span>
-        <StatusChip status={trip.status} />
+        <StatusChip status={trip.statusChip} />
       </div>
       <div className="flex items-end justify-between gap-2">
         <span className="truncate text-[13px] text-text-muted">
@@ -374,6 +376,7 @@ export default function StaffMyWork({
   onOpenTrip,
   onNewTrip,
   onOpenItineraries,
+  showJoinedNotice = false,
 }) {
   const router = useRouter();
   const [period, setPeriod] = useState("30d");
@@ -412,6 +415,8 @@ export default function StaffMyWork({
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 md:px-8 lg:px-10 py-8 space-y-6">
+      {showJoinedNotice && <JoinedNotice />}
+
       {/* ── Header ── */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>

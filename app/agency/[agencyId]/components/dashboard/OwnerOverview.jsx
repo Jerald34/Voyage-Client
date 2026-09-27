@@ -10,6 +10,7 @@ import RatingsPanel from "./widgets/RatingsPanel";
 import ActivityRibbon from "./widgets/ActivityRibbon";
 import EmptyState from "./widgets/EmptyState";
 import PeriodSwitcher from "./widgets/PeriodSwitcher";
+import JoinedNotice from "./widgets/JoinedNotice";
 import TeamPage from "../../../../components/team/TeamPage";
 import TripSlideOver from "./TripSlideOver";
 
@@ -48,6 +49,8 @@ const WORKLIST_GROUPS = [
     actionLabel: "Open trip",
   },
 ];
+
+const formatOneDecimal = (v) => v.toFixed(1);
 
 // ---------------------------------------------------------------------------
 // Skeleton placeholder — rendered when data === null (no SSR payload)
@@ -98,7 +101,7 @@ function DashboardSkeleton() {
 // ---------------------------------------------------------------------------
 // OwnerOverview
 // ---------------------------------------------------------------------------
-export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip, onNewTrip }) {
+export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip, onNewTrip, showJoinedNotice = false }) {
   const router = useRouter();
   const [period, setPeriod] = useState("30d");
 
@@ -167,6 +170,8 @@ export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip
   // -------------------------------------------------------------------------
   return (
     <div className="mx-auto max-w-[1280px] px-6 py-8 md:px-8 lg:px-10">
+      {showJoinedNotice && <JoinedNotice className="mb-6" />}
+
       {/* Stale banner */}
       {isStale && (
         <div
@@ -277,39 +282,40 @@ export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip
           {/* -------------------------------------------------------------- */}
           <section aria-label="Key performance indicators">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* null = no signal this period; KpiTile renders it as "—". */}
               <KpiTile
                 label="Win rate"
-                value={kpis.winRate?.value ?? 0}
+                value={kpis.winRate?.value ?? null}
                 unit="%"
-                deltaVsPrior={kpis.winRate?.deltaVsPrior ?? 0}
+                deltaVsPrior={kpis.winRate?.deltaVsPrior ?? null}
                 sparkline={kpis.winRate?.sparkline ?? []}
-                formatValue={(v) => v.toFixed(1)}
+                formatValue={formatOneDecimal}
               />
               <KpiTile
                 label="Time to first share"
-                value={kpis.timeToFirstShareDays?.value ?? 0}
+                value={kpis.timeToFirstShareDays?.value ?? null}
                 unit="days"
-                deltaVsPrior={kpis.timeToFirstShareDays?.deltaVsPrior ?? 0}
+                deltaVsPrior={kpis.timeToFirstShareDays?.deltaVsPrior ?? null}
                 sparkline={kpis.timeToFirstShareDays?.sparkline ?? []}
-                formatValue={(v) => v.toString()}
+                formatValue={formatOneDecimal}
+                lowerIsBetter
               />
               <KpiTile
                 label="Median response time"
-                value={kpis.medianCommentResponseHours?.value ?? 0}
+                value={kpis.medianCommentResponseHours?.value ?? null}
                 unit="h"
-                deltaVsPrior={
-                  kpis.medianCommentResponseHours?.deltaVsPrior ?? 0
-                }
+                deltaVsPrior={kpis.medianCommentResponseHours?.deltaVsPrior ?? null}
                 sparkline={kpis.medianCommentResponseHours?.sparkline ?? []}
-                formatValue={(v) => v.toString()}
+                formatValue={formatOneDecimal}
+                lowerIsBetter
               />
               <KpiTile
                 label="Avg proposal rating"
-                value={kpis.avgProposalRating?.value ?? 0}
+                value={kpis.avgProposalRating?.value ?? null}
                 unit="★"
-                deltaVsPrior={kpis.avgProposalRating?.deltaVsPrior ?? 0}
+                deltaVsPrior={kpis.avgProposalRating?.deltaVsPrior ?? null}
                 sparkline={kpis.avgProposalRating?.sparkline ?? []}
-                formatValue={(v) => v.toFixed(1)}
+                formatValue={formatOneDecimal}
                 subtitle={formatResponseRate(kpis.avgProposalRating)}
               />
             </div>

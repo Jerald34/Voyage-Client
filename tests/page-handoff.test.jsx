@@ -235,8 +235,9 @@ describe("page handoff guards", () => {
 
     render(<Page />);
 
+    // Team lives inside the Dashboard tab; HomePage has no standalone "team" tab.
     expect(mockState.homePageProps).toMatchObject({
-      initialTab: "team",
+      initialTab: "dashboard",
       showJoinedNotice: true,
     });
   });
