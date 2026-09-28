@@ -86,4 +86,21 @@ describe("KpiTile", () => {
     );
     expect(screen.getByText("32 of 80 rated (40%)")).toBeInTheDocument();
   });
+
+  it("explains the number in a visible line that screen readers announce too", () => {
+    render(
+      <KpiTile
+        label="Win rate"
+        value={42}
+        unit="%"
+        deltaVsPrior={3}
+        sparkline={[]}
+        description="Approved trips out of all approved and archived trips"
+      />
+    );
+    expect(screen.getByText("Approved trips out of all approved and archived trips")).toBeVisible();
+    expect(screen.getByRole("button")).toHaveAccessibleDescription(
+      "Approved trips out of all approved and archived trips"
+    );
+  });
 });

@@ -1,9 +1,12 @@
 "use client";
+import { useId } from "react";
 import Sparkline from "./Sparkline";
 
 /**
- * KPI tile — 120px fixed height, label + period chip on top,
- * hero number with tabular-nums + delta chip, 32px sparkline.
+ * KPI tile — at least 120px tall: label on top, hero number with
+ * tabular-nums + 32px sparkline, delta chip, then an optional one-line
+ * `description` saying what the number measures (also announced as the
+ * tile's accessible description).
  *
  * Whole tile is a button (≥44pt effective hit area). On click, the
  * parent opens the side-panel listing of contributing trips.
@@ -22,11 +25,13 @@ export default function KpiTile({
   deltaVsPrior = 0,
   sparkline = [],
   subtitle,
+  description,
   ariaLabel,
   onClick,
   lowerIsBetter = false,
   formatValue = (v) => v.toString()
 }) {
+  const descriptionId = useId();
   const hasValue = value != null;
   const hasDelta = hasValue && deltaVsPrior != null;
   const formatted = hasValue ? formatValue(value) : "—";
@@ -61,7 +66,8 @@ export default function KpiTile({
       type="button"
       onClick={onClick}
       aria-label={a11yLabel}
-      className="group relative flex h-[120px] w-full flex-col justify-between dashboard-card p-4 text-left transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+      aria-describedby={description ? descriptionId : undefined}
+      className="group relative flex min-h-[120px] w-full flex-col gap-2 dashboard-card p-4 text-left transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
       style={{ transitionTimingFunction: "var(--ease-out)", transitionDuration: "160ms" }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -81,6 +87,13 @@ export default function KpiTile({
         </span>
         {subtitle ? <span className="text-text-muted">{subtitle}</span> : null}
       </div>
+      {/* mt-auto pins the explanation to the bottom, so the numbers stay
+          aligned across tiles whose explanations wrap differently. */}
+      {description ? (
+        <span id={descriptionId} className="mt-auto block text-xs leading-snug text-text-muted">
+          {description}
+        </span>
+      ) : null}
     </button>
   );
 }

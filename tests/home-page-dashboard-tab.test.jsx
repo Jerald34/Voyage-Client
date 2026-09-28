@@ -102,7 +102,7 @@ describe("HomePage Dashboard tab", () => {
 
     const scroller = screen.getByTestId("dashboard-scroll");
     expect(scroller).toHaveClass("min-h-0", "overflow-y-auto");
-    expect(within(scroller).getByRole("heading", { name: "Where conversion is leaking" })).toBeInTheDocument();
+    expect(within(scroller).getByRole("heading", { name: "How your agency is doing" })).toBeInTheDocument();
   });
 
   it("falls back to the Command Center when the user has no agency workspace", () => {

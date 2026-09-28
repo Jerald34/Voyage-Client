@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Real payloads produced by the server's dashboard service — regenerate with
 // Voyage-Server/scripts/export-dashboard-fixtures.ts, never edit by hand.
@@ -33,15 +33,46 @@ function kpiTile(label) {
   return screen.getByRole("button", { name: new RegExp(`^${label}:`) });
 }
 
+/** The owner's to-do group headed e.g. "Client comments to answer (2)". */
+function worklistGroup(heading) {
+  return screen.getByText(new RegExp(`^${heading} \\(\\d+\\)$`)).parentElement;
+}
+
 function renderOwner(payload) {
   render(
     <OwnerOverview agencyId="agency-fixture" initialData={payload} onOpenTrip={vi.fn()} onNewTrip={vi.fn()} />,
   );
 }
 
+function renderStaff() {
+  render(
+    <StaffMyWork
+      agencyId="agency-fixture"
+      initialData={fixtures.staff}
+      onOpenTrip={vi.fn()}
+      onNewTrip={vi.fn()}
+      onOpenItineraries={vi.fn()}
+    />,
+  );
+}
+
+/** React reports clashing list keys through console.error. */
+function captureKeyWarnings() {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  return () => error.mock.calls.flat().map(String).filter((message) => message.includes("same key"));
+}
+
 beforeEach(() => {
   mocks.fetchApi.mockReset();
   mocks.fetchApi.mockImplementation(() => new Promise(() => {}));
+  // Relative times ("Waiting 6h") count from when the server built the payloads.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(fixtures.ownerBusy.generatedAt));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("Owner dashboard with real server payloads", () => {
@@ -54,14 +85,14 @@ describe("Owner dashboard with real server payloads", () => {
   it("rounds fractional KPI values to one decimal", () => {
     renderOwner(fixtures.ownerBusy);
 
-    expect(within(kpiTile("Time to first share")).getByText("1.7")).toBeInTheDocument();
-    expect(within(kpiTile("Median response time")).getByText("2.5")).toBeInTheDocument();
+    expect(within(kpiTile("Time to share")).getByText("1.7")).toBeInTheDocument();
+    expect(within(kpiTile("Time to reply")).getByText("2.5")).toBeInTheDocument();
   });
 
   it("shows a KPI with no signal this period as an em dash, not zero", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const rating = kpiTile("Avg proposal rating");
+    const rating = kpiTile("Client rating");
     expect(within(rating).getByText("—")).toBeInTheDocument();
     expect(within(rating).queryByText("0.0")).not.toBeInTheDocument();
   });
@@ -69,7 +100,7 @@ describe("Owner dashboard with real server payloads", () => {
   it("shows every KPI as no data for a brand-new agency", () => {
     renderOwner(fixtures.ownerEmpty);
 
-    for (const label of ["Win rate", "Time to first share", "Median response time", "Avg proposal rating"]) {
+    for (const label of ["Win rate", "Time to share", "Time to reply", "Client rating"]) {
       expect(within(kpiTile(label)).getByText("—")).toBeInTheDocument();
     }
   });
@@ -77,27 +108,155 @@ describe("Owner dashboard with real server payloads", () => {
   it("treats slower share and response times as regressions", () => {
     renderOwner(fixtures.ownerBusy);
 
-    for (const label of ["Time to first share", "Median response time"]) {
+    for (const label of ["Time to share", "Time to reply"]) {
       expect(within(kpiTile(label)).getByText("▲").parentElement.className).toContain("--danger");
     }
     expect(within(kpiTile("Win rate")).getByText("▲").parentElement.className).toContain("--success");
   });
 });
 
+describe("Owner dashboard in plain words", () => {
+  it("explains what each number measures", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    expect(kpiTile("Win rate")).toHaveAccessibleDescription("Approved trips out of all approved and archived trips");
+    expect(kpiTile("Time to share")).toHaveAccessibleDescription(
+      "Average days from a new trip to sharing its first itinerary",
+    );
+    expect(kpiTile("Time to reply")).toHaveAccessibleDescription(
+      "Typical time your team takes to answer a client comment",
+    );
+    expect(kpiTile("Client rating")).toHaveAccessibleDescription("Average stars clients gave your shared itineraries");
+  });
+
+  it("says how many shared itineraries the client rating is based on", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    expect(within(kpiTile("Client rating")).getByText("0 of 3 rated")).toBeInTheDocument();
+  });
+
+  it("names the period the numbers cover and what the arrows compare against", () => {
+    renderOwner(fixtures.ownerBusyWeek);
+
+    expect(screen.getByRole("heading", { name: "Last 7 days" })).toBeInTheDocument();
+    expect(screen.getByText("Compared with the 7 days before. Green is better, red is worse.")).toBeInTheDocument();
+    expect(screen.queryByText("OVERVIEW · 30d")).not.toBeInTheDocument();
+  });
+
+  it("describes trip progress without funnel jargon", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const progress = screen.getByRole("heading", { name: "From new trip to approval" }).closest("section");
+    expect(within(progress).getByText("Last 30 days: 6 trips created, 2 approved.")).toBeInTheDocument();
+    expect(within(progress).getByRole("button", { name: /^Shared with client: 3\./ })).toBeInTheDocument();
+    expect(within(progress).getByRole("button", { name: /^Viewed by client: 3\./ })).toBeInTheDocument();
+  });
+
+  it("titles the page with the question it answers", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    expect(screen.getByRole("heading", { level: 1, name: "How your agency is doing" })).toBeInTheDocument();
+  });
+
+  it("says the to-do list is clear without placeholder counts", () => {
+    renderOwner(fixtures.ownerEmpty);
+
+    expect(screen.getByText("All caught up.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing needs your attention right now.")).toBeInTheDocument();
+    expect(screen.queryByText(/N active shares/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Owner to-do list says why each trip is on it", () => {
+  it("quotes each unread client comment and how long it has waited", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const group = worklistGroup("Client comments to answer");
+    expect(within(group).getByText("“Is the ryokan wheelchair accessible? My father uses one.”")).toBeInTheDocument();
+    expect(within(group).getByText("Waiting 1d")).toBeInTheDocument();
+    expect(within(group).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
+    expect(within(group).getByText("Waiting 6h")).toBeInTheDocument();
+  });
+
+  it("shows how often a client viewed a proposal nobody has followed up", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const group = worklistGroup("Viewed by the client, no follow-up yet");
+    expect(within(group).getByText("Viewed 4 times")).toBeInTheDocument();
+    expect(within(group).getByText("Last viewed 5h ago")).toBeInTheDocument();
+    expect(within(group).getByText("Viewed 2 times")).toBeInTheDocument();
+    expect(within(group).getByText("Last viewed 6d ago")).toBeInTheDocument();
+  });
+
+  it("shows how long a stuck draft has gone untouched", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const group = worklistGroup("Drafts untouched for over a week");
+    expect(within(group).getByText("Batanes Road Trip")).toBeInTheDocument();
+    expect(within(group).getByText("Last edited 9d ago")).toBeInTheDocument();
+  });
+
+  it("shows when an expiring itinerary link runs out", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const group = worklistGroup("Itinerary links expiring within 2 days");
+    expect(within(group).getByText("Link expires in 20h")).toBeInTheDocument();
+  });
+
+  it("shows the low rating a client gave and when", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const group = worklistGroup("Low ratings from clients");
+    expect(within(group).getByText("Rated 2 out of 5")).toBeInTheDocument();
+    expect(within(group).getByText("6d ago")).toBeInTheDocument();
+  });
+
+  it("lists two comments on the same trip as separate rows", () => {
+    const keyWarnings = captureKeyWarnings();
+
+    renderOwner(fixtures.ownerBusy);
+
+    expect(keyWarnings()).toEqual([]);
+  });
+});
+
 describe("Staff dashboard with real server payloads", () => {
   it("labels the status of each recent trip card", () => {
-    render(
-      <StaffMyWork
-        agencyId="agency-fixture"
-        initialData={fixtures.staff}
-        onOpenTrip={vi.fn()}
-        onNewTrip={vi.fn()}
-        onOpenItineraries={vi.fn()}
-      />,
-    );
+    renderStaff();
 
     expect(screen.getByRole("button", { name: /^Palawan Family Trip\s*Approved/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Bali Honeymoon\s*Draft/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Seoul Food Tour\s*Archived/ })).toBeInTheDocument();
+  });
+
+  it("says why each client is waiting", () => {
+    renderStaff();
+
+    const worklist = screen.getByRole("region", { name: "Clients waiting on you" });
+    expect(within(worklist).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
+    for (const text of ["Waiting 1d", "Waiting 6h", "Last edited 4d ago", "Link expires in 20h", "Starts in 3 days"]) {
+      expect(within(worklist).getByText(text)).toBeInTheDocument();
+    }
+  });
+
+  it("lists two comments on the same trip as separate rows", () => {
+    const keyWarnings = captureKeyWarnings();
+
+    renderStaff();
+
+    expect(keyWarnings()).toEqual([]);
+  });
+
+  it("has no period switcher, since nothing on My work depends on the period", () => {
+    renderStaff();
+
+    expect(screen.queryByRole("radiogroup", { name: "Time period" })).not.toBeInTheDocument();
+  });
+
+  it("counts trips in plain words", () => {
+    renderStaff();
+
+    const counts = screen.getByRole("group", { name: "Your trips by status" });
+    expect(within(counts).getByRole("button", { name: /Traveling now/ })).toBeInTheDocument();
   });
 });

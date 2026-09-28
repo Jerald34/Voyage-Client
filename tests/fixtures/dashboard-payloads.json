@@ -7,6 +7,13 @@
     "worklist": {
       "unreadComments": [
         {
+          "id": "comment-kyoto-unread-access",
+          "tripId": "trip-kyoto",
+          "tripTitle": "Kyoto Autumn Escape",
+          "commentExcerpt": "Is the ryokan wheelchair accessible? My father uses one.",
+          "createdAt": "2026-09-25T22:00:00.000Z"
+        },
+        {
           "id": "comment-kyoto-unread",
           "tripId": "trip-kyoto",
           "tripTitle": "Kyoto Autumn Escape",
@@ -21,9 +28,22 @@
           "tripTitle": "Kyoto Autumn Escape",
           "viewCount": 4,
           "lastViewedAt": "2026-09-26T23:00:00.000Z"
+        },
+        {
+          "shareId": "share-boracay",
+          "tripId": "trip-boracay",
+          "tripTitle": "Boracay Barkada Weekend",
+          "viewCount": 2,
+          "lastViewedAt": "2026-09-21T04:00:00.000Z"
         }
       ],
-      "draftsStuck": [],
+      "draftsStuck": [
+        {
+          "tripId": "trip-batanes",
+          "tripTitle": "Batanes Road Trip",
+          "updatedAt": "2026-09-18T04:00:00.000Z"
+        }
+      ],
       "sharesExpiring": [
         {
           "shareId": "share-kyoto",
@@ -32,7 +52,15 @@
           "expiresAt": "2026-09-28T00:00:00.000Z"
         }
       ],
-      "lowRated": []
+      "lowRated": [
+        {
+          "shareId": "share-boracay",
+          "tripId": "trip-boracay",
+          "tripTitle": "Boracay Barkada Weekend",
+          "rating": 2,
+          "ratedAt": "2026-09-21T04:00:00.000Z"
+        }
+      ]
     },
     "kpis": {
       "winRate": {
@@ -42,7 +70,7 @@
           0,
           1,
           1,
-          1,
+          2,
           2,
           0,
           0
@@ -50,7 +78,7 @@
       },
       "timeToFirstShareDays": {
         "value": 1.667361111111111,
-        "deltaVsPrior": 0.9173611111111111,
+        "deltaVsPrior": 0.8340277777777777,
         "sparkline": []
       },
       "medianCommentResponseHours": {
@@ -73,18 +101,18 @@
       "stages": [
         {
           "key": "created",
-          "count": 5,
+          "count": 6,
           "dropOffPct": null
         },
         {
           "key": "drafted",
-          "count": 5,
+          "count": 6,
           "dropOffPct": 0
         },
         {
           "key": "sent",
           "count": 3,
-          "dropOffPct": 40
+          "dropOffPct": 50
         },
         {
           "key": "viewed",
@@ -139,6 +167,152 @@
         "tripId": "trip-cebu",
         "tripTitle": "Cebu Island Hop",
         "occurredAt": "2026-09-03T15:00:00.000Z"
+      }
+    ]
+  },
+  "ownerBusyWeek": {
+    "view": "owner",
+    "period": "7d",
+    "generatedAt": "2026-09-27T04:00:00.000Z",
+    "worklist": {
+      "unreadComments": [
+        {
+          "id": "comment-kyoto-unread-access",
+          "tripId": "trip-kyoto",
+          "tripTitle": "Kyoto Autumn Escape",
+          "commentExcerpt": "Is the ryokan wheelchair accessible? My father uses one.",
+          "createdAt": "2026-09-25T22:00:00.000Z"
+        },
+        {
+          "id": "comment-kyoto-unread",
+          "tripId": "trip-kyoto",
+          "tripTitle": "Kyoto Autumn Escape",
+          "commentExcerpt": "Can we swap the day 2 lunch spot?",
+          "createdAt": "2026-09-26T22:00:00.000Z"
+        }
+      ],
+      "viewedNotReplied": [
+        {
+          "shareId": "share-kyoto",
+          "tripId": "trip-kyoto",
+          "tripTitle": "Kyoto Autumn Escape",
+          "viewCount": 4,
+          "lastViewedAt": "2026-09-26T23:00:00.000Z"
+        },
+        {
+          "shareId": "share-boracay",
+          "tripId": "trip-boracay",
+          "tripTitle": "Boracay Barkada Weekend",
+          "viewCount": 2,
+          "lastViewedAt": "2026-09-21T04:00:00.000Z"
+        }
+      ],
+      "draftsStuck": [
+        {
+          "tripId": "trip-batanes",
+          "tripTitle": "Batanes Road Trip",
+          "updatedAt": "2026-09-18T04:00:00.000Z"
+        }
+      ],
+      "sharesExpiring": [
+        {
+          "shareId": "share-kyoto",
+          "tripId": "trip-kyoto",
+          "tripTitle": "Kyoto Autumn Escape",
+          "expiresAt": "2026-09-28T00:00:00.000Z"
+        }
+      ],
+      "lowRated": [
+        {
+          "shareId": "share-boracay",
+          "tripId": "trip-boracay",
+          "tripTitle": "Boracay Barkada Weekend",
+          "rating": 2,
+          "ratedAt": "2026-09-21T04:00:00.000Z"
+        }
+      ]
+    },
+    "kpis": {
+      "winRate": {
+        "value": null,
+        "deltaVsPrior": null,
+        "sparkline": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "timeToFirstShareDays": {
+        "value": null,
+        "deltaVsPrior": null,
+        "sparkline": []
+      },
+      "medianCommentResponseHours": {
+        "value": 2.0166666666666666,
+        "deltaVsPrior": -1.9833333333333334,
+        "sparkline": []
+      },
+      "avgProposalRating": {
+        "value": null,
+        "deltaVsPrior": null,
+        "sparkline": [],
+        "responseRate": {
+          "rated": 0,
+          "total": 0,
+          "pct": 0
+        }
+      }
+    },
+    "funnel": {
+      "stages": [
+        {
+          "key": "created",
+          "count": 0,
+          "dropOffPct": null
+        },
+        {
+          "key": "drafted",
+          "count": 0,
+          "dropOffPct": null
+        },
+        {
+          "key": "sent",
+          "count": 0,
+          "dropOffPct": null
+        },
+        {
+          "key": "viewed",
+          "count": 0,
+          "dropOffPct": null
+        },
+        {
+          "key": "approved",
+          "count": 0,
+          "dropOffPct": null
+        }
+      ]
+    },
+    "recentReviews": [
+      {
+        "id": "review-cebu",
+        "rating": 5,
+        "reviewText": "Everything ran on time.",
+        "respondentName": "Ana G.",
+        "tripTitle": "Cebu Island Hop",
+        "consentToTestimonial": true,
+        "submittedAt": "2026-09-24T04:00:00.000Z"
+      }
+    ],
+    "activityRibbon": [
+      {
+        "kind": "itinerary_approved",
+        "tripId": "trip-palawan",
+        "tripTitle": "Palawan Family Trip",
+        "occurredAt": "2026-09-24T04:00:00.000Z"
       }
     ]
   },
@@ -257,6 +431,13 @@
     ],
     "worklist": {
       "unreadComments": [
+        {
+          "id": "comment-kyoto-unread-access",
+          "tripId": "trip-kyoto",
+          "tripTitle": "Kyoto Autumn Escape",
+          "commentExcerpt": "Is the ryokan wheelchair accessible? My father uses one.",
+          "createdAt": "2026-09-25T22:00:00.000Z"
+        },
         {
           "id": "comment-kyoto-unread",
           "tripId": "trip-kyoto",
