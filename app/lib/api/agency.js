@@ -27,3 +27,9 @@ export async function fetchItineraryDraft(agencyId, itineraryId) {
 export async function bootstrapAgentWorkspace(agencyId) {
   return fetchApi(`/agencies/${agencyId}/workspace/bootstrap`);
 }
+
+export async function approveClientTrip(agencyId, tripId) {
+  return fetchApi(`/agencies/${agencyId}/itineraries/trips/${tripId}/approve`, {
+    method: "POST",
+  });
+}

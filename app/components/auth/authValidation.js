@@ -12,6 +12,19 @@ export function sanitizeBusinessPhoneInput(value) {
   return String(value ?? "").replace(/\D/g, "");
 }
 
+/**
+ * Validates a pre-sanitized (digits-only) business phone string.
+ * Returns an error message string if invalid, or null if valid.
+ * Rule: 7 to 15 digits (E.164-compatible; covers PH/JP/SG/TH/MY formats).
+ */
+export function validateBusinessPhone(digits) {
+  if (!digits) return "Business phone is required";
+  if (digits.length < 7 || digits.length > 15) {
+    return "Enter a valid phone number (7–15 digits)";
+  }
+  return null;
+}
+
 export function sanitizeEmailInput(value) {
   return String(value ?? "").toLowerCase();
 }

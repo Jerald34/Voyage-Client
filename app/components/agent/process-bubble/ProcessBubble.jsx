@@ -113,13 +113,6 @@ export default function ProcessBubble({
           ].join(" ")}
         />
 
-        {/* Label updates in place — the shimmer wave on .labelShimmer is the
-         * one and only ambient animation on this text. We deliberately do NOT
-         * wrap this in AnimatePresence: a label change (e.g. "List Agent Tasks"
-         * → "Add Agent Task") previously fired an exit fade-to-0 on the old
-         * text before fading the new one in, which read as a second
-         * "disappearing" animation layered on top of the shimmer. Plain text
-         * swap keeps the shimmer continuous and the label always visible. */}
         <span
           aria-live="polite"
           aria-atomic="true"

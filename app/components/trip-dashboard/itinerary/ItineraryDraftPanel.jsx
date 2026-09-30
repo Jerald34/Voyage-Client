@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import PlaceAdvisoryNotice from "./PlaceAdvisoryNotice.jsx";
 import dynamic from "next/dynamic";
 import { getItineraryPlaceEntityId } from "../../../lib/trip-dashboard/placeEntities.js";
 
@@ -34,6 +35,8 @@ export default function ItineraryDraftPanel({
   placeEntities = [],
   selectedPlaceId = "",
   onPlaceSelect,
+  reuseDropRef,
+  dockMode = false,
 }) {
   const safeDays = useMemo(() => Array.isArray(itinerary?.days) ? itinerary.days : (Array.isArray(draftDays) ? draftDays : []), [itinerary, draftDays]);
   const panelTitle = itinerary?.title || "Live Itinerary";
@@ -61,6 +64,24 @@ export default function ItineraryDraftPanel({
   const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
   const containerRef = useRef(null);
+
+  // Dock-mode bookkeeping: remember the user's floating position so we can
+  // restore it when the picker closes and dockMode flips back to false.
+  const savedPositionRef = useRef(null);
+  useEffect(() => {
+    if (dockMode) {
+      if (savedPositionRef.current === null) {
+        savedPositionRef.current = position;
+      }
+    } else if (savedPositionRef.current !== null) {
+      setPosition(savedPositionRef.current);
+      savedPositionRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dockMode]);
+
+  // Effective position: when docked, override to the left edge.
+  const effectivePosition = dockMode ? { x: 0, y: 60 } : position;
 
   useEffect(() => { setActiveStopIndex(mapItems.length > 0 ? 0 : -1); }, [mapItems.length]);
 
@@ -94,17 +115,18 @@ export default function ItineraryDraftPanel({
       {/* floating draggable card */}
       <div
         className={`absolute pointer-events-auto flex items-start will-change-transform transition-all duration-300 ease-out ${isMinimized ? "w-[300px]" : "w-[440px]"}`}
-        style={{ transform: `translate(${position.x}px, ${position.y}px)`, right: "auto", bottom: "auto" }}
+        style={{ transform: `translate(${effectivePosition.x}px, ${effectivePosition.y}px)`, right: "auto", bottom: "auto" }}
       >
         <article className="w-full bg-[rgba(34,56,67,0.85)] backdrop-blur-[24px] border border-white/10 rounded-[32px] text-white flex flex-col max-h-[calc(100vh-220px)] shadow-[0_32px_64px_rgba(0,0,0,0.35)] overflow-hidden">
           {/* card header / drag handle */}
           <header
-            className="px-6 py-4 cursor-grab select-none flex items-center gap-4 border-b border-white/[0.08] active:cursor-grabbing bg-white/[0.02]"
-            onMouseDown={(e) => { 
-              if (e.target.closest(".drag-handle") || e.target.closest("header") && !e.target.closest("button")) { 
-                setIsDragging(true); 
-                dragStartPos.current = { x: e.clientX - position.x, y: e.clientY - position.y }; 
-              } 
+            className={`px-6 py-4 select-none flex items-center gap-4 border-b border-white/[0.08] bg-white/[0.02] ${dockMode ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
+            onMouseDown={(e) => {
+              if (dockMode) return; // suppress drag-start in dock mode
+              if (e.target.closest(".drag-handle") || e.target.closest("header") && !e.target.closest("button")) {
+                setIsDragging(true);
+                dragStartPos.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+              }
             }}
           >
             {/* drag indicator */}
@@ -119,6 +141,18 @@ export default function ItineraryDraftPanel({
                 <h2 className="m-0 text-[19px] font-normal tracking-tight font-serif text-white">{panelTitle}</h2>
               </div>
               {panelSummary && <p className="m-0 text-white/50 text-[12px] font-medium truncate max-w-[240px]">{panelSummary}</p>}
+              {/* Verification warnings for this read. Derived from the response,
+                  so a re-fetch that still fails keeps them and the first
+                  successful notes load clears them. Public views never get them. */}
+              <PlaceAdvisoryNotice advisories={itinerary?.placeAdvisories} className="mt-2 max-w-[320px]" />
+              {dockMode && (
+                <span
+                  className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/[0.08] border border-white/10"
+                  style={{ color: "var(--text-soft, rgba(255,255,255,0.55))" }}
+                >
+                  Pinned while picker open
+                </span>
+              )}
             </div>
             <button
               className="bg-white/[0.08] border border-white/10 rounded-xl w-9 h-9 flex items-center justify-center text-white/70 cursor-pointer transition-all duration-300 hover:bg-secondary hover:text-white hover:border-secondary hover:scale-105 active:scale-95"
@@ -135,12 +169,22 @@ export default function ItineraryDraftPanel({
           {!isMinimized && (
             <>
               {/* timeline */}
-              <div className="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar scroll-smooth">
+              <div
+                ref={reuseDropRef || undefined}
+                className="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar scroll-smooth"
+              >
                 {safeDays.length > 0 ? (
                   <div className="flex flex-col">
                     {safeDays.map((day, dIdx) => (
-                      <div key={day.id || day.dayNumber || dIdx} className="mb-10 last:mb-2">
-                        <div className="flex items-center gap-4 mb-6 sticky top-0 bg-[rgba(34,56,67,0.01)] backdrop-blur-[2px] py-1 z-[5]">
+                      <div
+                        key={day.id || day.dayNumber || dIdx}
+                        className="mb-10 last:mb-2"
+                        data-reuse-day={dIdx}
+                      >
+                        <div
+                          data-reuse-day-header=""
+                          className="flex items-center gap-4 mb-6 sticky top-0 bg-[rgba(34,56,67,0.01)] backdrop-blur-[2px] py-1 z-[5]"
+                        >
                           <span className="bg-secondary/20 text-secondary border border-secondary/30 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">Day {day.dayNumber}</span>
                           <span className="font-serif text-[20px] text-white/90">{day.title}</span>
                         </div>
@@ -150,6 +194,7 @@ export default function ItineraryDraftPanel({
                           return (
                             <div
                               key={`${day.dayNumber}-${iIdx}`}
+                              data-reuse-item={iIdx}
                               className={`flex gap-6 group cursor-pointer relative py-1`}
                               onMouseEnter={() => setActiveStopIndex(gIdx)}
                               onClick={() => onPlaceSelect?.(mapItems[gIdx]?.__placeEntityId)}

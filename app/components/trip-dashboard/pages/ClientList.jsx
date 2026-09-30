@@ -40,7 +40,7 @@ export default function ClientList({
             placeholder="Search clients..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full py-3 pr-4 pl-12 rounded-md border border-border/10 bg-white/5 text-[0.95rem] font-[inherit] text-text-primary transition-all duration-200 focus:outline-none focus:border-secondary focus:bg-white/10 focus:shadow-[0_0_0_4px_rgba(215,122,97,0.1)]"
+            className="w-full py-3 pr-4 pl-12 rounded-md border border-border/10 bg-surface text-[0.95rem] font-[inherit] text-text-primary placeholder:text-text-soft transition-all duration-200 focus:outline-none focus:border-secondary focus:bg-surface-elevated focus:shadow-[0_0_0_4px_rgba(215,122,97,0.1)]"
           />
         </div>
       </div>

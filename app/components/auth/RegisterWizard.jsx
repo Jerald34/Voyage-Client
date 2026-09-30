@@ -1,8 +1,10 @@
-// Two-step register wizard: account details then agency details.
+// Three-step register wizard: account details, account type picker, then agency details.
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "../../hooks/useAuth";
+import { requestEmailVerification } from "../../lib/api/index.js";
 import {
   agencyLocationOptions,
   agencyCountryOptions,
@@ -10,6 +12,7 @@ import {
 } from "./authConstants.js";
 import {
   sanitizeBusinessPhoneInput,
+  validateBusinessPhone,
   sanitizeEmailInput,
   getPasswordSimilarityError,
   mapAuthErrorToRegisterErrors,
@@ -37,18 +40,27 @@ export default function RegisterWizard({
   setIsTransitioning,
   isAuthenticated,
   onOpenLegalDoc,
+  onComplete,
 }) {
   const auth = useAuth();
+  const searchParams = useSearchParams();
+  const invitedEmail = searchParams.get("email") ?? "";
+  const inviteToken = searchParams.get("invite") ?? "";
+  const emailLocked = Boolean(invitedEmail);
 
   // Step 1 fields
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [step1Errors, setStep1Errors] = useState({});
   const [serverStep1Errors, setServerStep1Errors] = useState({});
+  const [verifyState, setVerifyState] = useState({ pendingEmail: "", resendStatus: null });
+
+  // Step "type" error
+  const [typeStepError, setTypeStepError] = useState(null);
 
   // Step 2 fields
   const [agencyName, setAgencyName] = useState("");
@@ -84,15 +96,46 @@ export default function RegisterWizard({
     return Object.keys(errors).length === 0;
   };
 
-  const handleStep1Next = (e) => {
+  const handleStep1Next = async (e) => {
     e.preventDefault();
-    if (validateStep1()) {
-      setIsTransitioning(true);
+    if (!validateStep1()) return;
+
+    setIsTransitioning(true);
+    const result = await auth.register({ email, password, displayName: fullName });
+    if (result?.user) {
+      setVerifyState({ pendingEmail: result.user.email, resendStatus: null });
       setTimeout(() => {
-        setWizardStep(2);
+        setWizardStep("verify");
         setIsTransitioning(false);
       }, 280);
+    } else {
+      setIsTransitioning(false);
     }
+  };
+
+  const handleResendVerification = async () => {
+    if (!verifyState.pendingEmail) return;
+    setVerifyState((s) => ({ ...s, resendStatus: "sending" }));
+    const ok = await auth.resendVerificationEmail(verifyState.pendingEmail);
+    setVerifyState((s) => ({ ...s, resendStatus: ok ? "sent" : "error" }));
+  };
+
+  const handlePickPersonal = async () => {
+    setTypeStepError(null);
+    const user = await auth.setAccountType("PERSONAL");
+    if (user) {
+      onComplete?.();
+    } else if (auth.error) {
+      setTypeStepError(auth.error.message || "Something went wrong. Please try again.");
+    }
+  };
+
+  const handlePickAgency = () => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setWizardStep(2);
+      setIsTransitioning(false);
+    }, 280);
   };
 
   const handleStep2Submit = async (e) => {
@@ -107,7 +150,8 @@ export default function RegisterWizard({
     const trimmedCity = city.trim();
 
     if (!trimmedAgencyName) nextStep2Errors.agencyName = "Agency name is required";
-    if (!normalizedBusinessPhone) nextStep2Errors.businessPhone = "Business phone is required";
+    const phoneError = validateBusinessPhone(normalizedBusinessPhone);
+    if (phoneError) nextStep2Errors.businessPhone = phoneError;
     if (!trimmedBusinessEmail) nextStep2Errors.businessEmail = "Business email is required";
     else if (!/\S+@\S+\.\S+/.test(trimmedBusinessEmail)) nextStep2Errors.businessEmail = "Enter a valid business email";
     if (!trimmedCountry) nextStep2Errors.country = "Country is required";
@@ -129,24 +173,16 @@ export default function RegisterWizard({
       city: trimmedCity,
     };
 
-    if (isAuthenticated) {
-      // OAuth user — already registered, just create agency
-      await auth.createAgency(agencyData);
-    } else {
-      // Email user — register first, then create agency
-      const user = await auth.register({ email, password, displayName: fullName });
-      if (user) {
-        await auth.createAgency(agencyData);
-      }
-    }
+    // At this point the user is already registered (Step 1 called auth.register,
+    // or they are an OAuth user). Just create the agency.
+    await auth.createAgency(agencyData);
   };
 
   const handleStep2Back = () => {
-    if (isAuthenticated) return; // Can't go back if OAuth
     setIsTransitioning(true);
     auth.setError(null);
     setTimeout(() => {
-      setWizardStep(1);
+      setWizardStep("type");
       setIsTransitioning(false);
     }, 280);
   };
@@ -161,7 +197,7 @@ export default function RegisterWizard({
 
   return (
     <>
-      {/* ─── REGISTER STEP 1: Personal Account ─── */}
+      {/* ─── REGISTER STEP 1: Account Details ─── */}
       {wizardStep === 1 && (
         <>
           <div className="mb-7">
@@ -189,11 +225,25 @@ export default function RegisterWizard({
 
             <FormField
               id="auth-email"
-              label="Email address"
+              label={emailLocked ? "Email address (from your invitation)" : "Email address"}
               icon={<MailIcon width={18} height={18} />}
               error={emailError}
             >
-              <input id="auth-email" type="email" placeholder="voyager@example.com" value={email} onChange={(e) => { setEmail(sanitizeEmailInput(e.target.value)); setStep1Errors({}); setServerStep1Errors({}); }} autoComplete="email" className={`!pl-[46px] pr-[18px] py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
+              <input
+                id="auth-email"
+                type="email"
+                placeholder="voyager@example.com"
+                value={email}
+                readOnly={emailLocked}
+                onChange={(e) => {
+                  if (emailLocked) return;
+                  setEmail(sanitizeEmailInput(e.target.value));
+                  setStep1Errors({});
+                  setServerStep1Errors({});
+                }}
+                autoComplete="email"
+                className={`!pl-[46px] pr-[18px] py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass} ${emailLocked ? "cursor-not-allowed opacity-80" : ""}`}
+              />
             </FormField>
 
             <FormField
@@ -240,10 +290,114 @@ export default function RegisterWizard({
             </label>
             {termsError && <span className="text-[0.8rem] text-status-danger mt-0.5">{termsError}</span>}
 
-            <button type="submit" className="w-full mt-2 inline-flex items-center justify-center gap-3 min-h-[54px] px-7 py-4 border border-transparent rounded-pill text-base font-extrabold cursor-pointer bg-accent text-white shadow-[0_16px_32px_rgba(216,180,160,0.26)] hover:-translate-y-px hover:bg-[#dbbfae] transition-all">
-              Next: Agency Details
+            <button type="submit" disabled={auth.loading} className="w-full mt-2 inline-flex items-center justify-center gap-3 min-h-[54px] px-7 py-4 border border-transparent rounded-pill text-base font-extrabold cursor-pointer bg-accent text-white shadow-[0_16px_32px_rgba(216,180,160,0.26)] hover:-translate-y-px hover:bg-[#dbbfae] transition-all disabled:opacity-55 disabled:cursor-not-allowed disabled:transform-none">
+              {auth.loading ? "Creating your account…" : "Next: Choose account type"}
             </button>
           </form>
+        </>
+      )}
+
+      {/* ─── REGISTER STEP 1.2: Verify your email ─── */}
+      {wizardStep === "verify" && (
+        <>
+          <div className="mb-7">
+            <span className="inline-flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-[rgba(32,178,170,0.12)] border border-[rgba(32,178,170,0.28)]">
+              <MailIcon width={22} height={22} />
+            </span>
+            <h2 className="text-[clamp(1.6rem,2.4vw,2.2rem)] mb-2">Check your inbox</h2>
+            <p className="text-[1.08rem] text-text-muted mb-0">
+              We sent a confirmation link to <strong className="text-text-primary">{verifyState.pendingEmail}</strong>. Open it to finish setting up your Voyage account.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-white/65 dark:bg-surface-elevated/70 p-5 mb-5">
+            <p className="text-[0.92rem] text-text-muted leading-6 mb-3">
+              Once you verify your email, sign in to continue setting up your account.
+            </p>
+            <ul className="text-[0.88rem] text-text-soft leading-7 list-disc pl-5">
+              <li>Link expires in 24 hours.</li>
+              <li>Check your spam folder if you don&apos;t see it.</li>
+              {inviteToken && (
+                <li>Your agency invitation will apply automatically after sign-in.</li>
+              )}
+            </ul>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={verifyState.resendStatus === "sending"}
+            className="w-full inline-flex items-center justify-center gap-2 min-h-[48px] px-6 py-3 rounded-pill border border-border bg-surface hover:bg-surface-hover transition font-bold text-secondary disabled:opacity-55"
+          >
+            {verifyState.resendStatus === "sending"
+              ? "Sending…"
+              : verifyState.resendStatus === "sent"
+              ? "Sent — check your inbox"
+              : "Resend verification email"}
+          </button>
+
+          {verifyState.resendStatus === "error" && auth.error && (
+            <p className="mt-3 p-3 rounded-sm bg-status-danger/[0.06] border border-status-danger/[0.18] text-status-danger text-[0.86rem] font-semibold text-center" role="alert">
+              {auth.error.message}
+            </p>
+          )}
+
+          <p className="text-center mt-6 text-text-muted text-[0.92rem]">
+            Already verified?{" "}
+            <a href="/login?verified=1" className="text-secondary font-extrabold no-underline hover:underline">
+              Sign in
+            </a>
+          </p>
+        </>
+      )}
+
+      {/* ─── REGISTER STEP 1.5: Account Type Picker ─── */}
+      {wizardStep === "type" && (
+        <>
+          <div className="mb-7">
+            <h2 className="text-[clamp(1.6rem,2.4vw,2.2rem)] mb-2">How will you use Voyage?</h2>
+            <p className="text-[1.08rem] text-text-muted mb-0">Choose the option that fits you best.</p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <button
+              type="button"
+              disabled={auth.loading}
+              onClick={handlePickPersonal}
+              className="w-full text-left p-6 rounded-2xl border border-border bg-surface hover:bg-surface-hover transition-all duration-200 disabled:opacity-55 disabled:cursor-not-allowed group"
+            >
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[1.08rem] font-extrabold text-text-primary group-hover:text-secondary transition-colors duration-200">
+                  Plan my own trips
+                </span>
+                <span className="text-[0.92rem] text-text-muted leading-relaxed">
+                  Use the full AI planning agent for your personal travel. Your itineraries stay private to you.
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              disabled={auth.loading}
+              onClick={handlePickAgency}
+              className="w-full text-left p-6 rounded-2xl border border-border bg-surface hover:bg-surface-hover transition-all duration-200 disabled:opacity-55 disabled:cursor-not-allowed group"
+            >
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[1.08rem] font-extrabold text-text-primary group-hover:text-secondary transition-colors duration-200">
+                  Set up an agency
+                </span>
+                <span className="text-[0.92rem] text-text-muted leading-relaxed">
+                  Create a shared workspace for your travel agency. Collaborate with your team on client trips.
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {typeStepError && (
+            <div className="mt-4 p-3 rounded-sm bg-status-danger/[0.06] border border-status-danger/[0.18] text-status-danger text-[0.86rem] font-semibold leading-relaxed text-center" role="alert">
+              {typeStepError}
+            </div>
+          )}
         </>
       )}
 
@@ -376,7 +530,7 @@ export default function RegisterWizard({
             {!isAuthenticated && (
               <button type="button" className="inline-flex items-center justify-center gap-2 mt-1 bg-none border-none text-text-muted text-[0.88rem] font-bold cursor-pointer transition-colors hover:text-secondary" onClick={handleStep2Back}>
                 <ArrowLeftIcon width={16} height={16} />
-                Back to account details
+                Back to account type
               </button>
             )}
           </form>

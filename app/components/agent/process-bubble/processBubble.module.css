@@ -32,37 +32,27 @@
   animation: pb-label-in 160ms ease-out 40ms forwards;
 }
 
+
 /* ── 3. Label shimmer wave (live state only) ─────────────────────── */
-/* A soft highlight band travels left-to-right across the label text,
- * giving the "thinking" feel without competing with the breathing dot.
- * Uses background-clip: text so the gradient tints the glyphs.
- * - Light mode: brighter band reads slightly darker (primary navy on muted)
- * - Dark mode: brighter band reads near-white on muted grey (classic shimmer)
- * Both transitions are subtle by design. */
+/* Bright band sweeps left-to-right across the label text.
+ * background-size: 300% keeps the gradient image covering the element
+ * at every frame (0%→100% position range), so the text is never
+ * transparent — no erasing/vanishing effect at the loop boundary. */
 @keyframes pb-label-wave {
-  0%   { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0%   { background-position: 0% 0; }
+  100% { background-position: 100% 0; }
 }
 
 .labelShimmer {
-  /* NOTE: globals.css only defines RGB triples for --color-text-rgb,
-   * --color-text-muted-rgb, and --color-text-soft-rgb. There is NO
-   * --color-text-primary-rgb. Referencing an undefined var inside rgb()
-   * makes that color stop invalid, which (combined with background-clip:text
-   * + transparent fill) made the label literally invisible in the middle
-   * of the shimmer band — exactly what the user saw in the collapsed bubble.
-   * Use --color-text-rgb for the bright highlight: near-white in dark mode
-   * (232 236 238), darker in light mode (34 56 67) — so the shimmer reads
-   * as a soft bright wave on either theme. */
   background-image: linear-gradient(
     90deg,
     rgb(var(--color-text-muted-rgb)) 0%,
-    rgb(var(--color-text-muted-rgb)) 38%,
-    rgb(var(--color-text-rgb)) 50%,
-    rgb(var(--color-text-muted-rgb)) 62%,
+    rgb(var(--color-text-muted-rgb)) 40%,
+    rgb(var(--color-text-rgb))       50%,
+    rgb(var(--color-text-muted-rgb)) 60%,
     rgb(var(--color-text-muted-rgb)) 100%
   );
-  background-size: 200% 100%;
+  background-size: 300% 100%;
   background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
@@ -80,8 +70,6 @@
     animation-delay: 0ms !important;
   }
 
-  /* Disable the shimmer entirely; fall back to solid muted text color
-   * so the label remains readable without motion. */
   .labelShimmer {
     animation: none !important;
     background: none !important;

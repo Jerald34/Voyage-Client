@@ -105,10 +105,10 @@ export function getItemTimeLabel(item) {
 /**
  * Map a DB trip status to a human-readable label.
  */
-export function mapTripStatus(dbStatus) {
-  const s = String(dbStatus ?? "").toUpperCase();
+export function mapTripStatus(status) {
+  const s = String(status ?? "").toUpperCase();
   if (s === "APPROVED_INTERNAL") return "Approved";
-  if (s === "IN_REVIEW") return "Awaiting itinerary approval";
+  if (s === "IN_REVIEW") return "In review";
   if (s === "ARCHIVED") return "Archived";
   return "Draft";
 }

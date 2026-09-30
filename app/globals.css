@@ -62,6 +62,20 @@
   --glass-bg: rgba(255, 255, 255, 0.60);
   --glass-blur: 18px;
   --glass-border: rgba(255, 255, 255, 0.30);
+
+  /* Agency Dashboard tokens — aliased to system brand palette so the dashboard
+     reads as part of the same product. Don't introduce new flat hues here. */
+  --surface: rgb(var(--color-surface-rgb));
+  --accent: rgb(var(--color-secondary-rgb));           /* warm orange brand accent */
+  --success: var(--color-status-success);
+  --warning: var(--color-status-warning);
+  --danger: var(--color-status-danger);
+  --rating-star: #EAB308;
+
+  /* Easing Tokens (theme-invariant) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .dark {
@@ -102,6 +116,15 @@
   --glass-bg: rgba(30, 34, 39, 0.75);
   --glass-blur: 24px;
   --glass-border: rgba(255, 255, 255, 0.05);
+
+  /* Agency Dashboard tokens — aliased to system brand palette so the dashboard
+     reads as part of the same product. Don't introduce new flat hues here. */
+  --surface: rgb(var(--color-surface-rgb));
+  --accent: rgb(var(--color-secondary-rgb));           /* warm orange brand accent */
+  --success: var(--color-status-success);
+  --warning: var(--color-status-warning);
+  --danger: var(--color-status-danger);
+  --rating-star: #FACC15;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -115,6 +138,26 @@
   box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.05);
 }
 
+@utility dashboard-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.05);
+}
+.dark .dashboard-card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.35);
+}
+@utility dashboard-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgb(var(--color-text-soft-rgb));
+}
 
 @utility bg-primary-navy {
   background-color: #1A1D1F;
@@ -375,5 +418,18 @@ body::before {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transform: none !important;
   }
 }

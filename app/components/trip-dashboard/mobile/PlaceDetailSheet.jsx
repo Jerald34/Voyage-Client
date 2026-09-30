@@ -1,4 +1,5 @@
 import { getSnapshotPhotoUrl, getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
+import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
 import { getGoogleMapsPlaceUrl } from "../../../lib/trip-dashboard/placeEntities.js";
 
 export default function PlaceDetailSheet({ item, onClose }) {
@@ -60,6 +61,11 @@ export default function PlaceDetailSheet({ item, onClose }) {
             <h3 className="m-0 text-[1.1rem] font-serif font-bold text-text-primary leading-tight">
               {placeName}
             </h3>
+            <PlaceStatusBadge
+              businessStatus={snapshot?.businessStatus}
+              placeAdvisory={item?.placeAdvisory}
+              className="mt-1"
+            />
             {(rating || placeType) && (
               <span className="text-[0.8rem] text-text-soft">
                 {rating && <span>★ {rating}</span>}

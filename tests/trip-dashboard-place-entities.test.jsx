@@ -100,4 +100,10 @@ describe("trip dashboard place entities", () => {
     expect(getGoogleMapsPlaceUrl(place)).toContain("https://www.google.com/maps/search/?api=1&query=");
     expect(decodeURIComponent(getGoogleMapsPlaceUrl(place))).toContain("Coco Lime 14.827,120.285");
   });
+
+  it("does not carry a business status or advisory when the snapshot has neither", () => {
+    const [place] = buildPlaceEntities({ itinerary, liveMarkers: [] });
+    expect(place.businessStatus).toBeUndefined();
+    expect(place.placeAdvisory).toBeNull();
+  });
 });

@@ -1,3 +1,5 @@
+import { normalizeBusinessStatus } from "./placeStatus.js";
+
 function toNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
@@ -74,6 +76,11 @@ export function buildPlaceEntities({ itinerary, liveMarkers } = {}) {
         description: normalizeText(item?.description || ""),
         itineraryIndex,
         placeSnapshotId: item?.placeSnapshotId || snapshot?.id || null,
+        // Provider status stays absent when unrecognized: never an "open" badge.
+        businessStatus: normalizeBusinessStatus(snapshot?.businessStatus),
+        businessStatusCheckedAt: snapshot?.businessStatusCheckedAt ?? null,
+        // Staff-only overlay. Public payloads never carry it, so it stays null there.
+        placeAdvisory: item?.placeAdvisory ?? null,
       });
 
       itineraryIndex += 1;
@@ -98,6 +105,9 @@ export function buildPlaceEntities({ itinerary, liveMarkers } = {}) {
       description: "",
       itineraryIndex: null,
       placeSnapshotId: marker?.placeSnapshotId || null,
+      businessStatus: normalizeBusinessStatus(marker?.businessStatus),
+      businessStatusCheckedAt: marker?.businessStatusCheckedAt ?? null,
+      placeAdvisory: marker?.placeAdvisory ?? null,
     });
   });
 

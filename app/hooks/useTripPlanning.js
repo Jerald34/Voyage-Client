@@ -6,6 +6,7 @@ import {
   fetchThreadMessages,
   sendMessage,
   uploadChatImages,
+  updateAgentThreadTitle,
 } from "../lib/api/index.js";
 
 function createPlanningContext(type, id) {
@@ -106,6 +107,7 @@ function normalizeDraftThreadState(thread, itinerary = null) {
     messages: normalizeThreadMessages(thread, itineraryId),
     itinerary,
     loaded: true,
+    createdAt: thread.createdAt ?? null,
   };
 }
 
@@ -311,6 +313,8 @@ export function useTripPlanning(agencyId) {
             messages: [],
             itinerary: itinerarySummary,
             loaded: false,
+            createdAt: thread.createdAt ?? null,
+            status: thread.status ?? null,
           };
           fallbackContext ??= createPlanningContext("trip", tripId);
           continue;
@@ -323,6 +327,8 @@ export function useTripPlanning(agencyId) {
           messages: [],
           itinerary: itinerarySummary,
           loaded: false,
+          createdAt: thread.createdAt ?? null,
+          status: thread.status ?? null,
         };
         nextDraftOrder.push(thread.id);
         fallbackContext ??= createPlanningContext("draft", thread.id);
@@ -436,6 +442,40 @@ export function useTripPlanning(agencyId) {
     }
   };
 
+  const renameThread = async (threadId, nextTitle) => {
+    if (!agencyId || !threadId || !nextTitle?.trim()) return;
+    const trimmed = nextTitle.trim();
+    // optimistic update — search drafts then trips
+    let didOptimisticUpdate = false;
+    setDraftThreadStates((prev) => {
+      const next = { ...prev };
+      for (const id of Object.keys(next)) {
+        if (next[id]?.threadId === threadId) {
+          next[id] = { ...next[id], title: trimmed };
+          didOptimisticUpdate = true;
+        }
+      }
+      return didOptimisticUpdate ? next : prev;
+    });
+    if (!didOptimisticUpdate) {
+      setTripStates((prev) => {
+        const next = { ...prev };
+        for (const id of Object.keys(next)) {
+          if (next[id]?.threadId === threadId) {
+            next[id] = { ...next[id], title: trimmed };
+          }
+        }
+        return next;
+      });
+    }
+    try {
+      await updateAgentThreadTitle(agencyId, threadId, trimmed);
+    } catch (e) {
+      console.error("rename failed", e);
+      setAgentError(e?.message || "Failed to rename thread.");
+    }
+  };
+
   return {
     activeContext,
     setActiveContext,
@@ -458,5 +498,6 @@ export function useTripPlanning(agencyId) {
     dispatchMessage,
     createPlanningContext,
     createRunTargetKey,
+    renameThread,
   };
 }

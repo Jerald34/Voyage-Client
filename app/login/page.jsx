@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import LegalModal from "../components/auth/LegalModal.jsx";
 import FloatingOrb from "../components/auth/FloatingOrb.jsx";
@@ -14,6 +14,7 @@ import { ArrowLeftIcon } from "../components/icons/index.js";
 function AuthShell() {
   const auth = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [mode, setMode] = useState("login");
   const [wizardStep, setWizardStep] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -24,6 +25,12 @@ function AuthShell() {
   useEffect(() => {
     setMounted(true);
 
+    // Honor ?mode=register (used by accept-invite redirect for new accounts)
+    if (searchParams.get("mode") === "register") {
+      setMode("register");
+      setWizardStep(1);
+    }
+
     // Handle OAuth return — user is already authenticated, go to step 2
     const stepParam = searchParams.get("step");
     if (stepParam === "agency") {
@@ -32,6 +39,28 @@ function AuthShell() {
         setIsAuthenticated(true);
         setMode("register");
         setWizardStep(2);
+      }
+    }
+
+    // PENDING guard: authenticated user who hasn't chosen an account type yet.
+    // Only activates when page.jsx explicitly redirects here with ?step=type
+    // (meaning the server confirmed the session is live and accountType=PENDING).
+    // We do NOT read accountType from localStorage here — stale PENDING entries
+    // from a previous abandoned signup would otherwise trap fully-registered users
+    // in the wizard every time they try to sign in.
+    if (stepParam === "type") {
+      const storedUser = localStorage.getItem("voyage-user");
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          if (user?.accountType === "PENDING") {
+            setIsAuthenticated(true);
+            setMode("register");
+            setWizardStep("type");
+          }
+        } catch (_) {
+          // ignore malformed stored user
+        }
       }
     }
   }, [searchParams]);
@@ -45,6 +74,10 @@ function AuthShell() {
       setWizardStep(1);
       setIsTransitioning(false);
     }, 280);
+  };
+
+  const handleWizardComplete = () => {
+    router.push("/?authenticated=1");
   };
 
   const isRegister = mode === "register";
@@ -72,11 +105,15 @@ function AuthShell() {
             <h1 className="text-white text-[clamp(2rem,3.2vw,3rem)] font-serif font-normal leading-tight max-w-56 mb-5">
               {isRegister && wizardStep === 2
                 ? "Tell us about your agency"
+                : isRegister && wizardStep === "type"
+                ? "One quick choice"
                 : "Every great trip starts with a single step"}
             </h1>
             <p className="text-[rgba(255,255,255,0.58)] text-[1.05rem] max-w-[42ch] leading-[1.7]">
               {isRegister && wizardStep === 2
                 ? "We'll review your application and get you set up quickly."
+                : isRegister && wizardStep === "type"
+                ? "Tell us how you'll use Voyage so we can set up the right workspace for you."
                 : "Plan smarter itineraries with AI-powered route logic, real-time collaboration, and map-aware scheduling — all in one workspace."}
             </p>
           </div>
@@ -124,7 +161,7 @@ function AuthShell() {
 
           {/* Reserve the same vertical space in both modes so the headline aligns */}
           <div className="mb-7 min-h-[28px] flex items-center justify-center">
-            {isRegister ? <WizardProgress step={wizardStep} /> : <div aria-hidden="true" className="h-[28px]" />}
+            {isRegister ? <WizardProgress currentStep={wizardStep} /> : <div aria-hidden="true" className="h-[28px]" />}
           </div>
 
           <div className={`flex flex-col gap-0 ${isTransitioning ? "[animation:auth-slide-out_0.22s_ease_forwards]" : "[animation:auth-slide-in_0.32s_ease_forwards]"}`}>
@@ -136,6 +173,7 @@ function AuthShell() {
                 setIsTransitioning={setIsTransitioning}
                 isAuthenticated={isAuthenticated}
                 onOpenLegalDoc={setLegalDoc}
+                onComplete={handleWizardComplete}
               />
             )}
           </div>

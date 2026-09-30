@@ -1,5 +1,24 @@
+// The backend API origin. In the browser the app NEVER talks to this directly —
+// it calls the same-origin `/api/*` path, which Next reverse-proxies here. This
+// makes the session cookie FIRST-PARTY to the app origin, which is required for
+// iOS standalone PWAs: WebKit's ITP blocks cross-site (SameSite=None) cookies, so
+// a cross-origin API would log in but then return empty data on every fetch.
+const API_PROXY_TARGET = (
+  process.env.API_PROXY_TARGET ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:4000'
+).replace(/\/+$/, '');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${API_PROXY_TARGET}/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {

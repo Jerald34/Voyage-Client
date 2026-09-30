@@ -82,10 +82,32 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
+                ${
+                  process.env.NODE_ENV === "production"
+                    ? `window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .catch(function(err) { console.warn('SW registration failed:', err); });
-                });
+                });`
+                    : `// Development: never run a service worker. A stale worker that
+                // caches /api/* breaks streaming (the agent SSE stream is served
+                // from cache and never hits the network), so actively unregister
+                // any existing worker and clear its caches, then reload once so
+                // the page is no longer SW-controlled.
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                  var hadWorker = regs.length > 0;
+                  Promise.all(regs.map(function(r) { return r.unregister(); })).then(function() {
+                    if (window.caches && caches.keys) {
+                      caches.keys().then(function(keys) {
+                        keys.forEach(function(k) { caches.delete(k); });
+                      });
+                    }
+                    if (hadWorker && !sessionStorage.getItem('voyage-sw-killed')) {
+                      sessionStorage.setItem('voyage-sw-killed', '1');
+                      location.reload();
+                    }
+                  });
+                });`
+                }
               }
             `,
           }}

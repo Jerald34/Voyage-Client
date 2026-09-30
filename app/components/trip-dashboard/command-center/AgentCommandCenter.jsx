@@ -5,6 +5,7 @@ import ChatInput from "./ChatInput.jsx";
 import RichItineraryMessage from "./RichItineraryMessage.jsx";
 import useImageAttachments from "../../../hooks/useImageAttachments.js";
 import { toolToActiveLabel, summarize, activeLabelFor } from "../../agent/process-bubble/processBubbleLabels.js";
+import ReuseSlashCommand from "../../ratedHistory/entryPoints/ReuseSlashCommand.jsx";
 
 function getInitials(name) {
   const parts = String(name ?? "")
@@ -49,6 +50,24 @@ export default function AgentCommandCenter({
   // snapshot here so useAgentStreamOrchestration can attach it to the committed
   // message without requiring additional prop threading.
   processSnapshotRef = null,
+  // Stage 6C — Rated-history slash command (`/reuse`).
+  // All four are required for the slash command to render; if any are missing
+  // we simply don't mount it (no crash). The parent page wires these.
+  tripId = null,
+  agencyId = null,
+  targetItineraryId = null,
+  currentVersion = null,
+  // Optional — used by the slash command to compute the default insertion
+  // anchor (end of itinerary). Falls back gracefully when null.
+  targetItinerary = null,
+  // Optional — invoked by the slash command after successful insertion to
+  // post a SYSTEM_VISIBLE message into the thread. The parent page is
+  // responsible for appending the message to its messages state without
+  // dispatching an agent run.
+  onSystemVisibleMessage = null,
+  // Optional — forwarded to the slash command so the parent can refresh
+  // the itinerary view after a successful insertion.
+  onReuseInserted = null,
 }) {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -323,7 +342,26 @@ export default function AgentCommandCenter({
 
       {!hideChatInput && (
         <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none">
-          <div className="pointer-events-auto">
+          <div className="pointer-events-auto relative">
+            {/* Stage 6C — slash-command observer. Renders nothing unless the
+                composer matches `/^\/[a-z]*$/i`. Mounts whenever an agency is
+                active; in a draft (no saved trip) it shows a "save first" hint
+                instead of opening the picker or leaking `/reuse` to the agent. */}
+            {agencyId && (
+              <ReuseSlashCommand
+                composerInput={composerInput}
+                setComposerInput={setComposerInput}
+                textareaRef={textareaRef}
+                tripId={tripId}
+                agencyId={agencyId}
+                targetItineraryId={targetItineraryId}
+                currentVersion={currentVersion}
+                targetItinerary={targetItinerary ?? itinerary}
+                currentTrip={itinerary ? { destinationSummary: itinerary.destinationSummary ?? null } : null}
+                onSystemVisibleMessage={onSystemVisibleMessage}
+                onInserted={onReuseInserted}
+              />
+            )}
             <ChatInput
           textareaRef={textareaRef}
           composerInput={composerInput}

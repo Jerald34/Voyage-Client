@@ -74,8 +74,15 @@ export function useAgentRunStream(agencyId) {
     toolCountAtThoughtStartRef.current = 0;
     tasksTouchedThisRunRef.current = new Set();
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-    const url = `${API_URL}/agencies/${agencyId}/agent/runs/${runId}/stream`;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+    // In same-origin proxy mode, route SSE through the STATIC /api/stream Route
+    // Handler (query params, not path segments). A static route is matched before
+    // the catch-all /api rewrite, so the stream isn't swallowed into the buffering
+    // proxy — which would break SSE. In direct mode, hit the backend path.
+    const url =
+      API_URL === "/api"
+        ? `/api/stream?agencyId=${encodeURIComponent(agencyId)}&runId=${encodeURIComponent(runId)}`
+        : `${API_URL}/agencies/${agencyId}/agent/runs/${runId}/stream`;
 
     // EventSource withCredentials ensures cookies are sent for auth
     const es = new EventSource(url, { withCredentials: true });

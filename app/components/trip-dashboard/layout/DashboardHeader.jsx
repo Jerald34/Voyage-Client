@@ -28,6 +28,7 @@ export default function DashboardHeader({
   onPlanningOptionDelete,
   deletingThreadId,
   onPlanningOptionChange,
+  onRenameThread,
   canApproveDraft,
   onApproveDraft
 }) {
@@ -95,6 +96,7 @@ export default function DashboardHeader({
                 onPlanningOptionDelete={onPlanningOptionDelete}
                 deletingThreadId={deletingThreadId}
                 onPlanningOptionChange={onPlanningOptionChange}
+                onRenameThread={onRenameThread}
               />
             </div>
             {canApproveDraft && (
@@ -115,9 +117,9 @@ export default function DashboardHeader({
         <div
           className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-pill text-xs font-semibold border transition-colors max-[900px]:hidden ${
             scopedStreamError
-              ? "bg-red-50 text-red-700 border-red-200"
+              ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900"
               : scopedIsStreaming
-              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900"
               : "bg-white/5 text-text-primary border-border/10"
           }`}
         >

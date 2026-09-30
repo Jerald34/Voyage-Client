@@ -12,6 +12,7 @@ import {
 } from "../../icons/index.js";
 import { getSavedStatusLabel } from "../../../lib/trip-dashboard/savedItineraries.js";
 import { getSavedStatusClass } from "../../../lib/formatters.js";
+import ReuseLauncher from "../../ratedHistory/entryPoints/ReuseLauncher.jsx";
 
 export default function ItineraryHeader({
   selectedClient,
@@ -26,6 +27,12 @@ export default function ItineraryHeader({
   onToggleComments,
   onShare,
   onDownloadPdf,
+  // Reuse launcher props (optional for Stage 6A)
+  agencyId = null,
+  currentTrip = null,
+  targetItineraryId = null,
+  currentVersion = null,
+  onReuseInserted = null,
 }) {
   return (
     <>
@@ -70,6 +77,19 @@ export default function ItineraryHeader({
           )}
           {selectedItineraryId && (
             <>
+              {/* Reuse from rated trips — optional launcher for Stage 6A */}
+              {agencyId && currentTrip && targetItineraryId && currentVersion !== null && (
+                <ReuseLauncher
+                  agencyId={agencyId}
+                  currentTrip={currentTrip}
+                  targetTripId={currentTrip.tripId}
+                  targetItineraryId={targetItineraryId}
+                  currentVersion={currentVersion}
+                  mode="clientItinerary"
+                  onInserted={onReuseInserted || (() => {})}
+                />
+              )}
+
               {/* Comments — icon-only on mobile, icon+label on sm+ */}
               <button
                 className={`inline-flex items-center justify-center gap-2 min-w-[40px] min-h-[40px] px-2 sm:px-3.5 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-all duration-200 ${showCommentsPanel

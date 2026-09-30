@@ -1,7 +1,7 @@
 "use client";
 import ItineraryDayPanel from './ItineraryDayPanel';
 
-export default function ItineraryCanvas({ itinerary }) {
+export default function ItineraryCanvas({ itinerary, reuseDropRef }) {
   if (!itinerary) {
     return (
       <div className="h-full flex flex-col items-center justify-center px-[60px] py-[60px] text-center text-text-soft bg-white">
@@ -34,7 +34,10 @@ export default function ItineraryCanvas({ itinerary }) {
   const { title, summary, status, version, days = [] } = itinerary;
 
   return (
-    <div className="p-8 bg-surface min-h-full">
+    <div
+      ref={reuseDropRef || undefined}
+      className="p-8 bg-surface min-h-full"
+    >
       <header className="mb-10">
         <div className="mb-4">
           <span className="inline-block text-[10px] font-extrabold uppercase tracking-[0.1em] text-secondary border border-secondary px-2 py-0.5 rounded mb-3">
@@ -64,13 +67,14 @@ export default function ItineraryCanvas({ itinerary }) {
 
       <div>
         {days.map((day, index) => (
-          <ItineraryDayPanel
-            key={index}
-            dayNumber={day.dayNumber}
-            date={day.date}
-            title={day.title}
-            items={day.items}
-          />
+          <div key={index} data-reuse-day={index}>
+            <ItineraryDayPanel
+              dayNumber={day.dayNumber}
+              date={day.date}
+              title={day.title}
+              items={day.items}
+            />
+          </div>
         ))}
       </div>
     </div>

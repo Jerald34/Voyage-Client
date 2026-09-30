@@ -3,6 +3,8 @@ const ACCEPTED_SAVED_STATUSES = new Set([
   "approved itinerary",
   "approved_internal",
   "client approved",
+  "in review",
+  "in_review",
   "saved",
   "saved itinerary",
   "sent to client",

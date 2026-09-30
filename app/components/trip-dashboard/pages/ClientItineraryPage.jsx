@@ -5,6 +5,7 @@ import {
   fetchItineraryDraft,
   getUnreadCommentCount,
   getUnreadCommentCountsByTrip,
+  approveClientTrip,
 } from "../../../lib/api/index.js";
 import { getItineraryPlaceEntityId } from "../../../lib/trip-dashboard/placeEntities.js";
 import { getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
@@ -24,6 +25,7 @@ import { generateItineraryPdf, titleToFilename } from "../../../lib/pdfExport.js
 import MobileGlassSheet from "../mobile/MobileGlassSheet.jsx";
 import CompactPlaceCard from "../mobile/CompactPlaceCard.jsx";
 import useMobileViewport from "../mobile/useMobileViewport.js";
+import ReuseLauncher from "../../ratedHistory/entryPoints/ReuseLauncher.jsx";
 import CommentsPanel from "./CommentsPanel.jsx";
 import ClientList from "./ClientList.jsx";
 import ItineraryHeader from "./ItineraryHeader.jsx";
@@ -59,9 +61,11 @@ export default function ClientItineraryPage({
   onTourStateChange,
   tourMobilePaneOverride = null,
   onAddTripForClient,
+  onTripStatusChange,
 }) {
   const { theme } = useTheme();
   const [selectedClientId, setSelectedClientId] = useState(null);
+  const [approvingTripId, setApprovingTripId] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [fullItinerary, setFullItinerary] = useState(null);
@@ -403,7 +407,7 @@ export default function ClientItineraryPage({
                     placeholder="Search clients..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full py-2.5 pr-3 pl-10 rounded-md border border-border/10 bg-white/5 text-[0.9rem] font-[inherit] text-text-primary transition-all duration-200 focus:outline-none focus:border-secondary"
+                    className="w-full py-2.5 pr-3 pl-10 rounded-md border border-border/10 bg-surface text-[0.9rem] font-[inherit] text-text-primary placeholder:text-text-soft transition-all duration-200 focus:outline-none focus:border-secondary"
                   />
                 </div>
               </div>
@@ -659,6 +663,21 @@ export default function ClientItineraryPage({
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
               onDownloadPdf={handleDownloadPdf}
+              agencyId={agencyId}
+              currentTrip={
+                selectedTrip
+                  ? {
+                      tripId: selectedTrip.id,
+                      destinationSummary: selectedTrip.destination,
+                      startDate: selectedTrip.startDate || fullItinerary?.trip?.startDate,
+                    }
+                  : null
+              }
+              targetItineraryId={selectedItineraryId}
+              currentVersion={fullItinerary?.version ?? null}
+              onReuseInserted={(updatedItinerary) => {
+                setFullItinerary(updatedItinerary);
+              }}
             />
 
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -685,6 +704,34 @@ export default function ClientItineraryPage({
                       )}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Approve button — shown when selected trip is In review */}
+              {selectedTrip?.approvalStatus === "In review" && (
+                <div className="flex items-center gap-3 px-6 py-2 border-b border-border/10 flex-shrink-0">
+                  <span className="text-[0.75rem] font-bold text-text-soft uppercase tracking-wide">Status: In review</span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-pill bg-secondary text-white text-xs font-bold h-8 px-3 hover:-translate-y-px transition-transform disabled:opacity-50"
+                    disabled={approvingTripId === selectedTrip.id}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setApprovingTripId(selectedTrip.id);
+                      const previous = selectedTrip.approvalStatus;
+                      onTripStatusChange?.(selectedTrip.id, "Approved");
+                      try {
+                        await approveClientTrip(agencyId, selectedTrip.id);
+                      } catch (err) {
+                        onTripStatusChange?.(selectedTrip.id, previous);
+                        console.error(err);
+                      } finally {
+                        setApprovingTripId(null);
+                      }
+                    }}
+                  >
+                    {approvingTripId === selectedTrip.id ? "Approving..." : "Approve"}
+                  </button>
                 </div>
               )}
 

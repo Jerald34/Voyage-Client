@@ -14,9 +14,14 @@ const useAuthState = {
   setError: vi.fn()
 };
 
+// searchParamsMock lets individual tests override URL params without
+// breaking the existing suite (defaults return null for all keys).
+const searchParamsMock = { step: null, mode: null };
+
 vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => ({
-    get: () => null
+    get: (key) => searchParamsMock[key] ?? null
   })
 }));
 
@@ -35,6 +40,10 @@ beforeEach(() => {
   useAuthState.setError.mockReset();
   useAuthState.register.mockResolvedValue({ id: "user-1" });
   useAuthState.createAgency.mockResolvedValue({ id: "agency-1" });
+  // Reset search params to defaults so existing tests are unaffected
+  searchParamsMock.step = null;
+  searchParamsMock.mode = null;
+  window.localStorage.clear();
 });
 
 async function reachAgencyStep() {
@@ -129,5 +138,54 @@ describe("login page register validation", () => {
 
     fireEvent.change(countrySelect, { target: { value: "Philippines" } });
     expect(citySelect).toHaveValue("");
+  });
+});
+
+describe("login page — stale-cache PENDING guard (Bug B fix)", () => {
+  it("(c) a stale PENDING localStorage entry does NOT force wizard mode when there is no ?step=type param", () => {
+    // Simulate a user who abandoned a previous signup — PENDING is left in storage
+    window.localStorage.setItem(
+      "voyage-user",
+      JSON.stringify({ id: "user-old", accountType: "PENDING", memberships: [] }),
+    );
+    // No ?step param — this is a fresh /login visit
+    searchParamsMock.step = null;
+
+    render(<LoginPage />);
+
+    // The Sign-in form must be shown, NOT the wizard
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    // The login/register mode toggle must be visible (isAuthenticated=false)
+    expect(screen.getByRole("button", { name: "Create account" })).toBeInTheDocument();
+    // Should NOT be in register/wizard mode
+    expect(screen.queryByText("One quick choice")).not.toBeInTheDocument();
+  });
+
+  it("(c) stale PENDING localStorage + ?step=agency does NOT trigger the type picker", () => {
+    // ?step=agency is for agency wizard resume — should go to wizard step 2, not type
+    window.localStorage.setItem(
+      "voyage-user",
+      JSON.stringify({ id: "user-old", accountType: "PENDING", memberships: [] }),
+    );
+    searchParamsMock.step = "agency";
+
+    render(<LoginPage />);
+
+    // Should NOT show "One quick choice" (the type picker heading)
+    expect(screen.queryByText("One quick choice")).not.toBeInTheDocument();
+  });
+
+  it("genuinely PENDING user redirected via ?step=type enters the type-picker wizard", () => {
+    // page.jsx sets localStorage to the fresh server response then redirects with ?step=type
+    window.localStorage.setItem(
+      "voyage-user",
+      JSON.stringify({ id: "user-new", accountType: "PENDING", memberships: [] }),
+    );
+    searchParamsMock.step = "type";
+
+    render(<LoginPage />);
+
+    // The type-picker heading must be visible
+    expect(screen.getByText("One quick choice")).toBeInTheDocument();
   });
 });

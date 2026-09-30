@@ -102,7 +102,7 @@ const mocks = vi.hoisted(() => ({
         : [{ id: "m-1", role: "ASSISTANT", content: "First thread ready" }],
     nextCursor: null,
   })),
-  approveAgentThreadItineraryMock: vi.fn(async (_agencyId, threadId, payload) => ({
+  saveAgentThreadItineraryMock: vi.fn(async (_agencyId, threadId, payload) => ({
     thread: {
       id: threadId,
       title: payload.clientName,
@@ -244,8 +244,8 @@ function resetApiMocks() {
         : [{ id: "m-1", role: "ASSISTANT", content: "First thread ready" }],
     nextCursor: null,
   }));
-  mocks.approveAgentThreadItineraryMock.mockReset();
-  mocks.approveAgentThreadItineraryMock.mockImplementation(async (_agencyId, threadId, payload) => ({
+  mocks.saveAgentThreadItineraryMock.mockReset();
+  mocks.saveAgentThreadItineraryMock.mockImplementation(async (_agencyId, threadId, payload) => ({
     thread: {
       id: threadId,
       title: payload.clientName,
@@ -308,7 +308,7 @@ vi.mock("../app/hooks/useAuth.js", () => ({
 }));
 
 vi.mock("../app/lib/api.js", () => ({
-  approveAgentThreadItinerary: (...args) => mocks.approveAgentThreadItineraryMock(...args),
+  saveAgentThreadItinerary: (...args) => mocks.saveAgentThreadItineraryMock(...args),
   bootstrapAgentWorkspace: (...args) => mocks.bootstrapAgentWorkspaceMock(...args),
   createAgentThread: (...args) => mocks.createAgentThreadMock(...args),
   deleteAgentThread: (...args) => mocks.deleteAgentThreadMock(...args),
@@ -771,7 +771,7 @@ describe("Agency portfolio HomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save client plan" }));
 
     await waitFor(() => {
-      expect(mocks.approveAgentThreadItineraryMock).toHaveBeenCalledWith("agency-1", "draft-thread-1", {
+      expect(mocks.saveAgentThreadItineraryMock).toHaveBeenCalledWith("agency-1", "draft-thread-1", {
         itineraryId: "itinerary-1",
         clientName: "Garcia Family",
         destination: "Olongapo City",

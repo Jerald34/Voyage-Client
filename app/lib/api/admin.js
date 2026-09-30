@@ -47,3 +47,21 @@ export async function adminUnsuspendAgency(agencyId) {
     method: "POST",
   });
 }
+
+export async function fetchUsage({ period = "day", groupBy = "user", from, to } = {}) {
+  const qs = new URLSearchParams({ period, groupBy, ...(from ? { from } : {}), ...(to ? { to } : {}) });
+  return fetchApi(`/admin/usage?${qs.toString()}`);
+}
+
+export async function fetchReports(status) {
+  const qs = status && status !== "ALL" ? `?status=${encodeURIComponent(status)}` : "";
+  return fetchApi(`/admin/reports${qs}`);
+}
+
+export async function fetchReportDetail(id) {
+  return fetchApi(`/admin/reports/${id}`);
+}
+
+export async function updateReport(id, patch) {
+  return fetchApi(`/admin/reports/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}

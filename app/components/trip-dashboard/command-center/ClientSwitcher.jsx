@@ -17,9 +17,12 @@ export default function ClientSwitcher({
   deletingThreadId,
   onPlanningOptionChange,
   clientMenuEmptyBody,
+  onRenameThread,
 }) {
   const triggerRef = useRef(null);
   const [dropdownPos, setDropdownPos] = useState(null);
+  const [editingThreadId, setEditingThreadId] = useState(null);
+  const [editingValue, setEditingValue] = useState("");
 
   useEffect(() => {
     if (!isClientMenuOpen) {
@@ -138,7 +141,30 @@ export default function ClientSwitcher({
                       {initials}
                     </span>
                     <span className="flex flex-col min-w-0 flex-1">
-                      <strong className="text-sm text-text-primary truncate">{optionName}</strong>
+                      {editingThreadId === optionThreadId ? (
+                        <input
+                          autoFocus
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              onRenameThread?.(optionThreadId, editingValue);
+                              setEditingThreadId(null);
+                            } else if (e.key === "Escape") {
+                              setEditingThreadId(null);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editingValue.trim() && editingValue.trim() !== optionName) {
+                              onRenameThread?.(optionThreadId, editingValue);
+                            }
+                            setEditingThreadId(null);
+                          }}
+                          className="text-sm font-semibold bg-transparent border-b border-secondary outline-none min-w-0 flex-1"
+                        />
+                      ) : (
+                        <strong className="text-sm text-text-primary truncate">{optionName}</strong>
+                      )}
                       {option?.destination && (
                         <span className="text-xs text-text-muted truncate">{option.destination}</span>
                       )}
@@ -152,6 +178,23 @@ export default function ClientSwitcher({
                       </svg>
                     )}
                   </button>
+                  {optionThreadId && onRenameThread && editingThreadId !== optionThreadId && (
+                    <button
+                      type="button"
+                      className="flex-shrink-0 w-9 flex items-center justify-center text-text-soft hover:text-secondary transition-colors cursor-pointer"
+                      aria-label={`Rename ${optionName}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingThreadId(optionThreadId);
+                        setEditingValue(optionName);
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                      </svg>
+                    </button>
+                  )}
                   {canDeleteThread && (
                     <button
                       type="button"

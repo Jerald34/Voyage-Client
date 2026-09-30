@@ -1,8 +1,27 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchApi } from "../lib/api/index.js";
+import {
+  fetchApi,
+  setAccountType as setAccountTypeApi,
+  requestEmailVerification as requestEmailVerificationApi,
+  confirmEmailVerification as confirmEmailVerificationApi,
+  acceptInvitation as acceptInvitationApi,
+} from "../lib/api/index.js";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const PENDING_INVITE_KEY = "voyage-pending-invite";
+
+export function setPendingInviteToken(token) {
+  if (typeof window === "undefined") return;
+  if (token) window.localStorage.setItem(PENDING_INVITE_KEY, token);
+  else window.localStorage.removeItem(PENDING_INVITE_KEY);
+}
+
+export function getPendingInviteToken() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(PENDING_INVITE_KEY);
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export function useAuth() {
   const [error, setError] = useState(null);
@@ -17,13 +36,52 @@ export function useAuth() {
         method: "POST",
         body: JSON.stringify({ email, password, displayName }),
       });
-      localStorage.setItem("voyage-user", JSON.stringify(data.user));
-      return data.user;
+      return {
+        user: data.user,
+        emailVerificationRequired: Boolean(data.emailVerificationRequired),
+      };
     } catch (err) {
       setError(err);
       return null;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async (email) => {
+    setError(null);
+    try {
+      await requestEmailVerificationApi(email);
+      return true;
+    } catch (err) {
+      setError(err);
+      return false;
+    }
+  };
+
+  const confirmEmailVerification = async (token) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await confirmEmailVerificationApi(token);
+      return true;
+    } catch (err) {
+      setError(err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const replayPendingInvite = async () => {
+    const token = getPendingInviteToken();
+    if (!token) return null;
+    try {
+      const result = await acceptInvitationApi(token);
+      setPendingInviteToken(null);
+      return result;
+    } catch (_) {
+      return null;
     }
   };
 
@@ -56,7 +114,19 @@ export function useAuth() {
         body: JSON.stringify({ email, password }),
       });
       localStorage.setItem("voyage-user", JSON.stringify(data.user));
-      router.push("/?authenticated=1");
+      const inviteResult = await replayPendingInvite();
+      if (inviteResult?.agencyId) {
+        // Refresh user data so accountType (now AGENCY_USER) is current.
+        try {
+          const meData = await fetchApi("/auth/me");
+          localStorage.setItem("voyage-user", JSON.stringify(meData.user));
+        } catch (_) {
+          // Non-fatal — the agency page will refetch.
+        }
+        router.push("/?authenticated=1&tab=team&invited=1");
+      } else {
+        router.push("/?authenticated=1");
+      }
     } catch (err) {
       setError(err);
     } finally {
@@ -79,12 +149,31 @@ export function useAuth() {
     window.location.href = `${API_URL}/auth/${provider}/start`;
   };
 
+  const setAccountType = async (accountType) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await setAccountTypeApi(accountType);
+      localStorage.setItem("voyage-user", JSON.stringify(data.user));
+      return data.user;
+    } catch (err) {
+      setError(err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     register,
     createAgency,
     login,
     logout,
     startOAuth,
+    setAccountType,
+    resendVerificationEmail,
+    confirmEmailVerification,
+    replayPendingInvite,
     error,
     setError,
     loading,

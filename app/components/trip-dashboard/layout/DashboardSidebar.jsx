@@ -1,10 +1,13 @@
 import React from "react";
 import { useTheme } from "../../theme/ThemeProvider";
 
-export default function DashboardSidebar({ isSidebarOpen, setIsSidebarOpen, activeTab, setActiveTab, logout, user, pendingCount }) {
+export default function DashboardSidebar({ isSidebarOpen, setIsSidebarOpen, activeTab, setActiveTab, logout, user, pendingCount, agencyId }) {
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user?.role === "SUPER_ADMIN";
+  const isPersonal = user?.accountType === "PERSONAL";
+  const hasAgencyMembership = Array.isArray(user?.memberships)
+    && user.memberships.some((m) => m?.status === "ACTIVE" && m?.agencyId);
 
   const navItemBase = "flex flex-col items-center justify-center py-[18px] px-1 text-[rgba(219,234,236,0.65)] no-underline gap-2.5 text-center bg-transparent border-none cursor-pointer font-[inherit] transition-all duration-200 w-full hover:not-[.active]:text-white hover:not-[.active]:bg-white/5 max-[900px]:flex-row max-[900px]:justify-start max-[900px]:px-4 max-[900px]:py-3 max-[900px]:gap-4 max-[900px]:rounded-xl";
   const navItemActive = "text-white bg-white/10 border-l-[3px] border-secondary max-[900px]:border-l-0 max-[900px]:bg-secondary";
@@ -24,6 +27,26 @@ export default function DashboardSidebar({ isSidebarOpen, setIsSidebarOpen, acti
         aria-label="Dashboard navigation"
       >
         <nav className="flex flex-col py-[18px] flex-1 gap-2 max-[900px]:py-6 max-[900px]:px-6">
+          {hasAgencyMembership && !isPersonal && agencyId && (
+            <button
+              type="button"
+              data-tour-target="dashboard-overview"
+              className={`${navItemBase} ${activeTab === "dashboard" ? navItemActive : ""}`}
+              aria-current={activeTab === "dashboard" ? "page" : undefined}
+              onClick={() => setActiveTab("dashboard")}
+            >
+              <span className="inline-flex items-center justify-center relative" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="9" />
+                  <rect x="14" y="3" width="7" height="5" />
+                  <rect x="14" y="12" width="7" height="9" />
+                  <rect x="3" y="16" width="7" height="5" />
+                </svg>
+              </span>
+              <span className="text-[11px] font-semibold leading-tight max-[900px]:text-sm">Dashboard</span>
+            </button>
+          )}
+
           <button
             type="button"
             className={`${navItemBase} ${activeTab === "command-center" ? navItemActive : ""}`}
@@ -90,7 +113,7 @@ export default function DashboardSidebar({ isSidebarOpen, setIsSidebarOpen, acti
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </span>
-            <span className="text-[11px] font-semibold leading-tight max-[900px]:text-sm">Settings</span>
+            <span className="text-[11px] font-semibold leading-tight max-[900px]:text-sm">{isPersonal ? "My account" : "Settings"}</span>
           </button>
 
           <button

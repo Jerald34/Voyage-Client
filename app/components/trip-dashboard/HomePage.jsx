@@ -6,13 +6,15 @@ import { useAgentStreamOrchestration } from "../../hooks/useAgentStreamOrchestra
 import { useTourFlow } from "../../hooks/useTourFlow.js";
 import { useTripPlanning } from "../../hooks/useTripPlanning.js";
 import {
-  approveAgentThreadItinerary,
+  saveAgentThreadItinerary,
   deleteAgentThread,
   deleteAgencyTrip,
   listAgencyTrips,
   fetchPendingCount,
   updateAgencySettings,
   updateCurrentUserProfile,
+  fetchPersonalItineraries,
+  fetchPersonalThreads,
 } from "../../lib/api/index.js";
 import {
   getAgencyPortfolioSummary,
@@ -22,17 +24,20 @@ import {
 } from "../../lib/agency-dashboard/selectors.js";
 import { buildPlaceEntities, getItineraryPlaceEntityId } from "../../lib/trip-dashboard/placeEntities.js";
 import { getSavedItineraryTrips } from "../../lib/trip-dashboard/savedItineraries.js";
+import { buildPlanningOptions } from "../../lib/trip-dashboard/planningOptions.js";
 
 import dynamic from "next/dynamic";
 import AgentCommandCenter from "./command-center/AgentCommandCenter.jsx";
+import OwnerOverview from "../../agency/[agencyId]/components/dashboard/OwnerOverview.jsx";
+import StaffMyWork from "../../agency/[agencyId]/components/dashboard/StaffMyWork.jsx";
 import ItineraryDraftPanel from "./itinerary/ItineraryDraftPanel.jsx";
 const ItineraryLiveMap = dynamic(() => import("./itinerary/ItineraryLiveMap.jsx"), { ssr: false });
 import ClientItineraryPage from "./pages/ClientItineraryPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
-import ApproveItineraryModal from "./modals/ApproveItineraryModal.jsx";
+import SaveItineraryModal from "./modals/SaveItineraryModal.jsx";
 import DashboardHeader from "./layout/DashboardHeader.jsx";
 import DashboardSidebar from "./layout/DashboardSidebar.jsx";
-import AdminAgenciesPage from "../admin/AdminAgenciesPage.jsx";
+import AdminPage from "../admin/AdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatInput from "./command-center/ChatInput.jsx";
@@ -68,10 +73,19 @@ export function getAgencyMapFallbackFromUser(user) {
   };
 }
 
-export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp = [], onContinue, onOpenTrip, onNewItinerary }) {
+export default function HomePage({
+  user: userProp,
+  agencyTrips: agencyTripsProp = [],
+  onContinue,
+  onOpenTrip,
+  onNewItinerary,
+  initialTab = "command-center",
+  showJoinedNotice = false,
+}) {
   const { theme } = useTheme();
   const { logout } = useAuth();
   const [user, setUser] = useState(userProp || null);
+  const isPersonal = user?.accountType === "PERSONAL";
   const agencyId = user?.memberships?.[0]?.agencyId ?? null;
   const [fetchedTrips, setFetchedTrips] = useState(null);
   const agencyTrips = agencyTripsProp;
@@ -113,7 +127,13 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
     dispatchMessage,
     createPlanningContext,
     createRunTargetKey,
+    renameThread,
   } = useTripPlanning(agencyId);
+
+  // Guard ref: when a dashboard action explicitly sets activeContext (e.g.
+  // Resume / Open trip), the context-management effect must NOT clear it
+  // before ensureTripThreadState has a chance to hydrate tripStates.
+  const explicitContextRef = useRef(false);
 
   const [composerInput, setComposerInput] = useState("");
   const [deletingThreadId, setDeletingThreadId] = useState(null);
@@ -121,7 +141,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
   const [isApprovingDraft, setIsApprovingDraft] = useState(false);
   const [approvalError, setApprovalError] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("command-center");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
   const [isClientMenuOpen, setIsClientMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -139,7 +159,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
 
   // Poll pending count for admin users
   useEffect(() => {
-    if (user?.role !== "ADMIN") return;
+    if (user?.role !== "SUPER_ADMIN") return;
     let cancelled = false;
     const load = () => {
       fetchPendingCount()
@@ -152,7 +172,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
   }, [user?.role]);
 
   const refreshPendingCount = () => {
-    if (user?.role !== "ADMIN") return;
+    if (user?.role !== "SUPER_ADMIN") return;
     fetchPendingCount()
       .then((data) => setPendingCount(data.count || 0))
       .catch(() => {});
@@ -190,8 +210,64 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
     if (stored) { try { setUser(JSON.parse(stored)); } catch (e) { console.error(e); } }
   }, [user]);
 
-  // Load initial data
+  // Load initial data — agency path
   useEffect(() => { if (agencyId) loadInitialThreads(); }, [agencyId]);
+
+  // Load initial data — personal path
+  useEffect(() => {
+    if (!isPersonal) return;
+    let cancelled = false;
+
+    fetchPersonalItineraries()
+      .then((res) => {
+        if (cancelled) return;
+        const items = Array.isArray(res?.itineraries) ? res.itineraries : (Array.isArray(res) ? res : []);
+        setFetchedTrips(
+          items.map((it) => ({
+            id: it.id,
+            clientName: null,
+            destination: it.destinationSummary ?? it.title ?? null,
+            travelWindow: formatTripDates(it.startDate, it.endDate),
+            status: it.status?.toLowerCase() === "archived" ? "archived" : "active",
+            approvalStatus: mapTripStatus(it.status),
+            itineraryId: it.id,
+            itineraryVersion: it.version ?? null,
+          }))
+        );
+      })
+      .catch((err) => console.error("Failed to load personal itineraries:", err));
+
+    fetchPersonalThreads()
+      .then((res) => {
+        if (cancelled) return;
+        const threads = Array.isArray(res?.threads) ? res.threads : (Array.isArray(res) ? res : []);
+        if (threads.length === 0) return;
+
+        const nextDraftStates = {};
+        const nextDraftOrder = [];
+        for (const thread of threads) {
+          if (!thread?.id) continue;
+          nextDraftStates[thread.id] = {
+            threadId: thread.id,
+            title: String(thread.title ?? thread.name ?? "").trim(),
+            tripId: null,
+            messages: [],
+            itinerary: null,
+            loaded: false,
+          };
+          nextDraftOrder.push(thread.id);
+        }
+        setDraftThreadStates((prev) => ({ ...prev, ...nextDraftStates }));
+        setDraftThreadOrder((prev) => {
+          const existing = new Set(prev);
+          const toAdd = nextDraftOrder.filter((id) => !existing.has(id));
+          return toAdd.length > 0 ? [...toAdd, ...prev] : prev;
+        });
+      })
+      .catch((err) => console.error("Failed to load personal threads:", err));
+
+    return () => { cancelled = true; };
+  }, [isPersonal]);
 
   const {
     isFirstUseTutorialOpen,
@@ -252,7 +328,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
         const firstItinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : null;
         return {
           id: t.id,
-          clientName: t.clientName ?? t.title,
+          clientName: t.clientName ?? null,
           destination: t.destinationSummary ?? t.title,
           travelWindow: formatTripDates(t.startDate, t.endDate),
           status: t.status?.toLowerCase() === "archived" ? "archived" : "active",
@@ -264,8 +340,14 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
     );
   }, [bootstrapTrips]);
 
-  // Context management
+  // Context management — skip cleanup when a dashboard action explicitly set
+  // the context (explicitContextRef). This prevents the effect from clearing
+  // activeContext before ensureTripThreadState can hydrate tripStates.
   useEffect(() => {
+    if (explicitContextRef.current) {
+      explicitContextRef.current = false;
+      return;
+    }
     const hasPropTrips = Array.isArray(agencyTrips) && agencyTrips.length > 0;
     const hasThreadTrips = Object.keys(tripStates).length > 0;
     if (!hasPropTrips && !hasThreadTrips) {
@@ -309,48 +391,10 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
   const activeTrip = activeContext?.type === "trip" ? safeTrips.find(t => t?.id === activeContext.id) : null;
   const activeTripState = activeContext?.type === "draft" ? draftThreadStates[activeContext.id] : (activeContext?.type === "trip" && activeContext.id ? tripStates[activeContext.id] : null);
 
-  const planningOptions = useMemo(() => {
-    const drafts = draftThreadOrder.map((id, i) => {
-      const s = draftThreadStates[id];
-      if (!s) return null;
-      const label = s.title || `Draft itinerary ${draftThreadOrder.length - i}`;
-      return { type: "draft", id, clientName: label, label, destination: s.itinerary?.trip?.destination || "Planning draft", statusLabel: "Draft itinerary", threadId: id };
-    }).filter(Boolean);
-
-    const propTripIds = new Set(safeTrips.map(t => t.id));
-    const trips = safeTrips.map(t => ({
-      type: "trip", id: t.id, clientName: t.clientName, label: t.clientName, destination: t.destination, statusLabel: t.approvalStatus || t.status || "Client trip", tripId: t.id, threadId: tripStates[t.id]?.threadId ?? null, assignedOrganizer: t.assignedOrganizer
-    }));
-
-    const threadOnlyTrips = Object.entries(tripStates)
-      .filter(([tripId]) => !propTripIds.has(tripId))
-      .map(([tripId, state]) => {
-        const title = state.title || state.itinerary?.title || state.itinerary?.trip?.clientName || "Client trip";
-        const dest = state.itinerary?.trip?.destination || state.itinerary?.trip?.destinationSummary || "";
-        return { type: "trip", id: tripId, clientName: title, label: title, destination: dest, statusLabel: "Approved", tripId, threadId: state.threadId ?? null };
-      });
-
-    const options = [...drafts, ...trips, ...threadOnlyTrips];
-
-    // If we are currently creating a draft thread, and activeContext is set to that pending ID,
-    // add it to the options list so the switcher can identify it.
-    if (activeContext?.type === "draft" && String(activeContext.id).startsWith("pending-")) {
-      const isAlreadyInDrafts = drafts.some(d => d.id === activeContext.id);
-      if (!isAlreadyInDrafts) {
-        options.unshift({
-          type: "draft",
-          id: activeContext.id,
-          clientName: "New Itinerary...",
-          label: "New Itinerary...",
-          destination: "Planning",
-          statusLabel: "Creating...",
-          threadId: null
-        });
-      }
-    }
-
-    return options;
-  }, [draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext]);
+  const planningOptions = useMemo(
+    () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext }),
+    [draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext],
+  );
 
   const activeOption = useMemo(() => activeContext ? planningOptions.find(o => o.type === activeContext.type && o.id === activeContext.id) : planningOptions[0], [activeContext, planningOptions]);
 
@@ -377,6 +421,13 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
       : null
   ), [agencyId, user]);
   const activeAgency = activeMembership?.agency ?? null;
+
+  // Deep links can open the Dashboard (e.g. `tab=team` after accepting an
+  // invite). Users without an agency workspace have no dashboard, so fall back
+  // to the Command Center instead of leaving the main area empty.
+  const currentTab = activeTab === "dashboard" && user && (isPersonal || !agencyId)
+    ? "command-center"
+    : activeTab;
 
   useEffect(() => {
     setSelectedPlaceId("");
@@ -472,7 +523,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
 
     setIsApprovingDraft(true); setApprovalError("");
     try {
-      const res = await approveAgentThreadItinerary(agencyId, threadId, { itineraryId, ...fields });
+      const res = await saveAgentThreadItinerary(agencyId, threadId, { itineraryId, ...fields });
       const approved = res?.thread || res?.trip || {};
       const tripId = approved.tripId || approved.id;
       const draftState = draftThreadStates[threadId] || {};
@@ -501,7 +552,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
               const firstItinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : null;
               return {
                 id: t.id,
-                clientName: t.clientName ?? t.title,
+                clientName: t.clientName ?? null,
                 destination: t.destinationSummary ?? t.title,
                 travelWindow: formatTripDates(t.startDate, t.endDate),
                 status: t.status?.toLowerCase() === "archived" ? "archived" : "active",
@@ -519,6 +570,32 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
     } catch (e) { setApprovalError(e.message); } finally { setIsApprovingDraft(false); }
   };
 
+  // REUSE: Append a system-visible message (e.g. reuse confirmation) into the
+  // active trip's message list so it surfaces in the chat history without
+  // triggering an agent run. Falls back silently when no trip context is active.
+  const handleReuseSystemMessage = useCallback((message) => {
+    const tripId = activeContext?.type === "trip" ? activeContext.id : null;
+    if (!tripId || !message) return;
+    setTripStates((prev) => {
+      const current = prev[tripId] || { messages: [], loaded: false };
+      // Deduplicate by id to avoid double-appends on re-renders.
+      if (current.messages.some((m) => m.id === message.id)) return prev;
+      return { ...prev, [tripId]: { ...current, messages: [...current.messages, message] } };
+    });
+  }, [activeContext, setTripStates]);
+
+  // REUSE: Replace the active trip's itinerary with the freshly-inserted copy
+  // returned by the reuse API call. Also refreshes the itinerary in the sidebar
+  // (fetchedTrips) so the version badge stays accurate without a full reload.
+  const handleReuseInserted = useCallback((updatedItinerary) => {
+    const tripId = activeContext?.type === "trip" ? activeContext.id : null;
+    if (!tripId || !updatedItinerary) return;
+    setTripStates((prev) => {
+      const current = prev[tripId] || {};
+      return { ...prev, [tripId]: { ...current, itinerary: updatedItinerary } };
+    });
+  }, [activeContext, setTripStates]);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-text-primary font-sans">
       <FirstUseTutorial
@@ -529,7 +606,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
       />
 
       {isApprovalModalOpen && activeContext?.type === "draft" && (
-        <ApproveItineraryModal
+        <SaveItineraryModal
           itinerary={effectiveTripState?.itinerary ?? null}
           isSaving={isApprovingDraft}
           error={approvalError}
@@ -550,7 +627,7 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
           getInitials={getInitials}
           displayName={user?.displayName || "Traveler"}
           agencyId={agencyId}
-          activeTab={activeTab}
+          activeTab={currentTab}
           onNewItinerary={() => {
             setPendingClientName(null);
             handleNewItinerary();
@@ -565,11 +642,12 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
           activeTripOrganizerInitials={activeTripOrganizerInitials}
           clientMenuEmptyTitle={clientMenuEmptyTitle}
           clientMenuEmptyBody={clientMenuEmptyBody}
-          safeOptions={activeTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
+          safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
           activeOption={effectiveActiveOption}
           onPlanningOptionDelete={handleDeleteOption}
           deletingThreadId={deletingThreadId}
           onPlanningOptionChange={(ctx) => { setActiveContext(createPlanningContext(ctx?.type, ctx?.id)); setComposerInput(""); }}
+          onRenameThread={renameThread}
           canApproveDraft={activeContext?.type === "draft" && Boolean(activeTripState?.itinerary?.id)}
           onApproveDraft={() => { setApprovalError(""); setIsApprovalModalOpen(true); }}
         />
@@ -579,15 +657,16 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
         <DashboardSidebar
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
-          activeTab={activeTab}
+          activeTab={currentTab}
           setActiveTab={setActiveTab}
           logout={logout}
           user={user}
           pendingCount={pendingCount}
+          agencyId={agencyId}
         />
 
         <main className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 max-[900px]:p-0 max-[900px]:overflow-hidden">
-          {activeTab === "command-center" ? (
+          {currentTab === "command-center" ? (
             <section
               data-tour-target="workspace"
               className="relative flex flex-1 min-h-0 overflow-hidden rounded-[24px] border border-border/10 shadow-inner max-[900px]:rounded-none max-[900px]:border-none max-[900px]:shadow-none"
@@ -647,6 +726,13 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
                     onPlaceSelect={setSelectedPlaceId}
                     onStop={isVisible ? stopStream : undefined}
                     processSnapshotRef={agentProcessSnapshotRef}
+                    tripId={activeContext?.type === "trip" ? activeContext.id : null}
+                    agencyId={agencyId}
+                    targetItineraryId={effectiveTripState?.itinerary?.id ?? null}
+                    currentVersion={effectiveTripState?.itinerary?.version ?? null}
+                    targetItinerary={effectiveTripState?.itinerary ?? null}
+                    onSystemVisibleMessage={handleReuseSystemMessage}
+                    onReuseInserted={handleReuseInserted}
                   />
                 </div>
               </div>
@@ -694,11 +780,52 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
                     onStop={isVisible ? stopStream : undefined}
                     hideChatInput
                     processSnapshotRef={agentProcessSnapshotRef}
+                    tripId={activeContext?.type === "trip" ? activeContext.id : null}
+                    agencyId={agencyId}
+                    targetItineraryId={effectiveTripState?.itinerary?.id ?? null}
+                    currentVersion={effectiveTripState?.itinerary?.version ?? null}
+                    targetItinerary={effectiveTripState?.itinerary ?? null}
+                    onSystemVisibleMessage={handleReuseSystemMessage}
+                    onReuseInserted={handleReuseInserted}
                   />
                 </MobileGlassSheet>
               )}
             </section>
-          ) : activeTab === "itineraries" ? (
+          ) : currentTab === "dashboard" && agencyId ? (
+            // Own scroll container: <main> is overflow-hidden at ≤900px (for the
+            // Command Center map), so the dashboard must scroll itself on phones.
+            <div
+              data-testid="dashboard-scroll"
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-[900px]:pb-[env(safe-area-inset-bottom)]"
+            >
+              {activeMembership?.role === "STAFF" ? (
+                <StaffMyWork
+                  agencyId={agencyId}
+                  initialData={null}
+                  onOpenTrip={(tripId) => {
+                    explicitContextRef.current = true;
+                    setActiveTab("command-center");
+                    setActiveContext(createPlanningContext("trip", tripId));
+                  }}
+                  onNewTrip={handleNewItinerary}
+                  onOpenItineraries={() => setActiveTab("itineraries")}
+                  showJoinedNotice={showJoinedNotice}
+                />
+              ) : (
+                <OwnerOverview
+                  agencyId={agencyId}
+                  initialData={null}
+                  onOpenTrip={(tripId) => {
+                    explicitContextRef.current = true;
+                    setActiveTab("command-center");
+                    setActiveContext(createPlanningContext("trip", tripId));
+                  }}
+                  onNewTrip={handleNewItinerary}
+                  showJoinedNotice={showJoinedNotice}
+                />
+              )}
+            </div>
+          ) : currentTab === "itineraries" ? (
             <ClientItineraryPage
               agencyTrips={tripsForCip}
               agencyId={agencyId}
@@ -715,8 +842,13 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
                   setTripStates(prev => { const next = { ...prev }; delete next[tripId]; return next; });
                 }
               }}
+              onTripStatusChange={(tripId, label) => {
+                setFetchedTrips((prev) => (prev || []).map((t) =>
+                  t.id === tripId ? { ...t, approvalStatus: label } : t
+                ));
+              }}
             />
-          ) : activeTab === "settings" ? (
+          ) : currentTab === "settings" ? (
             <SettingsPage
               user={user}
               agency={activeAgency}
@@ -726,8 +858,8 @@ export default function HomePage({ user: userProp, agencyTrips: agencyTripsProp 
               onUpdateAgency={handleAgencySettingsUpdate}
               onReplayTutorial={replayFirstUseTutorial}
             />
-          ) : activeTab === "admin" && user?.role === "ADMIN" ? (
-            <AdminAgenciesPage onPendingCountChange={refreshPendingCount} />
+          ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
+            <AdminPage onPendingCountChange={refreshPendingCount} />
           ) : null}
         </main>
       </div>
