@@ -1,7 +1,7 @@
 /**
  * Agent thread and run API endpoints.
  */
-import { fetchApi, API_URL } from "./client.js";
+import { fetchApi, API_URL, createApiError } from "./client.js";
 
 export async function createAgentThread(agencyId, tripId = null) {
   const body = {};
@@ -49,10 +49,7 @@ export async function uploadChatImages(agencyId, threadId, files) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.error?.message || "Failed to upload images");
-    error.code = data.error?.code || "UPLOAD_ERROR";
-    error.status = response.status;
-    throw error;
+    throw createApiError(response, data, "Failed to upload images", "UPLOAD_ERROR");
   }
   return data;
 }
