@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE = `voyage-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `voyage-dynamic-${CACHE_VERSION}`;
 const FONT_CACHE = `voyage-fonts-${CACHE_VERSION}`;
@@ -45,11 +45,22 @@ self.addEventListener('fetch', event => {
   // Skip non-GET and non-HTTP requests (chrome-extension, etc.)
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
+  // Server-sent event streams (the agent run stream) → never intercept. The
+  // stream stays open after the run completes, so a worker that proxies or
+  // caches it can hold every event back and leave the chat on "Thinking…".
+  if ((request.headers.get('accept') || '').includes('text/event-stream')) return;
+
   // Google Fonts → stale-while-revalidate (font files rarely change)
   if (FONT_HOSTS.includes(url.hostname)) {
     event.respondWith(staleWhileRevalidate(request, FONT_CACHE));
     return;
   }
+
+  // Other origins → bypass. This includes the backend API when
+  // NEXT_PUBLIC_API_URL points at a separate origin (e.g. https://smurfing.dev):
+  // its responses are authenticated and per-user, so caching them would serve
+  // stale threads/messages and could replay one user's data to the next.
+  if (url.origin !== self.location.origin) return;
 
   // Next.js static chunk assets → cache-first (content-hashed, safe to cache forever)
   if (url.pathname.startsWith('/_next/static/')) {
