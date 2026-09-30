@@ -86,7 +86,7 @@ export default function WorklistRow({
     <div
       role="listitem"
       style={rowStyle}
-      className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface-elevated"
+      className="flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-lg px-3 py-2 hover:bg-surface-elevated"
     >
       {/* Leading status dot */}
       <div className="flex shrink-0 items-center" aria-hidden="false">
@@ -112,24 +112,23 @@ export default function WorklistRow({
         ) : null}
       </BodyTag>
 
-      {/* Right side: hint + action */}
-      <div className="ml-auto flex shrink-0 items-center gap-3">
-        {hint ? (
-          <span className="whitespace-nowrap text-[12px] text-text-muted">
-            {hint}
-          </span>
-        ) : null}
+      {/* Hint sits beside the action on wider screens. On phones it wraps onto
+          its own line under the title, so the title keeps the row's width. */}
+      {hint ? (
+        <span className="order-last basis-full pl-5 text-[12px] text-text-muted sm:order-none sm:basis-auto sm:whitespace-nowrap sm:pl-0">
+          {hint}
+        </span>
+      ) : null}
 
-        <button
-          type="button"
-          onClick={handleActionClick}
-          disabled={actionDisabled || actionPending}
-          className="min-h-[44px] min-w-[44px] rounded-md px-4 text-[13px] font-bold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          style={{ transitionDuration: "120ms", transitionTimingFunction: "var(--ease-out)" }}
-        >
-          {actionPending ? "…" : actionLabel}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleActionClick}
+        disabled={actionDisabled || actionPending}
+        className="min-h-[44px] min-w-[44px] shrink-0 rounded-md px-4 text-[13px] font-bold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        style={{ transitionDuration: "120ms", transitionTimingFunction: "var(--ease-out)" }}
+      >
+        {actionPending ? "…" : actionLabel}
+      </button>
     </div>
   );
 }

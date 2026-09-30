@@ -422,6 +422,13 @@ export default function HomePage({
   ), [agencyId, user]);
   const activeAgency = activeMembership?.agency ?? null;
 
+  // Deep links can open the Dashboard (e.g. `tab=team` after accepting an
+  // invite). Users without an agency workspace have no dashboard, so fall back
+  // to the Command Center instead of leaving the main area empty.
+  const currentTab = activeTab === "dashboard" && user && (isPersonal || !agencyId)
+    ? "command-center"
+    : activeTab;
+
   useEffect(() => {
     setSelectedPlaceId("");
   }, [activeContextKey]);
@@ -620,7 +627,7 @@ export default function HomePage({
           getInitials={getInitials}
           displayName={user?.displayName || "Traveler"}
           agencyId={agencyId}
-          activeTab={activeTab}
+          activeTab={currentTab}
           onNewItinerary={() => {
             setPendingClientName(null);
             handleNewItinerary();
@@ -635,7 +642,7 @@ export default function HomePage({
           activeTripOrganizerInitials={activeTripOrganizerInitials}
           clientMenuEmptyTitle={clientMenuEmptyTitle}
           clientMenuEmptyBody={clientMenuEmptyBody}
-          safeOptions={activeTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
+          safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
           activeOption={effectiveActiveOption}
           onPlanningOptionDelete={handleDeleteOption}
           deletingThreadId={deletingThreadId}
@@ -650,7 +657,7 @@ export default function HomePage({
         <DashboardSidebar
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
-          activeTab={activeTab}
+          activeTab={currentTab}
           setActiveTab={setActiveTab}
           logout={logout}
           user={user}
@@ -659,7 +666,7 @@ export default function HomePage({
         />
 
         <main className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 max-[900px]:p-0 max-[900px]:overflow-hidden">
-          {activeTab === "command-center" ? (
+          {currentTab === "command-center" ? (
             <section
               data-tour-target="workspace"
               className="relative flex flex-1 min-h-0 overflow-hidden rounded-[24px] border border-border/10 shadow-inner max-[900px]:rounded-none max-[900px]:border-none max-[900px]:shadow-none"
@@ -784,32 +791,41 @@ export default function HomePage({
                 </MobileGlassSheet>
               )}
             </section>
-          ) : activeTab === "dashboard" && agencyId ? (
-            activeMembership?.role === "STAFF" ? (
-              <StaffMyWork
-                agencyId={agencyId}
-                initialData={null}
-                onOpenTrip={(tripId) => {
-                  explicitContextRef.current = true;
-                  setActiveTab("command-center");
-                  setActiveContext(createPlanningContext("trip", tripId));
-                }}
-                onNewTrip={handleNewItinerary}
-                onOpenItineraries={() => setActiveTab("itineraries")}
-              />
-            ) : (
-              <OwnerOverview
-                agencyId={agencyId}
-                initialData={null}
-                onOpenTrip={(tripId) => {
-                  explicitContextRef.current = true;
-                  setActiveTab("command-center");
-                  setActiveContext(createPlanningContext("trip", tripId));
-                }}
-                onNewTrip={handleNewItinerary}
-              />
-            )
-          ) : activeTab === "itineraries" ? (
+          ) : currentTab === "dashboard" && agencyId ? (
+            // Own scroll container: <main> is overflow-hidden at ≤900px (for the
+            // Command Center map), so the dashboard must scroll itself on phones.
+            <div
+              data-testid="dashboard-scroll"
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-[900px]:pb-[env(safe-area-inset-bottom)]"
+            >
+              {activeMembership?.role === "STAFF" ? (
+                <StaffMyWork
+                  agencyId={agencyId}
+                  initialData={null}
+                  onOpenTrip={(tripId) => {
+                    explicitContextRef.current = true;
+                    setActiveTab("command-center");
+                    setActiveContext(createPlanningContext("trip", tripId));
+                  }}
+                  onNewTrip={handleNewItinerary}
+                  onOpenItineraries={() => setActiveTab("itineraries")}
+                  showJoinedNotice={showJoinedNotice}
+                />
+              ) : (
+                <OwnerOverview
+                  agencyId={agencyId}
+                  initialData={null}
+                  onOpenTrip={(tripId) => {
+                    explicitContextRef.current = true;
+                    setActiveTab("command-center");
+                    setActiveContext(createPlanningContext("trip", tripId));
+                  }}
+                  onNewTrip={handleNewItinerary}
+                  showJoinedNotice={showJoinedNotice}
+                />
+              )}
+            </div>
+          ) : currentTab === "itineraries" ? (
             <ClientItineraryPage
               agencyTrips={tripsForCip}
               agencyId={agencyId}
@@ -832,7 +848,7 @@ export default function HomePage({
                 ));
               }}
             />
-          ) : activeTab === "settings" ? (
+          ) : currentTab === "settings" ? (
             <SettingsPage
               user={user}
               agency={activeAgency}
@@ -842,7 +858,7 @@ export default function HomePage({
               onUpdateAgency={handleAgencySettingsUpdate}
               onReplayTutorial={replayFirstUseTutorial}
             />
-          ) : activeTab === "admin" && user?.role === "SUPER_ADMIN" ? (
+          ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
             <AdminPage onPendingCountChange={refreshPendingCount} />
           ) : null}
         </main>

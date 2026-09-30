@@ -21,8 +21,10 @@ function HomePageInner() {
   const searchParams = useSearchParams();
   const { logout } = useAuth();
   const authenticatedParam = searchParams.get("authenticated");
-  const requestedDashboardTab = searchParams.get("tab") === "team" ? "team" : "command-center";
-  const showJoinedNotice = requestedDashboardTab === "team" && searchParams.get("invited") === "1";
+  // Team lives inside the Dashboard tab, so the `tab=team` deep link (invite
+  // acceptance, /agency/:id/team) opens the Dashboard — HomePage has no "team" tab.
+  const requestedDashboardTab = searchParams.get("tab") === "team" ? "dashboard" : "command-center";
+  const showJoinedNotice = requestedDashboardTab === "dashboard" && searchParams.get("invited") === "1";
   const [shouldBypassLanding, setShouldBypassLanding] = useState(false);
   const [user, setUser] = useState(null);
   const [agencyStatus, setAgencyStatus] = useState(null); // null | { status, name, rejectionReason, suspensionReason }

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import PlaceAdvisoryNotice from "./PlaceAdvisoryNotice.jsx";
 import dynamic from "next/dynamic";
 import { getItineraryPlaceEntityId } from "../../../lib/trip-dashboard/placeEntities.js";
 
@@ -140,6 +141,10 @@ export default function ItineraryDraftPanel({
                 <h2 className="m-0 text-[19px] font-normal tracking-tight font-serif text-white">{panelTitle}</h2>
               </div>
               {panelSummary && <p className="m-0 text-white/50 text-[12px] font-medium truncate max-w-[240px]">{panelSummary}</p>}
+              {/* Verification warnings for this read. Derived from the response,
+                  so a re-fetch that still fails keeps them and the first
+                  successful notes load clears them. Public views never get them. */}
+              <PlaceAdvisoryNotice advisories={itinerary?.placeAdvisories} className="mt-2 max-w-[320px]" />
               {dockMode && (
                 <span
                   className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/[0.08] border border-white/10"

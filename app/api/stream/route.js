@@ -12,6 +12,8 @@
 // body straight through as a live ReadableStream so SSE events reach the browser
 // as they are written (the rewrite buffers the body, which breaks SSE).
 
+import { trustedClientIpHeaders } from "../../lib/server/trustedClientIp";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const fetchCache = "force-no-store";
@@ -42,6 +44,8 @@ export async function GET(request) {
         // Forward the session cookie so the backend can authenticate the run.
         cookie: request.headers.get("cookie") ?? "",
         accept: "text/event-stream",
+        // Signed client IP, so the backend rate-limits the user, not this server.
+        ...trustedClientIpHeaders(request.headers),
       },
       cache: "no-store",
       // Abort the upstream fetch when the browser disconnects, so the backend's

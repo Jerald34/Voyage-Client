@@ -9,7 +9,7 @@
 const EMPTY_STATE_CONTENT = {
   worklist: {
     heading: 'All caught up.',
-    body: 'N active shares · M trips upcoming.',
+    body: 'Nothing needs your attention right now.',
     cta: null,
   },
   kpi: {

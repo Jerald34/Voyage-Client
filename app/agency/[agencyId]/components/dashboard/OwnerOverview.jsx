@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDashboardPoll } from "../../../../hooks/useDashboardPoll";
 import KpiTile from "./widgets/KpiTile";
@@ -10,8 +10,10 @@ import RatingsPanel from "./widgets/RatingsPanel";
 import ActivityRibbon from "./widgets/ActivityRibbon";
 import EmptyState from "./widgets/EmptyState";
 import PeriodSwitcher from "./widgets/PeriodSwitcher";
+import JoinedNotice from "./widgets/JoinedNotice";
 import TeamPage from "../../../../components/team/TeamPage";
 import TripSlideOver from "./TripSlideOver";
+import { describeWorklistItem } from "./worklistContext";
 
 // ---------------------------------------------------------------------------
 // Worklist group definitions (spec §3.1)
@@ -19,35 +21,39 @@ import TripSlideOver from "./TripSlideOver";
 const WORKLIST_GROUPS = [
   {
     key: "unreadComments",
-    heading: "Unread comments",
+    heading: "Client comments to answer",
     tone: "info",
     actionLabel: "Reply",
   },
   {
     key: "viewedNotReplied",
-    heading: "Viewed not replied",
+    heading: "Viewed by the client, no follow-up yet",
     tone: "info",
     actionLabel: "Open trip",
   },
   {
     key: "draftsStuck",
-    heading: "Drafts stuck",
+    heading: "Drafts untouched for over a week",
     tone: "warning",
     actionLabel: "Resume",
   },
   {
     key: "sharesExpiring",
-    heading: "Shares expiring",
+    heading: "Itinerary links expiring within 2 days",
     tone: "warning",
     actionLabel: "Extend",
   },
   {
     key: "lowRated",
-    heading: "Low rated",
+    heading: "Low ratings from clients",
     tone: "danger",
     actionLabel: "Open trip",
   },
 ];
+
+const PERIOD_DAYS = { "7d": 7, "30d": 30, "90d": 90 };
+
+const formatOneDecimal = (v) => v.toFixed(1);
 
 // ---------------------------------------------------------------------------
 // Skeleton placeholder — rendered when data === null (no SSR payload)
@@ -98,8 +104,9 @@ function DashboardSkeleton() {
 // ---------------------------------------------------------------------------
 // OwnerOverview
 // ---------------------------------------------------------------------------
-export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip, onNewTrip }) {
+export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip, onNewTrip, showJoinedNotice = false }) {
   const router = useRouter();
+  const kpiHeadingId = useId();
   const [period, setPeriod] = useState("30d");
 
   // ── Slide-over state ──
@@ -149,17 +156,16 @@ export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip
   // -------------------------------------------------------------------------
   const kpis = data?.kpis ?? {};
 
-  function formatResponseRate(kpi) {
-    if (!kpi) return undefined;
-    const { responseCount, totalCount, responseRate } = kpi;
-    if (responseCount == null || totalCount == null) return undefined;
-    const pct =
-      responseRate != null
-        ? responseRate.toFixed(0)
-        : totalCount > 0
-          ? ((responseCount / totalCount) * 100).toFixed(0)
-          : 0;
-    return `${responseCount} of ${totalCount} rated (${pct}%)`;
+  // Label the numbers with the period they were computed for (the payload's),
+  // not the switcher's, which runs ahead of the data while a refetch is in flight.
+  const periodDays = PERIOD_DAYS[data?.period ?? period] ?? 30;
+  const periodLabel = `Last ${periodDays} days`;
+
+  // "3 of 10 rated": how many shared itineraries the average rating is based on.
+  function formatRatedCount(kpi) {
+    const { rated, total } = kpi?.responseRate ?? {};
+    if (rated == null || !total) return undefined;
+    return `${rated} of ${total} rated`;
   }
 
   // -------------------------------------------------------------------------
@@ -167,6 +173,8 @@ export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip
   // -------------------------------------------------------------------------
   return (
     <div className="mx-auto max-w-[1280px] px-6 py-8 md:px-8 lg:px-10">
+      {showJoinedNotice && <JoinedNotice className="mb-6" />}
+
       {/* Stale banner */}
       {isStale && (
         <div
@@ -189,9 +197,10 @@ export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip
       {/* ------------------------------------------------------------------ */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em] mb-2">OVERVIEW · 30d</span>
-          <h1 className="text-2xl font-extrabold text-text-primary">Where conversion is leaking</h1>
-          <p className="mt-1 text-sm text-text-muted">Track KPIs, funnel health and what to action next.</p>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em] mb-2">OVERVIEW</span>
+          {/* max-w-none: the global h1 style caps headings at 12ch. */}
+          <h1 className="max-w-none text-2xl font-extrabold text-text-primary">How your agency is doing</h1>
+          <p className="mt-1 text-sm text-text-muted">What needs your attention today, and how your trips are going.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -244,27 +253,32 @@ export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip
                       <p className="mb-1 px-3 text-[0.7rem] font-extrabold uppercase tracking-[0.05em] text-text-soft">
                         {group.heading} ({items.length})
                       </p>
-                      {items.map((item, idx) => (
-                        <WorklistRow
-                          key={item.tripId ?? `${group.key}-${idx}`}
-                          tone={group.tone}
-                          title={item.tripTitle ?? item.title ?? "Untitled trip"}
-                          subtitle={item.subtitle ?? item.clientName ?? null}
-                          hint={item.hint ?? null}
-                          actionLabel={group.actionLabel}
-                          onAction={() =>
-                            group.key === "unreadComments"
-                              ? handleTripAction(item.tripId, item.tripTitle, item.clientName)
-                              : handleOpenInCommandCenter(item.tripId)
-                          }
-                          onRowClick={() =>
-                            group.key === "unreadComments"
-                              ? handleTripAction(item.tripId, item.tripTitle, item.clientName)
-                              : handleOpenInCommandCenter(item.tripId)
-                          }
-                          style={{ transitionDelay: `${idx * 40}ms` }}
-                        />
-                      ))}
+                      {items.map((item, idx) => {
+                        // A trip can appear more than once in a group (two
+                        // unread comments), so key by the row's own record.
+                        const { subtitle, hint } = describeWorklistItem(group.key, item);
+                        return (
+                          <WorklistRow
+                            key={item.id ?? item.shareId ?? item.tripId ?? `${group.key}-${idx}`}
+                            tone={group.tone}
+                            title={item.tripTitle ?? item.title ?? "Untitled trip"}
+                            subtitle={subtitle}
+                            hint={hint}
+                            actionLabel={group.actionLabel}
+                            onAction={() =>
+                              group.key === "unreadComments"
+                                ? handleTripAction(item.tripId, item.tripTitle, item.clientName)
+                                : handleOpenInCommandCenter(item.tripId)
+                            }
+                            onRowClick={() =>
+                              group.key === "unreadComments"
+                                ? handleTripAction(item.tripId, item.tripTitle, item.clientName)
+                                : handleOpenInCommandCenter(item.tripId)
+                            }
+                            style={{ transitionDelay: `${idx * 40}ms` }}
+                          />
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -275,53 +289,66 @@ export default function OwnerOverview({ agencyId, initialData = null, onOpenTrip
           {/* -------------------------------------------------------------- */}
           {/* KPI strip                                                        */}
           {/* -------------------------------------------------------------- */}
-          <section aria-label="Key performance indicators">
+          <section aria-labelledby={kpiHeadingId}>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em]">YOUR NUMBERS</span>
+            <h2 id={kpiHeadingId} className="mt-2 text-lg font-extrabold text-text-primary">
+              {periodLabel}
+            </h2>
+            <p className="mt-1 mb-4 text-sm text-text-muted">
+              Compared with the {periodDays} days before. Green is better, red is worse.
+            </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* null = no signal this period; KpiTile renders it as "—". */}
               <KpiTile
                 label="Win rate"
-                value={kpis.winRate?.value ?? 0}
+                value={kpis.winRate?.value ?? null}
                 unit="%"
-                deltaVsPrior={kpis.winRate?.deltaVsPrior ?? 0}
+                deltaVsPrior={kpis.winRate?.deltaVsPrior ?? null}
                 sparkline={kpis.winRate?.sparkline ?? []}
-                formatValue={(v) => v.toFixed(1)}
+                formatValue={formatOneDecimal}
+                description="Approved trips out of all approved and archived trips"
               />
               <KpiTile
-                label="Time to first share"
-                value={kpis.timeToFirstShareDays?.value ?? 0}
+                label="Time to share"
+                value={kpis.timeToFirstShareDays?.value ?? null}
                 unit="days"
-                deltaVsPrior={kpis.timeToFirstShareDays?.deltaVsPrior ?? 0}
+                deltaVsPrior={kpis.timeToFirstShareDays?.deltaVsPrior ?? null}
                 sparkline={kpis.timeToFirstShareDays?.sparkline ?? []}
-                formatValue={(v) => v.toString()}
+                formatValue={formatOneDecimal}
+                description="Average days from a new trip to sharing its first itinerary"
+                lowerIsBetter
               />
               <KpiTile
-                label="Median response time"
-                value={kpis.medianCommentResponseHours?.value ?? 0}
+                label="Time to reply"
+                value={kpis.medianCommentResponseHours?.value ?? null}
                 unit="h"
-                deltaVsPrior={
-                  kpis.medianCommentResponseHours?.deltaVsPrior ?? 0
-                }
+                deltaVsPrior={kpis.medianCommentResponseHours?.deltaVsPrior ?? null}
                 sparkline={kpis.medianCommentResponseHours?.sparkline ?? []}
-                formatValue={(v) => v.toString()}
+                formatValue={formatOneDecimal}
+                description="Typical time your team takes to answer a client comment"
+                lowerIsBetter
               />
               <KpiTile
-                label="Avg proposal rating"
-                value={kpis.avgProposalRating?.value ?? 0}
+                label="Client rating"
+                value={kpis.avgProposalRating?.value ?? null}
                 unit="★"
-                deltaVsPrior={kpis.avgProposalRating?.deltaVsPrior ?? 0}
+                deltaVsPrior={kpis.avgProposalRating?.deltaVsPrior ?? null}
                 sparkline={kpis.avgProposalRating?.sparkline ?? []}
-                formatValue={(v) => v.toFixed(1)}
-                subtitle={formatResponseRate(kpis.avgProposalRating)}
+                formatValue={formatOneDecimal}
+                subtitle={formatRatedCount(kpis.avgProposalRating)}
+                description="Average stars clients gave your shared itineraries"
               />
             </div>
           </section>
 
           {/* -------------------------------------------------------------- */}
-          {/* Conversion funnel                                               */}
+          {/* Trip progress (funnel)                                          */}
           {/* -------------------------------------------------------------- */}
           {data.funnel?.stages?.length > 0 && (
             <FunnelChart
               stages={data.funnel.stages}
               agencyId={agencyId}
+              periodLabel={periodLabel}
             />
           )}
 

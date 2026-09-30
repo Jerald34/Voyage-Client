@@ -5,8 +5,8 @@ import FunnelStageDetailPanel from "./FunnelStageDetailPanel";
 const STAGE_LABELS = {
   created: "Trips created",
   drafted: "Itineraries drafted",
-  sent: "Shares sent",
-  viewed: "Shares viewed",
+  sent: "Shared with client",
+  viewed: "Viewed by client",
   approved: "Approved"
 };
 
@@ -15,8 +15,10 @@ const STAGE_LABELS = {
  *
  * Click (or Enter/Space) on a stage opens the right-side detail panel
  * listing the trips at that stage. Spec §3.3 and §6.4.
+ *
+ * `periodLabel` (e.g. "Last 30 days") names the window the counts cover.
  */
-export default function FunnelChart({ stages = [], agencyId }) {
+export default function FunnelChart({ stages = [], agencyId, periodLabel }) {
   const [activeStage, setActiveStage] = useState(null);
   const maxCount = Math.max(...stages.map((s) => s.count), 1);
 
@@ -24,7 +26,10 @@ export default function FunnelChart({ stages = [], agencyId }) {
     return null;
   }
 
-  const summary = `Funnel from ${stages[0]?.count ?? 0} trips created to ${stages[stages.length - 1]?.count ?? 0} approved.`;
+  const created = stages[0]?.count ?? 0;
+  const approved = stages[stages.length - 1]?.count ?? 0;
+  const counts = `${created} trip${created === 1 ? "" : "s"} created, ${approved} approved.`;
+  const summary = periodLabel ? `${periodLabel}: ${counts}` : counts;
 
   return (
     <>
@@ -32,8 +37,8 @@ export default function FunnelChart({ stages = [], agencyId }) {
         aria-label={summary}
         className="dashboard-card p-6"
       >
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em]">FUNNEL</span>
-        <h2 className="mt-2 text-lg font-extrabold text-text-primary">Conversion funnel</h2>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em]">TRIP PROGRESS</span>
+        <h2 className="mt-2 text-lg font-extrabold text-text-primary">From new trip to approval</h2>
         <p className="mt-1 text-xs text-text-muted">{summary}</p>
         <ol className="mt-4 space-y-3">
           {stages.map((stage, i) => {

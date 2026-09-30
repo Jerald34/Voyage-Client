@@ -21,9 +21,10 @@ import useDashboardPoll from "@/app/hooks/useDashboardPoll";
 import HeroContinueCard from "./widgets/HeroContinueCard";
 import WorklistRow from "./widgets/WorklistRow";
 import EmptyState from "./widgets/EmptyState";
-import PeriodSwitcher from "./widgets/PeriodSwitcher";
+import JoinedNotice from "./widgets/JoinedNotice";
 import TeamPage from "@/app/components/team/TeamPage";
 import TripSlideOver from "./TripSlideOver";
+import { describeWorklistItem } from "./worklistContext";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ const STATUS_COLOR = {
 };
 
 function StatusChip({ status }) {
+  if (!status) return null;
   return (
     <span
       className="inline-flex items-center rounded-lg px-3 py-1 text-xs font-extrabold uppercase tracking-[0.04em]"
@@ -144,7 +146,7 @@ function SecondaryCard({ trip, onClick }) {
         <span className="truncate text-[14px] font-extrabold text-text-primary leading-snug">
           {trip.tripTitle}
         </span>
-        <StatusChip status={trip.status} />
+        <StatusChip status={trip.statusChip} />
       </div>
       <div className="flex items-end justify-between gap-2">
         <span className="truncate text-[13px] text-text-muted">
@@ -187,10 +189,10 @@ function PipelineStrip({ pipeline, agencyId, onOpenItineraries }) {
 
   return (
     <div className="space-y-2">
-      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em]">PIPELINE</span>
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em]">YOUR TRIPS</span>
     <div
       role="group"
-      aria-label="Pipeline counters"
+      aria-label="Your trips by status"
       className="flex flex-wrap items-center gap-x-1 gap-y-1 dashboard-card px-6 py-4"
     >
       <PipelineCounter
@@ -212,7 +214,7 @@ function PipelineStrip({ pipeline, agencyId, onOpenItineraries }) {
       />
       <span aria-hidden className="text-[14px] text-text-muted select-none">·</span>
       <PipelineCounter
-        label="Active now"
+        label="Traveling now"
         value={pipeline?.activeNow}
         onClick={() => goToList("ACTIVE")}
       />
@@ -287,13 +289,13 @@ function StartingSoonScroller({ trips, agencyId, onOpenTrip }) {
 function WorklistSection({ worklist, agencyId, onOpenSlide, onOpenTrip }) {
   const rows = [];
 
+  // Keys use each row's own record: one trip can have several unread comments.
   (worklist?.unreadComments ?? []).forEach((item) => {
     rows.push({
-      key: `comment-${item.tripId}`,
+      key: `comment-${item.id}`,
       tone: "info",
       title: item.tripTitle,
-      subtitle: item.clientName,
-      hint: item.hint,
+      ...describeWorklistItem("unreadComments", item),
       actionLabel: "Reply",
       onAction: () => onOpenSlide(item.tripId, item.tripTitle, item.clientName),
     });
@@ -304,8 +306,7 @@ function WorklistSection({ worklist, agencyId, onOpenSlide, onOpenTrip }) {
       key: `draft-${item.tripId}`,
       tone: "warning",
       title: item.tripTitle,
-      subtitle: item.clientName,
-      hint: item.hint,
+      ...describeWorklistItem("myDraftsStuck", item),
       actionLabel: "Resume",
       onAction: () => onOpenTrip(item.tripId),
     });
@@ -313,11 +314,10 @@ function WorklistSection({ worklist, agencyId, onOpenSlide, onOpenTrip }) {
 
   (worklist?.mySharesExpiring ?? []).forEach((item) => {
     rows.push({
-      key: `share-${item.tripId}`,
+      key: `share-${item.shareId}`,
       tone: "warning",
       title: item.tripTitle,
-      subtitle: item.clientName,
-      hint: item.hint,
+      ...describeWorklistItem("mySharesExpiring", item),
       actionLabel: "Nudge",
       onAction: () => onOpenTrip(item.tripId),
     });
@@ -328,8 +328,7 @@ function WorklistSection({ worklist, agencyId, onOpenSlide, onOpenTrip }) {
       key: `soon-${item.tripId}`,
       tone: "success",
       title: item.tripTitle,
-      subtitle: item.clientName,
-      hint: item.hint,
+      ...describeWorklistItem("startingSoon", item),
       actionLabel: "Open trip",
       onAction: () => onOpenTrip(item.tripId),
     });
@@ -374,14 +373,16 @@ export default function StaffMyWork({
   onOpenTrip,
   onNewTrip,
   onOpenItineraries,
+  showJoinedNotice = false,
 }) {
   const router = useRouter();
-  const [period, setPeriod] = useState("30d");
 
+  // Nothing on My work depends on a period (the server only echoes it back),
+  // so there is no period switcher here.
   const { data, isStale, isFetching, error, refetch } = useDashboardPoll({
     agencyId,
     view: "staff",
-    period,
+    period: "30d",
     initialData,
   });
 
@@ -412,6 +413,8 @@ export default function StaffMyWork({
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 md:px-8 lg:px-10 py-8 space-y-6">
+      {showJoinedNotice && <JoinedNotice />}
+
       {/* ── Header ── */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -419,11 +422,6 @@ export default function StaffMyWork({
           <p className="mt-1 text-sm text-text-muted">Pick up where you left off.</p>
         </div>
         <div className="flex items-center gap-3">
-          <PeriodSwitcher
-            value={period}
-            onChange={setPeriod}
-            disabled={isFetching}
-          />
           <button
             type="button"
             onClick={newTrip}

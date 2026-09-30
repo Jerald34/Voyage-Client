@@ -50,6 +50,30 @@ describe("KpiTile", () => {
     expect(screen.getByText("1,234!")).toBeInTheDocument();
   });
 
+  it("shows an em dash instead of a zero when the period has no data", () => {
+    render(<KpiTile label="Avg proposal rating" value={null} unit="★" deltaVsPrior={null} sparkline={[]} />);
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText("No data yet")).toBeInTheDocument();
+    expect(screen.queryByText("★")).not.toBeInTheDocument();
+    expect(screen.getByRole("button").getAttribute("aria-label")).toMatch(/no data/i);
+  });
+
+  it("says there is no prior data when only the delta is missing", () => {
+    render(<KpiTile label="Win rate" value={100} unit="%" deltaVsPrior={null} sparkline={[]} />);
+    expect(screen.getByText("No prior data")).toBeInTheDocument();
+    expect(screen.queryByText("▲")).not.toBeInTheDocument();
+  });
+
+  it("colors an increase as a regression when lower is better", () => {
+    render(<KpiTile label="Median response time" value={2.5} unit="h" deltaVsPrior={1.2} sparkline={[]} lowerIsBetter />);
+    expect(screen.getByText("▲").parentElement.className).toContain("--danger");
+  });
+
+  it("colors a decrease as an improvement when lower is better", () => {
+    render(<KpiTile label="Median response time" value={2.5} unit="h" deltaVsPrior={-1.2} sparkline={[]} lowerIsBetter />);
+    expect(screen.getByText("▼").parentElement.className).toContain("--success");
+  });
+
   it("renders the subtitle when provided", () => {
     render(
       <KpiTile
@@ -61,5 +85,22 @@ describe("KpiTile", () => {
       />
     );
     expect(screen.getByText("32 of 80 rated (40%)")).toBeInTheDocument();
+  });
+
+  it("explains the number in a visible line that screen readers announce too", () => {
+    render(
+      <KpiTile
+        label="Win rate"
+        value={42}
+        unit="%"
+        deltaVsPrior={3}
+        sparkline={[]}
+        description="Approved trips out of all approved and archived trips"
+      />
+    );
+    expect(screen.getByText("Approved trips out of all approved and archived trips")).toBeVisible();
+    expect(screen.getByRole("button")).toHaveAccessibleDescription(
+      "Approved trips out of all approved and archived trips"
+    );
   });
 });

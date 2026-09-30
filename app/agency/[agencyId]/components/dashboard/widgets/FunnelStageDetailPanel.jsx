@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 const STAGE_LABELS = {
   created: "Trips created",
   drafted: "Itineraries drafted",
-  sent: "Shares sent",
-  viewed: "Shares viewed",
+  sent: "Shared with client",
+  viewed: "Viewed by client",
   approved: "Approved",
 };
 

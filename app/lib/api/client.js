@@ -9,6 +9,36 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export { API_URL };
 
+function describeWait(seconds) {
+  if (seconds < 60) return `${seconds} second${seconds === 1 ? "" : "s"}`;
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.ceil(minutes / 60);
+  return `${hours} hour${hours === 1 ? "" : "s"}`;
+}
+
+/**
+ * Error for a non-ok API response. Rate-limited (429) responses get a message
+ * that says how long to wait, from the server's Retry-After header, and expose
+ * that wait as `error.retryAfter` (seconds) for callers that want to disable UI.
+ */
+export function createApiError(response, data, fallbackMessage, fallbackCode = "UNKNOWN_ERROR") {
+  const error = new Error(data.error?.message || fallbackMessage);
+  error.code = data.error?.code || fallbackCode;
+  error.status = response.status;
+  error.issues = data.error?.issues || [];
+
+  if (response.status === 429) {
+    const retryAfter = Number.parseInt(response.headers.get("retry-after") ?? "", 10);
+    if (Number.isFinite(retryAfter) && retryAfter > 0) {
+      error.retryAfter = retryAfter;
+      error.message = `Too many requests. Please try again in ${describeWait(retryAfter)}.`;
+    }
+  }
+
+  return error;
+}
+
 export async function fetchApi(path, options = {}) {
   const url = `${API_URL}${path}`;
 
@@ -25,13 +55,7 @@ export async function fetchApi(path, options = {}) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const error = new Error(
-        data.error?.message || "An unexpected error occurred",
-      );
-      error.code = data.error?.code || "UNKNOWN_ERROR";
-      error.status = response.status;
-      error.issues = data.error?.issues || [];
-      throw error;
+      throw createApiError(response, data, "An unexpected error occurred");
     }
 
     return data;

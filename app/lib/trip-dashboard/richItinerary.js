@@ -1,4 +1,5 @@
 import { getItineraryPlaceEntityId } from "./placeEntities.js";
+import { getPlaceStatusLabel, normalizeBusinessStatus } from "./placeStatus.js";
 
 function normalizeText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -98,7 +99,17 @@ export function buildRichItinerarySections({ itinerary, placeEntities } = {}) {
             rating: rating ? normalizeText(rating) : "",
             userRatingCount: Number.isFinite(Number(userRatingCount)) ? Number(userRatingCount) : null,
             placeType: getReadablePlaceType(snapshot),
+            // `statusLabel` keeps its existing mapped/location-pending meaning.
             statusLabel: place ? "Mapped" : "Location pending",
+            // Closure is a SEPARATE axis and gets its own label, so neither
+            // meaning overwrites the other.
+            businessStatus: normalizeBusinessStatus(snapshot?.businessStatus),
+            businessStatusCheckedAt: snapshot?.businessStatusCheckedAt ?? null,
+            placeAdvisory: item?.placeAdvisory ?? null,
+            closureLabel: getPlaceStatusLabel({
+              businessStatus: normalizeBusinessStatus(snapshot?.businessStatus),
+              placeAdvisory: item?.placeAdvisory ?? null
+            }),
             description: normalizeText(item?.description || snapshot?.formattedAddress || ""),
             highlights: getHighlights(item),
             isSelectable: Boolean(place),
