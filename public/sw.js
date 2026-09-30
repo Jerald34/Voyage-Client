@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v6';
 const STATIC_CACHE = `voyage-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `voyage-dynamic-${CACHE_VERSION}`;
 const FONT_CACHE = `voyage-fonts-${CACHE_VERSION}`;

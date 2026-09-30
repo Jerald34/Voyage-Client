@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ThemeToggle from "../theme/ThemeToggle";
+import VoyageLogo from "../brand/VoyageLogo";
 import VideoModal from "./VideoModal";
 import {
   SparkleIcon,
@@ -67,8 +68,8 @@ export default function LandingPage({ onLogin, onContinue }) {
       <header className="sticky top-4 z-50 mx-auto w-full max-w-[1220px] px-4">
         <div className="flex items-center justify-between gap-4 px-4 sm:px-7 py-3 sm:py-4 bg-surface/80 backdrop-blur-md border border-border/[0.12] rounded-pill shadow-soft">
           {/* Brand */}
-          <a href="#" className="font-serif text-2xl tracking-tight text-text-primary no-underline shrink-0">
-            Voyage
+          <a href="#" aria-label="Voyage home" className="text-text-primary no-underline shrink-0">
+            <VoyageLogo className="h-9 sm:h-10 w-auto" />
           </a>
 
           {/* Nav — desktop only */}
