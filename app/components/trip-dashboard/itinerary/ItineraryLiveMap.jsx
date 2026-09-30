@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { getPlaceStatusLabel, mergePlaceStatus, normalizeBusinessStatus } from "../../../lib/trip-dashboard/placeStatus.js";
 import {
   APIProvider,
-  Map,
+  Map as GoogleMap,
   AdvancedMarker,
   Pin,
 } from "@vis.gl/react-google-maps";
@@ -462,7 +462,7 @@ export default function ItineraryLiveMap({
   return (
     <div className={`absolute inset-0 ${isDark ? "bg-[#111827]" : "bg-[#f8fafc]"}`}>
       <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-        <Map
+        <GoogleMap
           defaultCenter={center}
           defaultZoom={center.lat !== 0 ? 13 : 2}
           mapId={isDark ? "dark_map_id_placeholder" : MAP_ID}
@@ -679,7 +679,7 @@ export default function ItineraryLiveMap({
             </AdvancedMarker>
           )}
 
-        </Map>
+        </GoogleMap>
       </APIProvider>
 
       {!viewportPoints.length ? (
