@@ -42,7 +42,7 @@ import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatInput from "./command-center/ChatInput.jsx";
 import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
-import { withTravelerNeeds } from "../../lib/accessibility/travelerNeeds.js";
+import { useTravelerNeeds } from "../../hooks/useTravelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
 import {
   TUTORIAL_MOCK_TRIPS,
@@ -139,8 +139,6 @@ export default function HomePage({
 
   const [composerInput, setComposerInput] = useState("");
   const [isTravelerNeedsOpen, setIsTravelerNeedsOpen] = useState(false);
-  // Needs chosen before the first message of a brand-new plan, when no thread exists yet.
-  const [pendingTravelerNeeds, setPendingTravelerNeeds] = useState(null);
   const [deletingThreadId, setDeletingThreadId] = useState(null);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isApprovingDraft, setIsApprovingDraft] = useState(false);
@@ -395,23 +393,18 @@ export default function HomePage({
   const safeTrips = Array.isArray(agencyTrips) ? agencyTrips : [];
   const activeTrip = activeContext?.type === "trip" ? safeTrips.find(t => t?.id === activeContext.id) : null;
   const activeTripState = activeContext?.type === "draft" ? draftThreadStates[activeContext.id] : (activeContext?.type === "trip" && activeContext.id ? tripStates[activeContext.id] : null);
-  const isUnsavedPlanningContext =
-    !activeContext || (activeContext.type === "draft" && String(activeContext.id).startsWith("pending-"));
-  const activeTravelerNeeds = isUnsavedPlanningContext ? pendingTravelerNeeds : (activeTripState?.travelerNeeds ?? null);
-
-  // Once the first message creates a real thread, the needs live on that thread's state.
-  useEffect(() => {
-    if (!isUnsavedPlanningContext) setPendingTravelerNeeds(null);
-  }, [isUnsavedPlanningContext]);
+  // Pending needs are keyed to the unsaved context they were chosen for, so they can never
+  // leak into a different new plan; once a thread exists they live on that thread's state.
+  const { activeTravelerNeeds, saveTravelerNeeds: saveNeeds, clearPendingNeeds } = useTravelerNeeds({
+    activeContext,
+    activeTripState,
+    setDraftThreadStates,
+    setTripStates,
+  });
 
   const saveTravelerNeeds = (next) => {
     setIsTravelerNeedsOpen(false);
-    if (isUnsavedPlanningContext) {
-      setPendingTravelerNeeds(next);
-      return;
-    }
-    if (activeContext.type === "draft") setDraftThreadStates((prev) => withTravelerNeeds(prev, activeContext.id, next));
-    else setTripStates((prev) => withTravelerNeeds(prev, activeContext.id, next));
+    saveNeeds(next);
   };
 
   const planningOptions = useMemo(
@@ -506,7 +499,10 @@ export default function HomePage({
     // setter and erase the seed (same-event setState calls take the last value).
     // Reset to "command-center" tab so user sees the new draft being created
     setActiveTab("command-center");
-    
+
+    // One client's traveler needs must never ride along with another client's new plan.
+    clearPendingNeeds();
+
     // Set a placeholder context to immediately transition the UI to a "creating" state
     // and avoid race conditions where the UI might try to render a null context.
     const placeholderId = `pending-${Date.now()}`;
