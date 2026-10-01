@@ -41,6 +41,8 @@ import AdminPage from "../admin/AdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatInput from "./command-center/ChatInput.jsx";
+import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
+import { withTravelerNeeds } from "../../lib/accessibility/travelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
 import {
   TUTORIAL_MOCK_TRIPS,
@@ -136,6 +138,9 @@ export default function HomePage({
   const explicitContextRef = useRef(false);
 
   const [composerInput, setComposerInput] = useState("");
+  const [isTravelerNeedsOpen, setIsTravelerNeedsOpen] = useState(false);
+  // Needs chosen before the first message of a brand-new plan, when no thread exists yet.
+  const [pendingTravelerNeeds, setPendingTravelerNeeds] = useState(null);
   const [deletingThreadId, setDeletingThreadId] = useState(null);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isApprovingDraft, setIsApprovingDraft] = useState(false);
@@ -390,6 +395,24 @@ export default function HomePage({
   const safeTrips = Array.isArray(agencyTrips) ? agencyTrips : [];
   const activeTrip = activeContext?.type === "trip" ? safeTrips.find(t => t?.id === activeContext.id) : null;
   const activeTripState = activeContext?.type === "draft" ? draftThreadStates[activeContext.id] : (activeContext?.type === "trip" && activeContext.id ? tripStates[activeContext.id] : null);
+  const isUnsavedPlanningContext =
+    !activeContext || (activeContext.type === "draft" && String(activeContext.id).startsWith("pending-"));
+  const activeTravelerNeeds = isUnsavedPlanningContext ? pendingTravelerNeeds : (activeTripState?.travelerNeeds ?? null);
+
+  // Once the first message creates a real thread, the needs live on that thread's state.
+  useEffect(() => {
+    if (!isUnsavedPlanningContext) setPendingTravelerNeeds(null);
+  }, [isUnsavedPlanningContext]);
+
+  const saveTravelerNeeds = (next) => {
+    setIsTravelerNeedsOpen(false);
+    if (isUnsavedPlanningContext) {
+      setPendingTravelerNeeds(next);
+      return;
+    }
+    if (activeContext.type === "draft") setDraftThreadStates((prev) => withTravelerNeeds(prev, activeContext.id, next));
+    else setTripStates((prev) => withTravelerNeeds(prev, activeContext.id, next));
+  };
 
   const planningOptions = useMemo(
     () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext }),
@@ -452,7 +475,7 @@ export default function HomePage({
   function handleMobileSubmit(event) {
     event.preventDefault();
     if (!composerInput.trim()) return;
-    void dispatchMessage(composerInput, startStream);
+    void dispatchMessage(composerInput, startStream, [], activeTravelerNeeds);
     setComposerInput("");
   }
 
@@ -617,6 +640,13 @@ export default function HomePage({
         />
       )}
 
+      <TravelerNeedsDialog
+        open={isTravelerNeedsOpen}
+        initialNeeds={activeTravelerNeeds}
+        onCancel={() => setIsTravelerNeedsOpen(false)}
+        onSave={saveTravelerNeeds}
+      />
+
       <div>
         <DashboardHeader
           isSidebarOpen={isSidebarOpen}
@@ -714,7 +744,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files)}
+                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files, activeTravelerNeeds)}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -733,6 +763,8 @@ export default function HomePage({
                     targetItinerary={effectiveTripState?.itinerary ?? null}
                     onSystemVisibleMessage={handleReuseSystemMessage}
                     onReuseInserted={handleReuseInserted}
+                    travelerNeeds={activeTravelerNeeds}
+                    onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                   />
                 </div>
               </div>
@@ -755,6 +787,8 @@ export default function HomePage({
                       agentError={agentError}
                       onStop={isVisible ? stopStream : undefined}
                       containerClassName="px-3 pb-3"
+                      travelerNeeds={activeTravelerNeeds}
+                      onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                     />
                   }
                 >
@@ -767,7 +801,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files)}
+                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files, activeTravelerNeeds)}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -787,6 +821,8 @@ export default function HomePage({
                     targetItinerary={effectiveTripState?.itinerary ?? null}
                     onSystemVisibleMessage={handleReuseSystemMessage}
                     onReuseInserted={handleReuseInserted}
+                    travelerNeeds={activeTravelerNeeds}
+                    onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                   />
                 </MobileGlassSheet>
               )}

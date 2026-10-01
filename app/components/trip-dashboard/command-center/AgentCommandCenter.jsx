@@ -68,6 +68,10 @@ export default function AgentCommandCenter({
   // Optional — forwarded to the slash command so the parent can refresh
   // the itinerary view after a successful insertion.
   onReuseInserted = null,
+  // Optional — traveler needs for this planning thread and the callback that
+  // opens the needs dialog. The parent owns the state and the dialog.
+  travelerNeeds = null,
+  onEditTravelerNeeds = null,
 }) {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -375,6 +379,8 @@ export default function AgentCommandCenter({
           onAddFiles={imageAttachments.addFiles}
           onRemoveAttachment={imageAttachments.removeAttachment}
           fileInputRef={imageAttachments.fileInputRef}
+          travelerNeeds={travelerNeeds}
+          onEditTravelerNeeds={onEditTravelerNeeds ?? undefined}
         />
           </div>
         </div>
