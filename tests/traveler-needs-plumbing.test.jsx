@@ -85,3 +85,34 @@ describe("traveler needs plumbing", () => {
     });
   });
 });
+
+describe("traveler needs on trip threads", () => {
+  it("keeps bootstrapped needs when the trip thread is lazily hydrated", async () => {
+    api.bootstrapAgentWorkspace.mockResolvedValue({
+      trips: [],
+      threads: [
+        {
+          id: "thread-5",
+          title: "Trip thread",
+          tripId: "trip-1",
+          createdAt: "2026-10-01T00:00:00.000Z",
+          travelerNeeds: { needs: ["WHEELCHAIR"], notes: null },
+        },
+      ],
+      itinerarySummaries: {},
+    });
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+
+    await act(async () => {
+      await result.current.loadInitialThreads();
+    });
+    expect(result.current.tripStates["trip-1"].travelerNeeds).toEqual({ needs: ["WHEELCHAIR"], notes: null });
+
+    await act(async () => {
+      await result.current.ensureTripThreadState("trip-1");
+    });
+
+    expect(result.current.tripStates["trip-1"].loaded).toBe(true);
+    expect(result.current.tripStates["trip-1"].travelerNeeds).toEqual({ needs: ["WHEELCHAIR"], notes: null });
+  });
+});
