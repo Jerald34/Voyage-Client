@@ -7,6 +7,10 @@ import { fetchPublicItinerary, postPublicComment, listPublicComments } from "../
 import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import { generateItineraryPdf, titleToFilename } from "../../../lib/pdfExport.js";
+import WeatherChip from "../../../components/weather/WeatherChip.jsx";
+import WeatherAttribution from "../../../components/weather/WeatherAttribution.jsx";
+import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
+import { attachWeatherToDays } from "../../../lib/weather/weatherDisplay.js";
 import ThemeToggle from "../../../components/theme/ThemeToggle";
 import Spinner from "../../../components/ui/Spinner";
 import {
@@ -426,6 +430,12 @@ export default function PublicItineraryPage() {
     );
   }, [data]);
 
+  const shareWeather = useItineraryWeather({
+    shareToken: token,
+    version: data?.itinerary?.version ?? null,
+    enabled: Boolean(token && data),
+  });
+
   /* ── map callbacks ── */
   const handleHoverItem = useCallback((index) => {
     setActiveIndex(index);
@@ -567,7 +577,7 @@ export default function PublicItineraryPage() {
         summary:       itinerary.summary,
         dateRange,
         travelerCount: trip.travelerCount,
-        days:          itinerary.days,
+        days:          attachWeatherToDays(itinerary.days, shareWeather.byDayId),
         agencyName:    "Voyage",
       });
       doc.save(titleToFilename(trip.title || itinerary.title));
@@ -719,6 +729,7 @@ export default function PublicItineraryPage() {
                     {day.date && (
                       <span className="text-[12px] text-text-soft font-medium">{formatDate(day.date)}</span>
                     )}
+                    <WeatherChip entry={shareWeather.byDayId.get(day.id)} className="mt-1 self-start" />
                   </div>
                   <div className="ml-auto">
                     <CommentTriggerBtn
@@ -854,6 +865,11 @@ export default function PublicItineraryPage() {
               </section>
             ))}
           </div>
+          {shareWeather.byDayId.size > 0 ? (
+            <p className="m-0 mt-4 text-center">
+              <WeatherAttribution attribution={shareWeather.attribution} />
+            </p>
+          ) : null}
 
           {/* ── proposal rating ── */}
           <div className="mt-10 max-sm:mt-7">
