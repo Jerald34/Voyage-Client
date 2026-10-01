@@ -6,6 +6,7 @@ import { BuildingIcon } from "../../icons/index.js";
 import { getSnapshotPhotoUrl, getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
 import { formatDayDate, getItemTimeLabel, getAccommodationLabel } from "../../../lib/formatters.js";
 import CommentsPanel from "./CommentsPanel.jsx";
+import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
 
 const ItineraryLiveMap = dynamic(
   () => import("../itinerary/ItineraryLiveMap.jsx"),
@@ -29,6 +30,8 @@ export default function ItineraryDayView({
   showCommentsPanel,
   setShowCommentsPanel,
   theme,
+  dayWeather = null,
+  weatherAttribution = null,
 }) {
   if (isLoadingItinerary) {
     return (
@@ -80,6 +83,7 @@ export default function ItineraryDayView({
                   {dayAccommodation}
                 </div>
               )}
+              <DayWeatherSummary entry={dayWeather} attribution={weatherAttribution} />
               <div className="flex flex-col gap-3">
                 {(selectedDay.items || []).map((item, iIdx) => {
                   const dayItemIdx = selectedDayMapItems.findIndex(

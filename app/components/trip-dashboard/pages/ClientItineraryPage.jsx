@@ -30,6 +30,9 @@ import CommentsPanel from "./CommentsPanel.jsx";
 import ClientList from "./ClientList.jsx";
 import ItineraryHeader from "./ItineraryHeader.jsx";
 import ItineraryDayView from "./ItineraryDayView.jsx";
+import WeatherChip from "../../weather/WeatherChip.jsx";
+import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
+import { attachWeatherToDays } from "../../../lib/weather/weatherDisplay.js";
 import { Spinner, EmptyState } from "../../ui/index.js";
 import {
   SearchIcon,
@@ -111,6 +114,13 @@ export default function ClientItineraryPage({
   const selectedClient = clients.find(c => c.id === selectedClientId) || null;
   const selectedTrip = selectedClient?.trips.find(t => t.id === selectedTripId) || null;
   const selectedItineraryId = getStableItineraryId(selectedTrip);
+  const isTutorialItinerary = String(selectedItineraryId ?? "").startsWith(TUTORIAL_ITINERARY_ID_PREFIX);
+  const itineraryWeather = useItineraryWeather({
+    agencyId,
+    itineraryId: selectedItineraryId,
+    version: fullItinerary?.version ?? null,
+    enabled: Boolean(agencyId && selectedItineraryId) && !isTutorialItinerary,
+  });
 
   // Notify parent (HomePage) so the unified tour can filter out steps whose
   // targets are conditionally rendered (e.g. trip-selector when a client only
@@ -346,7 +356,7 @@ export default function ClientItineraryPage({
         summary: tripSummary,
         dateRange,
         travelerCount,
-        days: safeDays,
+        days: attachWeatherToDays(safeDays, itineraryWeather.byDayId),
         agencyName: "Voyage",
       });
       doc.save(titleToFilename(tripTitle));
@@ -564,6 +574,7 @@ export default function ClientItineraryPage({
                             Day {day.dayNumber}
                           </div>
                           <div className="text-[0.65rem] text-text-soft font-semibold truncate max-w-[120px]">{day.title}</div>
+                          <WeatherChip entry={itineraryWeather.byDayId.get(day.id)} className="mt-1" />
                         </button>
                       ))}
                     </div>
@@ -756,6 +767,7 @@ export default function ClientItineraryPage({
                       <div className="text-[0.73rem] text-text-soft font-semibold">
                         {formatDayCardDate(day, tripStart)}
                       </div>
+                      <WeatherChip entry={itineraryWeather.byDayId.get(day.id)} className="mt-1.5" />
                     </div>
                   ))}
                 </div>
@@ -780,6 +792,8 @@ export default function ClientItineraryPage({
                   showCommentsPanel={showCommentsPanel}
                   setShowCommentsPanel={setShowCommentsPanel}
                   theme={theme}
+                  dayWeather={selectedDay ? itineraryWeather.byDayId.get(selectedDay.id) ?? null : null}
+                  weatherAttribution={itineraryWeather.attribution}
                 />
               </div>
             </div>
