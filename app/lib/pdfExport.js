@@ -138,6 +138,9 @@ export async function generateItineraryPdf({
     // Day header
     const dayLabel = `Day ${day.dayNumber || di + 1}  —  ${day.title || ""}`;
     const weatherText = describeDayWeather(day.weatherEntry)?.pdfText ?? "";
+    // splitTextToSize measures at the current font, so set the size it is drawn in first.
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
     const weatherLines = weatherText ? doc.splitTextToSize(weatherText, contentWidth) : [];
     // The weather line is measured BEFORE the break check, like the closure line.
     checkPageBreak(14 + weatherLines.length * 4.5);
