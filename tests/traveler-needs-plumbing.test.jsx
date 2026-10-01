@@ -59,6 +59,26 @@ describe("traveler needs plumbing", () => {
     expect(result.current.draftThreadStates["thread-4"].travelerNeeds).toEqual(needs);
   });
 
+  it("reports whether the send went through and which thread it used", async () => {
+    api.createAgentThread.mockResolvedValue({ thread: { id: "thread-6", title: "", events: [] } });
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.dispatchMessage("Plan Bohol", vi.fn());
+    });
+    expect(outcome).toEqual({ sent: true, contextId: "thread-6" });
+
+    api.createAgentThread.mockResolvedValue({ thread: { id: "thread-7", title: "", events: [] } });
+    api.uploadChatImages.mockRejectedValue(new Error("upload down"));
+    const image = new File(["x"], "photo.png", { type: "image/png" });
+    const failing = renderHook(() => useTripPlanning("agency-1"));
+    await act(async () => {
+      outcome = await failing.result.current.dispatchMessage("Plan Bohol", vi.fn(), [image]);
+    });
+    expect(outcome).toEqual({ sent: false, contextId: "thread-7" });
+  });
+
   it("restores needs from the workspace bootstrap", async () => {
     api.bootstrapAgentWorkspace.mockResolvedValue({
       trips: [],

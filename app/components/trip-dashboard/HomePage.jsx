@@ -395,7 +395,7 @@ export default function HomePage({
   const activeTripState = activeContext?.type === "draft" ? draftThreadStates[activeContext.id] : (activeContext?.type === "trip" && activeContext.id ? tripStates[activeContext.id] : null);
   // Pending needs are keyed to the unsaved context they were chosen for, so they can never
   // leak into a different new plan; once a thread exists they live on that thread's state.
-  const { activeTravelerNeeds, saveTravelerNeeds: saveNeeds, clearPendingNeeds } = useTravelerNeeds({
+  const { activeTravelerNeeds, saveTravelerNeeds: saveNeeds, clearPendingNeeds, sendWithNeeds } = useTravelerNeeds({
     activeContext,
     activeTripState,
     setDraftThreadStates,
@@ -468,7 +468,7 @@ export default function HomePage({
   function handleMobileSubmit(event) {
     event.preventDefault();
     if (!composerInput.trim()) return;
-    void dispatchMessage(composerInput, startStream, [], activeTravelerNeeds);
+    void sendWithNeeds((needs) => dispatchMessage(composerInput, startStream, [], needs));
     setComposerInput("");
   }
 
@@ -740,7 +740,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files, activeTravelerNeeds)}
+                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -797,7 +797,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files, activeTravelerNeeds)}
+                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}

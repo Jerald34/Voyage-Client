@@ -367,14 +367,16 @@ export function useTripPlanning(agencyId) {
     return promise;
   };
 
+  // Resolves to { sent, contextId } so callers can track what reached the server.
   const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null) => {
+    const outcome = { sent: false, contextId: null };
     if (!agencyId) {
       setAgentError("Missing agency context. Refresh and log in again.");
-      return;
+      return outcome;
     }
     const cleanContent = content.trim();
     const hasImages = Array.isArray(imageFiles) && imageFiles.length > 0;
-    if ((!cleanContent && !hasImages) || isSending) return;
+    if ((!cleanContent && !hasImages) || isSending) return outcome;
 
     setAgentError("");
     setIsSending(true);
@@ -397,6 +399,7 @@ export function useTripPlanning(agencyId) {
 
       const currentThreadId = ensuredState?.threadId;
       if (!currentThreadId) throw new Error("Failed to create agent thread.");
+      outcome.contextId = currentContext.id;
 
       // Persist the chosen needs on the thread as soon as it exists. The chips
       // (and HomePage's pending-needs hand-off) key off this, so it must not
@@ -423,7 +426,7 @@ export function useTripPlanning(agencyId) {
           console.error("Failed to upload images", uploadError);
           setAgentError("Failed to upload images. Please try again.");
           setIsSending(false);
-          return;
+          return outcome;
         }
       }
 
@@ -450,6 +453,7 @@ export function useTripPlanning(agencyId) {
       }
 
       const sendResult = await sendMessage(agencyId, currentThreadId, messageContent, imageUrls, travelerNeeds);
+      outcome.sent = true;
       const runId = sendResult?.runId || sendResult?.run?.id;
       if (runId && startStream) startStream(runId);
     } catch (error) {
@@ -458,6 +462,7 @@ export function useTripPlanning(agencyId) {
     } finally {
       setIsSending(false);
     }
+    return outcome;
   };
 
   const renameThread = async (threadId, nextTitle) => {

@@ -67,7 +67,9 @@ vi.mock("../app/lib/api/index.js", async (importOriginal) => ({
   ...(await importOriginal()),
   createAgentThread: api.createAgentThread,
   sendMessage: api.sendMessage,
-  bootstrapAgentWorkspace: () => new Promise(() => {}),
+  bootstrapAgentWorkspace: async () => ({ trips: [], threads: [], itinerarySummaries: {} }),
+  fetchThreadMessages: async () => ({ messages: [] }),
+  fetchItineraryDraft: async () => null,
 }));
 
 import HomePage from "../app/components/trip-dashboard/HomePage.jsx";
@@ -136,5 +138,48 @@ describe("HomePage traveler needs for new plans", () => {
 
     await waitFor(() => expect(api.sendMessage).toHaveBeenCalled());
     expect(api.sendMessage).toHaveBeenCalledWith("agency-1", "thread-1", "Plan Baguio", [], { needs: ["WHEELCHAIR"], notes: null });
+  });
+
+  it("does not re-send the needs with later messages on the same thread", async () => {
+    render(<HomePage user={user} initialTab="command-center" />);
+
+    openNeedsDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Wheelchair user/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save needs" }));
+
+    const send = async (text, nth) => {
+      fireEvent.change(screen.getAllByPlaceholderText(/ask|plan|trip/i)[0], { target: { value: text } });
+      fireEvent.click(screen.getAllByRole("button", { name: "Send message" })[0]);
+      await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(nth));
+    };
+
+    await send("Plan Baguio", 1);
+    await waitFor(() => expect(screen.getAllByPlaceholderText(/ask|plan|trip/i)[0].value).toBe(""));
+    await send("Make day 2 slower", 2);
+
+    expect(api.sendMessage).toHaveBeenNthCalledWith(1, "agency-1", "thread-1", "Plan Baguio", [], { needs: ["WHEELCHAIR"], notes: null });
+    expect(api.sendMessage).toHaveBeenNthCalledWith(2, "agency-1", "thread-1", "Make day 2 slower", [], null);
+  });
+
+  it("sends a cleared selection as an empty needs object, never null", async () => {
+    render(<HomePage user={user} initialTab="command-center" />);
+
+    openNeedsDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Wheelchair user/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save needs" }));
+    fireEvent.change(screen.getAllByPlaceholderText(/ask|plan|trip/i)[0], { target: { value: "Plan Baguio" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Send message" })[0]);
+    await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getAllByPlaceholderText(/ask|plan|trip/i)[0].value).toBe(""));
+
+    // Staff removes the need on the now-saved thread, then sends again.
+    openNeedsDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Wheelchair user/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save needs" }));
+    fireEvent.change(screen.getAllByPlaceholderText(/ask|plan|trip/i)[0], { target: { value: "No stairs please" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Send message" })[0]);
+
+    await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(2));
+    expect(api.sendMessage).toHaveBeenNthCalledWith(2, "agency-1", "thread-1", "No stairs please", [], { needs: [], notes: null });
   });
 });
