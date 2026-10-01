@@ -8,6 +8,7 @@ import {
   uploadChatImages,
   updateAgentThreadTitle,
 } from "../lib/api/index.js";
+import { normalizeTravelerNeeds } from "../lib/accessibility/travelerNeeds.js";
 
 function createPlanningContext(type, id) {
   if (!id || (type !== "trip" && type !== "draft")) return null;
@@ -108,6 +109,7 @@ function normalizeDraftThreadState(thread, itinerary = null) {
     itinerary,
     loaded: true,
     createdAt: thread.createdAt ?? null,
+    travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
   };
 }
 
@@ -191,6 +193,7 @@ export function useTripPlanning(agencyId) {
         messages: hydrated.messages,
         itinerary: hydrated.itinerary ?? existingState?.itinerary ?? null,
         loaded: true,
+        travelerNeeds: existingState?.travelerNeeds ?? null,
       };
 
       setTripStates((previous) => ({
@@ -315,6 +318,7 @@ export function useTripPlanning(agencyId) {
             loaded: false,
             createdAt: thread.createdAt ?? null,
             status: thread.status ?? null,
+            travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
           };
           fallbackContext ??= createPlanningContext("trip", tripId);
           continue;
@@ -329,6 +333,7 @@ export function useTripPlanning(agencyId) {
           loaded: false,
           createdAt: thread.createdAt ?? null,
           status: thread.status ?? null,
+          travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
         };
         nextDraftOrder.push(thread.id);
         fallbackContext ??= createPlanningContext("draft", thread.id);
@@ -362,7 +367,7 @@ export function useTripPlanning(agencyId) {
     return promise;
   };
 
-  const dispatchMessage = async (content, startStream, imageFiles = []) => {
+  const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null) => {
     if (!agencyId) {
       setAgentError("Missing agency context. Refresh and log in again.");
       return;
@@ -413,11 +418,13 @@ export function useTripPlanning(agencyId) {
       const messageContent = cleanContent || (hasImages ? "Sent image(s)" : "");
       const metadata = imageUrls.length > 0 ? { imageUrls } : undefined;
       const message = { id: `user-${Date.now()}`, role: "user", content: messageContent, metadata };
+      const needsPatch = travelerNeeds ? { travelerNeeds } : {};
       if (currentContext.type === "draft") {
         setDraftThreadStates((prev) => ({
           ...prev,
           [currentContext.id]: {
             ...(prev[currentContext.id] || {}),
+            ...needsPatch,
             messages: [...(prev[currentContext.id]?.messages || []), message],
           },
         }));
@@ -426,12 +433,13 @@ export function useTripPlanning(agencyId) {
           ...prev,
           [currentContext.id]: {
             ...(prev[currentContext.id] || {}),
+            ...needsPatch,
             messages: [...(prev[currentContext.id]?.messages || []), message],
           },
         }));
       }
 
-      const sendResult = await sendMessage(agencyId, currentThreadId, messageContent, imageUrls);
+      const sendResult = await sendMessage(agencyId, currentThreadId, messageContent, imageUrls, travelerNeeds);
       const runId = sendResult?.runId || sendResult?.run?.id;
       if (runId && startStream) startStream(runId);
     } catch (error) {
