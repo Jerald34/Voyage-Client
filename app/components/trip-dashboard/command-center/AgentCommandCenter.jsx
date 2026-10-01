@@ -72,6 +72,7 @@ export default function AgentCommandCenter({
   // opens the needs dialog. The parent owns the state and the dialog.
   travelerNeeds = null,
   onEditTravelerNeeds = null,
+  needsToggleRef = undefined,
 }) {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -381,6 +382,7 @@ export default function AgentCommandCenter({
           fileInputRef={imageAttachments.fileInputRef}
           travelerNeeds={travelerNeeds}
           onEditTravelerNeeds={onEditTravelerNeeds ?? undefined}
+          needsToggleRef={needsToggleRef}
         />
           </div>
         </div>

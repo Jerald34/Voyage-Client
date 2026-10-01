@@ -159,6 +159,11 @@ export default function HomePage({
   const isMobile = useMobileViewport();
   const clientMenuRef = useRef(null);
   const mobileTextareaRef = useRef(null);
+  // Where the traveler-needs dialog hands focus back if the control that opened it unmounted
+  // (the chips' Edit button disappears when the last need is cleared). One per layout: the
+  // desktop and mobile composers can both be mounted, but only the visible one can take focus.
+  const desktopNeedsToggleRef = useRef(null);
+  const mobileNeedsToggleRef = useRef(null);
 
   // Poll pending count for admin users
   useEffect(() => {
@@ -639,6 +644,7 @@ export default function HomePage({
       <TravelerNeedsDialog
         open={isTravelerNeedsOpen}
         initialNeeds={activeTravelerNeeds}
+        returnFocusRef={isMobile ? mobileNeedsToggleRef : desktopNeedsToggleRef}
         onCancel={() => setIsTravelerNeedsOpen(false)}
         onSave={saveTravelerNeeds}
       />
@@ -761,6 +767,7 @@ export default function HomePage({
                     onReuseInserted={handleReuseInserted}
                     travelerNeeds={activeTravelerNeeds}
                     onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
+                    needsToggleRef={desktopNeedsToggleRef}
                   />
                 </div>
               </div>
@@ -785,6 +792,7 @@ export default function HomePage({
                       containerClassName="px-3 pb-3"
                       travelerNeeds={activeTravelerNeeds}
                       onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
+                      needsToggleRef={mobileNeedsToggleRef}
                     />
                   }
                 >

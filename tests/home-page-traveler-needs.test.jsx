@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // HomePage's own suite fails to import in the baseline, so this wiring test carries its own mocks
@@ -181,5 +181,27 @@ describe("HomePage traveler needs for new plans", () => {
 
     await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(2));
     expect(api.sendMessage).toHaveBeenNthCalledWith(2, "agency-1", "thread-1", "No stairs please", [], { needs: [], notes: null });
+  });
+});
+
+describe("HomePage traveler needs focus", () => {
+  it("returns focus to the composer needs toggle when clearing every need removes the chips", async () => {
+    render(<HomePage user={user} initialTab="command-center" />);
+
+    openNeedsDialog();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Wheelchair user/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save needs" }));
+
+    // Open the dialog from the chips' Edit button, then clear every need.
+    const chips = screen.getAllByRole("group", { name: "Traveler needs" })[0];
+    const edit = within(chips).getByRole("button", { name: /edit/i });
+    edit.focus();
+    fireEvent.click(edit);
+    fireEvent.click(screen.getByRole("checkbox", { name: /Wheelchair user/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save needs" }));
+
+    await waitFor(() => expect(screen.queryByRole("group", { name: "Traveler needs" })).toBeNull());
+    expect(edit.isConnected).toBe(false);
+    expect(document.activeElement).toBe(screen.getAllByRole("button", { name: "Add traveler needs" })[0]);
   });
 });

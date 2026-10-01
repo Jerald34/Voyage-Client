@@ -26,6 +26,7 @@ export default function ChatInput({
   fileInputRef,
   travelerNeeds = null,
   onEditTravelerNeeds,
+  needsToggleRef,
 }) {
   useEffect(() => {
     const textarea = textareaRef?.current;
@@ -103,6 +104,7 @@ export default function ChatInput({
         </button>
         {onEditTravelerNeeds && (
           <button
+            ref={needsToggleRef}
             type="button"
             onClick={onEditTravelerNeeds}
             title="Traveler needs"
@@ -111,7 +113,7 @@ export default function ChatInput({
                 ? `Traveler needs: ${formatTravelerNeedsSummary(travelerNeeds)}`
                 : "Add traveler needs"
             }
-            className={`composer-control relative z-[1] flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-md transition-colors cursor-pointer before:absolute before:-inset-0.5 before:content-[''] ${hasTravelerNeeds(travelerNeeds) ? "text-secondary bg-secondary/10" : "text-text-soft hover:text-text-primary hover:bg-border/10"}`}
+            className={`composer-control relative z-[1] flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-md transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] cursor-pointer before:absolute before:-inset-0.5 before:content-[''] ${hasTravelerNeeds(travelerNeeds) ? "text-secondary bg-secondary/10" : "text-text-soft [@media(hover:hover)_and_(pointer:fine)]:hover:text-text-primary [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/10"}`}
           >
             <AccessibilityIcon size={18} />
           </button>

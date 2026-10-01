@@ -5,18 +5,21 @@ import { MAX_TRAVELER_NOTES, TRAVELER_NEED_OPTIONS, normalizeTravelerNeeds } fro
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
-export default function TravelerNeedsDialog({ open, initialNeeds = null, onCancel, onSave }) {
+export default function TravelerNeedsDialog({ open, initialNeeds = null, returnFocusRef = null, onCancel, onSave }) {
   const titleId = useId();
   const dialogRef = useRef(null);
   const firstOptionRef = useRef(null);
   const initialNeedsRef = useRef(initialNeeds);
+  const returnFocusRefRef = useRef(returnFocusRef);
   const [selected, setSelected] = useState([]);
   const [notes, setNotes] = useState("");
 
   initialNeedsRef.current = initialNeeds;
+  returnFocusRefRef.current = returnFocusRef;
 
   // Seed the form and move focus in when the dialog opens; hand focus back to
-  // the control that opened it when it closes. Keyed on `open` only, so a parent
+  // the control that opened it when it closes (or, if that control unmounted meanwhile, such as the
+  // chips' Edit button once every need is cleared, to `returnFocusRef`). Keyed on `open` only, so a parent
   // re-render with a new `initialNeeds` object never wipes in-progress edits.
   useEffect(() => {
     if (!open) return undefined;
@@ -26,7 +29,8 @@ export default function TravelerNeedsDialog({ open, initialNeeds = null, onCance
     setNotes(start.notes ?? "");
     firstOptionRef.current?.focus();
     return () => {
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) opener.focus();
+      else returnFocusRefRef.current?.current?.focus?.();
     };
   }, [open]);
 

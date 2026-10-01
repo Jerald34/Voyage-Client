@@ -157,3 +157,72 @@ describe("ChatInput traveler needs", () => {
     expect(screen.getByRole("group", { name: "Traveler needs" })).toHaveTextContent("Wheelchair user");
   });
 });
+
+describe("TravelerNeedsDialog return focus fallback", () => {
+  it("returns focus to the fallback when the opener unmounted while the dialog was open", () => {
+    const opener = document.createElement("button");
+    const fallback = document.createElement("button");
+    document.body.append(opener, fallback);
+    opener.focus();
+    const returnFocusRef = { current: fallback };
+    const { rerender } = render(<TravelerNeedsDialog open returnFocusRef={returnFocusRef} onCancel={vi.fn()} onSave={vi.fn()} />);
+
+    // e.g. the chips' Edit button disappears once every need is cleared.
+    opener.remove();
+    rerender(<TravelerNeedsDialog open={false} returnFocusRef={returnFocusRef} onCancel={vi.fn()} onSave={vi.fn()} />);
+
+    expect(document.activeElement).toBe(fallback);
+    fallback.remove();
+  });
+
+  it("prefers the opener over the fallback while the opener is still on the page", () => {
+    const opener = document.createElement("button");
+    const fallback = document.createElement("button");
+    document.body.append(opener, fallback);
+    opener.focus();
+    const returnFocusRef = { current: fallback };
+    const { rerender } = render(<TravelerNeedsDialog open returnFocusRef={returnFocusRef} onCancel={vi.fn()} onSave={vi.fn()} />);
+    rerender(<TravelerNeedsDialog open={false} returnFocusRef={returnFocusRef} onCancel={vi.fn()} onSave={vi.fn()} />);
+
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+    fallback.remove();
+  });
+});
+
+describe("ChatInput needs toggle polish", () => {
+  const baseProps = {
+    textareaRef: { current: null },
+    composerInput: "",
+    setComposerInput: vi.fn(),
+    handleKeyDown: vi.fn(),
+    submitComposer: vi.fn(),
+    isSending: false,
+    onEditTravelerNeeds: vi.fn(),
+  };
+
+  it("only applies hover styles on devices with a fine hover pointer", () => {
+    render(<ChatInput {...baseProps} />);
+    const tokens = screen.getByRole("button", { name: "Add traveler needs" }).className.split(/\s+/);
+
+    expect(tokens.filter((token) => /(^|:)hover:/.test(token) && !token.includes("[@media(hover:hover)_and_(pointer:fine)]:"))).toEqual([]);
+    expect(tokens.some((token) => token.startsWith("[@media(hover:hover)_and_(pointer:fine)]:hover:"))).toBe(true);
+  });
+
+  it("gives press feedback and transitions only the properties that change", () => {
+    render(<ChatInput {...baseProps} />);
+    const tokens = screen.getByRole("button", { name: "Add traveler needs" }).className.split(/\s+/);
+
+    expect(tokens).toContain("transition-[color,background-color,transform]");
+    expect(tokens).toContain("duration-150");
+    expect(tokens).toContain("ease-out");
+    expect(tokens).toContain("active:scale-[0.97]");
+    expect(tokens).not.toContain("transition-colors");
+  });
+
+  it("exposes the needs toggle through needsToggleRef", () => {
+    const needsToggleRef = { current: null };
+    render(<ChatInput {...baseProps} needsToggleRef={needsToggleRef} />);
+    expect(needsToggleRef.current).toBe(screen.getByRole("button", { name: "Add traveler needs" }));
+  });
+});
