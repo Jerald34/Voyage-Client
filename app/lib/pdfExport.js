@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { describeDayWeather } from "./weather/weatherDisplay.js";
 
 /**
  * Generates a styled PDF from itinerary data.
@@ -136,7 +137,10 @@ export async function generateItineraryPdf({
 
     // Day header
     const dayLabel = `Day ${day.dayNumber || di + 1}  —  ${day.title || ""}`;
-    checkPageBreak(14);
+    const weatherText = describeDayWeather(day.weatherEntry)?.pdfText ?? "";
+    const weatherLines = weatherText ? doc.splitTextToSize(weatherText, contentWidth) : [];
+    // The weather line is measured BEFORE the break check, like the closure line.
+    checkPageBreak(14 + weatherLines.length * 4.5);
 
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
@@ -152,6 +156,15 @@ export async function generateItineraryPdf({
       doc.setTextColor(130, 150, 160);
       doc.text(formatted, margin, y);
       y += 5;
+    }
+
+    // Day weather (forecast or typical)
+    if (weatherLines.length > 0) {
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(70, 110, 140);
+      doc.text(weatherLines, margin, y);
+      y += weatherLines.length * 4.5;
     }
 
     // Day summary
@@ -269,6 +282,17 @@ export async function generateItineraryPdf({
       drawLine([220, 228, 232]);
       y += 8;
     }
+  }
+
+  // Open-Meteo's free API is CC-BY 4.0: credit it when any day shows weather.
+  if (safeDays.some((day) => describeDayWeather(day?.weatherEntry))) {
+    checkPageBreak(8);
+    y += 2;
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(150, 160, 170);
+    doc.text("Weather data by Open-Meteo.com", margin, y);
+    y += 4;
   }
 
   /* ── Final footer ─────────────────────────────────────────── */
