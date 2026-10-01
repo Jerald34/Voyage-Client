@@ -2,9 +2,13 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 // components/icons/index.js contains JSX in a .js file, which vitest cannot parse.
+// A Proxy stubs whichever icon a component imports, so adding an icon to a view cannot break this suite.
 vi.mock("../app/components/icons/index.js", () => {
   const Icon = () => null;
-  return { BuildingIcon: Icon };
+  return new Proxy(
+    { __esModule: true },
+    { get: (target, name) => (name in target ? target[name] : typeof name === "string" && name !== "then" ? Icon : undefined) },
+  );
 });
 vi.mock("next/dynamic", () => ({ default: () => function DynamicStub() { return null; } }));
 vi.mock("../app/components/trip-dashboard/pages/CommentsPanel.jsx", () => ({ default: () => null }));

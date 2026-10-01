@@ -154,3 +154,36 @@ describe("pdf export accessibility line colour", () => {
     expect(colourOfAccessibilityLine()).toEqual([21, 94, 67]);
   });
 });
+
+describe("pdf export page breaks with the accessibility line", () => {
+  const checkedAt = "2026-10-01T00:00:00.000Z";
+  const itemsWith = (count, metadata) =>
+    Array.from({ length: count }, (_, index) => ({
+      title: `Stop ${index + 1}`,
+      placeSnapshot: { name: `Stop ${index + 1}`, metadata },
+    }));
+  const pagesFor = async (count, metadata) => {
+    vi.resetModules();
+    ({ generateItineraryPdf } = await import("../app/lib/pdfExport.js"));
+    await generateItineraryPdf({
+      title: "Trip",
+      summary: "",
+      days: [{ id: "day-1", dayNumber: 1, title: "Arrival", date: null, summary: "", items: itemsWith(count, metadata) }],
+    });
+    return state.instance.pages;
+  };
+
+  it("counts the extra line in the height estimate, so it can push an item onto the next page", async () => {
+    const withLine = { accessibility: { wheelchairAccessibleEntrance: true, source: "GOOGLE_PLACES", checkedAt } };
+    let grewAt = null;
+    for (let count = 1; count <= 40; count += 1) {
+      const without = await pagesFor(count, {});
+      const with_ = await pagesFor(count, withLine);
+      expect(with_).toBeGreaterThanOrEqual(without);
+      if (with_ > without && grewAt === null) grewAt = count;
+    }
+
+    // Somewhere a stop that fits without the line must move to the next page once the line is counted.
+    expect(grewAt).not.toBeNull();
+  });
+});

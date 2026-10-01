@@ -63,3 +63,17 @@ describe("AccessibilityBadges inline variant", () => {
     expect(screen.getByRole("button")).toHaveTextContent("Accessible restroom");
   });
 });
+
+describe("AccessibilityBadges warning tone", () => {
+  it("renders a non-accessible entrance in the amber caution style, in both layouts", () => {
+    const snapshot = checked({ wheelchairAccessibleEntrance: false });
+    const { rerender } = render(<AccessibilityBadges snapshot={snapshot} />);
+
+    const listed = screen.getByText("Entrance not wheelchair accessible").closest("li");
+    expect(listed).toHaveClass("bg-amber-100", "text-amber-950", "border-amber-700/30");
+
+    rerender(<AccessibilityBadges snapshot={snapshot} inline />);
+    const inline = screen.getByText("Entrance not wheelchair accessible").closest("span");
+    expect(inline).toHaveClass("bg-amber-100", "text-amber-950");
+  });
+});
