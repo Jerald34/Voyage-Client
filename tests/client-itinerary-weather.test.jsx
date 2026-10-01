@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const api = vi.hoisted(() => ({
   approveClientTrip: vi.fn(),
@@ -202,5 +202,31 @@ describe("dashboard weather", () => {
       await screen.findByText("16–23°C · 85% rain");
       expect(api.fetchItineraryWeather).toHaveBeenCalledTimes(1);
     });
+
+  it("fetches weather once per itinerary when switching between trips", async () => {
+    api.fetchItineraryWeather.mockClear();
+    const versions = { "iter-1": 2, "iter-2": 7 };
+    api.fetchItineraryDraft.mockImplementation(async (_agencyId, id) => ({
+      itinerary: { id, version: versions[id], title: id, days: [{ id: `${id}-day-1`, dayNumber: 1, title: "Arrival", date: "2026-10-10", items: [] }] },
+    }));
+    api.fetchItineraryWeather.mockResolvedValue({ weather: { provider: "open-meteo", attribution: ATTRIBUTION, days: [] } });
+    const trips = [
+      { ...trip, id: "t1", destination: "Baguio", itineraryId: "iter-1" },
+      { ...trip, id: "t2", destination: "Cebu", itineraryId: "iter-2" },
+    ];
+
+    render(<ClientItineraryPage agencyTrips={trips} agencyId="agency-1" />);
+    await waitFor(() => expect(api.fetchItineraryWeather).toHaveBeenCalledWith("agency-1", "iter-1"));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Cebu" })[0]);
+    await waitFor(() => expect(api.fetchItineraryWeather).toHaveBeenCalledWith("agency-1", "iter-2"));
+    // Let the second itinerary finish loading; its version change must not trigger another request.
+    await waitFor(() => expect(api.fetchItineraryDraft).toHaveBeenCalledWith("agency-1", "iter-2"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const requested = api.fetchItineraryWeather.mock.calls.map(([, id]) => id);
+    expect(requested.filter((id) => id === "iter-1")).toHaveLength(1);
+    expect(requested.filter((id) => id === "iter-2")).toHaveLength(1);
+  });
   });
 });

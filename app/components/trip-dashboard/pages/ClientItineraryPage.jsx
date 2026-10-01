@@ -121,8 +121,10 @@ export default function ClientItineraryPage({
     agencyId,
     itineraryId: selectedItineraryId,
     version: fullItinerary?.version ?? null,
-    // Wait for the itinerary so the first request already carries its version.
-    enabled: Boolean(agencyId && selectedItineraryId && fullItinerary) && !isTutorialItinerary,
+    // Wait for THIS trip's itinerary so the first request already carries its version. After a trip
+    // switch the previous itinerary lingers in state until the new one lands; fetching then would
+    // pair the new id with the old version and refetch once the real version arrives.
+    enabled: Boolean(agencyId && selectedItineraryId && String(fullItinerary?.id ?? "") === selectedItineraryId) && !isTutorialItinerary,
   });
   // One credit under the day strip whenever any day's weather is on screen.
   const hasVisibleWeather = useMemo(
