@@ -192,5 +192,15 @@ describe("dashboard weather", () => {
       await screen.findByText("day weather PAST");
       expect(screen.queryByRole("link", { name: CREDIT })).not.toBeInTheDocument();
     });
+
+    it("fetches weather once per itinerary load, not before the itinerary is loaded", async () => {
+      api.fetchItineraryWeather.mockClear();
+      mockItinerary(["day-1"], [okDay("day-1", 1)]);
+
+      render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+      await screen.findByText("16–23°C · 85% rain");
+      expect(api.fetchItineraryWeather).toHaveBeenCalledTimes(1);
+    });
   });
 });
