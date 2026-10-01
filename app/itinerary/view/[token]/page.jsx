@@ -10,7 +10,7 @@ import { generateItineraryPdf, titleToFilename } from "../../../lib/pdfExport.js
 import WeatherChip from "../../../components/weather/WeatherChip.jsx";
 import WeatherAttribution from "../../../components/weather/WeatherAttribution.jsx";
 import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
-import { attachWeatherToDays } from "../../../lib/weather/weatherDisplay.js";
+import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import ThemeToggle from "../../../components/theme/ThemeToggle";
 import Spinner from "../../../components/ui/Spinner";
 import {
@@ -435,6 +435,11 @@ export default function PublicItineraryPage() {
     version: data?.itinerary?.version ?? null,
     enabled: Boolean(token && data),
   });
+  // PAST, NO_DATE and NO_LOCATION entries show nothing, so they earn no credit.
+  const hasVisibleWeather = useMemo(
+    () => Array.from(shareWeather.byDayId.values()).some((entry) => Boolean(describeDayWeather(entry))),
+    [shareWeather.byDayId],
+  );
 
   /* ── map callbacks ── */
   const handleHoverItem = useCallback((index) => {
@@ -865,7 +870,7 @@ export default function PublicItineraryPage() {
               </section>
             ))}
           </div>
-          {shareWeather.byDayId.size > 0 ? (
+          {hasVisibleWeather ? (
             <p className="m-0 mt-4 text-center">
               <WeatherAttribution attribution={shareWeather.attribution} />
             </p>

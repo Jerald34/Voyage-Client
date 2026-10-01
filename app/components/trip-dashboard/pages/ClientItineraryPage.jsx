@@ -31,8 +31,10 @@ import ClientList from "./ClientList.jsx";
 import ItineraryHeader from "./ItineraryHeader.jsx";
 import ItineraryDayView from "./ItineraryDayView.jsx";
 import WeatherChip from "../../weather/WeatherChip.jsx";
+import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
+import WeatherAttribution from "../../weather/WeatherAttribution.jsx";
 import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
-import { attachWeatherToDays } from "../../../lib/weather/weatherDisplay.js";
+import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import { Spinner, EmptyState } from "../../ui/index.js";
 import {
   SearchIcon,
@@ -121,6 +123,11 @@ export default function ClientItineraryPage({
     version: fullItinerary?.version ?? null,
     enabled: Boolean(agencyId && selectedItineraryId) && !isTutorialItinerary,
   });
+  // One credit under the day strip whenever any day's weather is on screen.
+  const hasVisibleWeather = useMemo(
+    () => Array.from(itineraryWeather.byDayId.values()).some((entry) => Boolean(describeDayWeather(entry))),
+    [itineraryWeather.byDayId],
+  );
 
   // Notify parent (HomePage) so the unified tour can filter out steps whose
   // targets are conditionally rendered (e.g. trip-selector when a client only
@@ -579,6 +586,11 @@ export default function ClientItineraryPage({
                       ))}
                     </div>
                   )}
+                  {fullItinerary && safeDays.length > 0 && hasVisibleWeather && (
+                    <div className="px-4 pt-1 flex-shrink-0">
+                      <WeatherAttribution attribution={itineraryWeather.attribution} />
+                    </div>
+                  )}
 
                   {/* Comments panel */}
                   {showCommentsPanel && (
@@ -595,19 +607,22 @@ export default function ClientItineraryPage({
                         <span className="text-sm">Loading...</span>
                       </div>
                     ) : selectedDay ? (
-                      (selectedDay.items || []).map((item, iIdx) => {
-                        return (
-                          <CompactPlaceCard
-                            key={`${selectedDay.dayNumber}-${iIdx}`}
-                            item={item}
-                            isSelected={activeStopIndex === iIdx}
-                            onSelect={() => {
-                              setActiveStopIndex(iIdx);
-                              setSelectedPlaceId(item.__placeEntityId);
-                            }}
-                          />
-                        );
-                      })
+                      <>
+                        <DayWeatherSummary entry={itineraryWeather.byDayId.get(selectedDay.id) ?? null} />
+                        {(selectedDay.items || []).map((item, iIdx) => {
+                          return (
+                            <CompactPlaceCard
+                              key={`${selectedDay.dayNumber}-${iIdx}`}
+                              item={item}
+                              isSelected={activeStopIndex === iIdx}
+                              onSelect={() => {
+                                setActiveStopIndex(iIdx);
+                                setSelectedPlaceId(item.__placeEntityId);
+                              }}
+                            />
+                          );
+                        })}
+                      </>
                     ) : (
                       <div className="text-center text-text-soft py-10 text-sm">Select a day to view stops.</div>
                     )}
@@ -772,6 +787,11 @@ export default function ClientItineraryPage({
                   ))}
                 </div>
               )}
+              {fullItinerary && safeDays.length > 0 && hasVisibleWeather && (
+                <div className="px-6 pt-1 flex-shrink-0">
+                  <WeatherAttribution attribution={itineraryWeather.attribution} />
+                </div>
+              )}
 
               {/* Itinerary preview area */}
               <div className="flex-1 min-h-0 bg-background border-t border-border flex flex-col overflow-hidden">
@@ -793,7 +813,6 @@ export default function ClientItineraryPage({
                   setShowCommentsPanel={setShowCommentsPanel}
                   theme={theme}
                   dayWeather={selectedDay ? itineraryWeather.byDayId.get(selectedDay.id) ?? null : null}
-                  weatherAttribution={itineraryWeather.attribution}
                 />
               </div>
             </div>

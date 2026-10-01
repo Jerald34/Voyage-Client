@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
 const api = vi.hoisted(() => ({
@@ -56,6 +56,33 @@ vi.mock("../app/lib/formatters.js", () => ({
 
 import ClientItineraryPage from "../app/components/trip-dashboard/pages/ClientItineraryPage.jsx";
 
+const CREDIT = "Weather data by Open-Meteo.com";
+const ATTRIBUTION = { text: CREDIT, url: "https://open-meteo.com/" };
+
+function okDay(dayId, dayNumber) {
+  return {
+    dayId,
+    dayNumber,
+    date: "2026-10-10",
+    status: "OK",
+    weather: { kind: "FORECAST", condition: "RAIN", temperatureMinC: 16.2, temperatureMaxC: 23.4, precipitationProbabilityPct: 85 },
+  };
+}
+
+function mockItinerary(days, weatherDays) {
+  api.fetchItineraryDraft.mockResolvedValue({
+    itinerary: {
+      id: "iter-1",
+      version: 2,
+      title: "Baguio weekend",
+      days: days.map((id, i) => ({ id, dayNumber: i + 1, title: `Day title ${i + 1}`, date: "2026-10-10", items: [] })),
+    },
+  });
+  api.fetchItineraryWeather.mockResolvedValue({
+    weather: { provider: "open-meteo", attribution: ATTRIBUTION, days: weatherDays },
+  });
+}
+
 const trip = { id: "t1", clientName: "Garcia", approvalStatus: "Approved", destination: "Baguio", itineraryId: "iter-1", isSaved: true };
 
 describe("dashboard weather", () => {
@@ -100,5 +127,70 @@ describe("dashboard weather", () => {
     await screen.findAllByText("Garcia");
     await waitFor(() => expect(api.fetchItineraryDraft).not.toHaveBeenCalled());
     expect(api.fetchItineraryWeather).not.toHaveBeenCalled();
+  });
+
+  describe("Open-Meteo credit", () => {
+    const originalMatchMedia = window.matchMedia;
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    function useMobileViewport() {
+      window.matchMedia = (query) => ({
+        matches: true,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+      });
+    }
+
+    it("shows the day summary and exactly one credit on the mobile layout", async () => {
+      useMobileViewport();
+      mockItinerary(["day-1"], [okDay("day-1", 1)]);
+
+      render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" tourMobilePaneOverride="detail" />);
+
+      expect(await screen.findByLabelText("Day weather")).toBeInTheDocument();
+      const credits = await screen.findAllByRole("link", { name: CREDIT });
+      expect(credits).toHaveLength(1);
+      expect(credits[0]).toHaveAttribute("href", "https://open-meteo.com/");
+    });
+
+    it("credits Open-Meteo on mobile when only an unselected day has weather", async () => {
+      useMobileViewport();
+      mockItinerary(["day-1", "day-2"], [okDay("day-2", 2)]);
+
+      render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" tourMobilePaneOverride="detail" />);
+
+      expect(await screen.findAllByRole("link", { name: CREDIT })).toHaveLength(1);
+      expect(screen.queryByLabelText("Day weather")).not.toBeInTheDocument();
+    });
+
+    it("credits Open-Meteo on desktop when only an unselected day has weather", async () => {
+      mockItinerary(["day-1", "day-2"], [okDay("day-2", 2)]);
+
+      render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+      expect(await screen.findByText("16–23°C · 85% rain")).toBeInTheDocument();
+      expect(screen.getAllByRole("link", { name: CREDIT })).toHaveLength(1);
+    });
+
+    it("shows no credit when no day has displayable weather", async () => {
+      mockItinerary(
+        ["day-1", "day-2"],
+        [
+          { dayId: "day-1", dayNumber: 1, date: "2026-01-01", status: "PAST", weather: null },
+          { dayId: "day-2", dayNumber: 2, date: null, status: "NO_DATE", weather: null },
+        ],
+      );
+
+      render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+      await waitFor(() => expect(api.fetchItineraryWeather).toHaveBeenCalled());
+      await screen.findByText("day weather PAST");
+      expect(screen.queryByRole("link", { name: CREDIT })).not.toBeInTheDocument();
+    });
   });
 });

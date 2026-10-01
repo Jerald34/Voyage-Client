@@ -31,7 +31,6 @@ export default function ItineraryDayView({
   setShowCommentsPanel,
   theme,
   dayWeather = null,
-  weatherAttribution = null,
 }) {
   if (isLoadingItinerary) {
     return (
@@ -83,7 +82,7 @@ export default function ItineraryDayView({
                   {dayAccommodation}
                 </div>
               )}
-              <DayWeatherSummary entry={dayWeather} attribution={weatherAttribution} />
+              <DayWeatherSummary entry={dayWeather} />
               <div className="flex flex-col gap-3">
                 {(selectedDay.items || []).map((item, iIdx) => {
                   const dayItemIdx = selectedDayMapItems.findIndex(

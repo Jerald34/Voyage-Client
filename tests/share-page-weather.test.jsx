@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -72,5 +72,37 @@ describe("public share weather", () => {
     expect(await screen.findByText("16–24°C · 20% rain")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Weather data by Open-Meteo.com" })).toBeInTheDocument();
     expect(api.fetchSharedItineraryWeather).toHaveBeenCalledWith("share-token-12");
+  });
+
+  it("shows no credit when every entry is past, undated or unlocated", async () => {
+    api.fetchSharedItineraryWeather.mockResolvedValue({
+      weather: {
+        provider: "open-meteo",
+        attribution: { text: "Weather data by Open-Meteo.com", url: "https://open-meteo.com/" },
+        days: [
+          { dayId: "day-1", dayNumber: 1, date: "2026-01-01", status: "PAST", weather: null },
+          { dayId: "day-2", dayNumber: 2, date: null, status: "NO_DATE", weather: null },
+          { dayId: "day-3", dayNumber: 3, date: "2026-10-12", status: "NO_LOCATION", weather: null },
+        ],
+      },
+    });
+
+    render(<PublicItineraryPage />);
+
+    expect((await screen.findAllByText("Baguio Weekend")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(api.fetchSharedItineraryWeather).toHaveBeenCalled());
+    expect(screen.queryByRole("link", { name: "Weather data by Open-Meteo.com" })).not.toBeInTheDocument();
+  });
+
+  it("stays quiet when the weather request fails: itinerary renders, no chip, no credit", async () => {
+    api.fetchSharedItineraryWeather.mockRejectedValue(new Error("weather service down"));
+
+    render(<PublicItineraryPage />);
+
+    expect((await screen.findAllByText("Baguio Weekend")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(api.fetchSharedItineraryWeather).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByText(/°C/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Weather data by Open-Meteo.com" })).not.toBeInTheDocument();
   });
 });
