@@ -12,6 +12,7 @@ import WeatherAttribution from "../../../components/weather/WeatherAttribution.j
 import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
 import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import ThemeToggle from "../../../components/theme/ThemeToggle";
+import AccessibilityBadges from "../../../components/accessibility/AccessibilityBadges.jsx";
 import Spinner from "../../../components/ui/Spinner";
 import {
   PlaneIcon,
@@ -836,6 +837,7 @@ export default function PublicItineraryPage() {
                               )}
                             </div>
                           )}
+                          <AccessibilityBadges snapshot={item.placeSnapshot} className="pl-9" />
 
                           {item.clientNotes && (
                             <div className="flex items-start gap-[6px] px-3 py-2 ml-9 mt-[2px] bg-secondary/[0.06] rounded-sm border-l-[3px] border-secondary text-[12px] text-text-muted leading-[1.5]">

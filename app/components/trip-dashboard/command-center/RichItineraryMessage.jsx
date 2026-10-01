@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
 import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
+import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
+import TripAccessibilitySummary from "../../accessibility/TripAccessibilitySummary.jsx";
 import { buildRichItinerarySections } from "../../../lib/trip-dashboard/richItinerary.js";
 
 function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
@@ -56,6 +58,7 @@ function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
             {stop.placeType ? <span>• {stop.placeType}</span> : null}
             {stop.userRatingCount ? <span className="font-normal opacity-80">({stop.userRatingCount.toLocaleString()})</span> : null}
           </div>
+          <AccessibilityBadges badges={stop.accessibilityBadges} />
         </div>
       </div>
 
@@ -124,6 +127,7 @@ export default function RichItineraryMessage({
             {sections.summary}
           </p>
         ) : null}
+        <TripAccessibilitySummary days={itinerary?.days} className="justify-center" />
       </header>
 
       <div className="grid gap-8">

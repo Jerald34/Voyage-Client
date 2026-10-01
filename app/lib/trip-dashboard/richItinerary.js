@@ -1,5 +1,6 @@
 import { getItineraryPlaceEntityId } from "./placeEntities.js";
 import { getPlaceStatusLabel, normalizeBusinessStatus } from "./placeStatus.js";
+import { getAccessibilityBadges } from "../accessibility/placeAccessibility.js";
 
 function normalizeText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -110,6 +111,7 @@ export function buildRichItinerarySections({ itinerary, placeEntities } = {}) {
               businessStatus: normalizeBusinessStatus(snapshot?.businessStatus),
               placeAdvisory: item?.placeAdvisory ?? null
             }),
+            accessibilityBadges: getAccessibilityBadges(snapshot),
             description: normalizeText(item?.description || snapshot?.formattedAddress || ""),
             highlights: getHighlights(item),
             isSelectable: Boolean(place),
