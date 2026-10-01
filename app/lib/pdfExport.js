@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import { describeDayWeather } from "./weather/weatherDisplay.js";
-import { getAccessibilityPdfText } from "./accessibility/placeAccessibility.js";
+import { getAccessibilityBadges, getAccessibilityPdfText } from "./accessibility/placeAccessibility.js";
 
 /**
  * Generates a styled PDF from itinerary data.
@@ -21,6 +21,17 @@ function getProviderClosureLabel(businessStatus) {
   if (businessStatus === "CLOSED_PERMANENTLY") return "Permanently closed";
   if (businessStatus === "CLOSED_TEMPORARILY") return "Temporarily closed";
   return "";
+}
+
+// Same status logic as the on-screen badges: a caution is amber (matching the closure line),
+// an unchecked-in-practice place is neutral grey, confirmed features are green.
+const PDF_ACCESSIBILITY_COLORS = { warning: [146, 64, 14], unverified: [130, 150, 160], positive: [21, 94, 67] };
+
+function getAccessibilityPdfColor(snapshot) {
+  const badges = getAccessibilityBadges(snapshot);
+  if (badges.some((badge) => badge.tone === "warning")) return PDF_ACCESSIBILITY_COLORS.warning;
+  if (badges.length > 0 && badges.every((badge) => badge.key === "unverified")) return PDF_ACCESSIBILITY_COLORS.unverified;
+  return PDF_ACCESSIBILITY_COLORS.positive;
 }
 
 export async function generateItineraryPdf({
@@ -291,7 +302,7 @@ export async function generateItineraryPdf({
       if (accessibilityLines.length > 0) {
         doc.setFontSize(8.5);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(21, 94, 67);
+        doc.setTextColor(...getAccessibilityPdfColor(item.placeSnapshot));
         doc.text(accessibilityLines, margin + 10, y);
         y += accessibilityLines.length * 4 + 1;
       }

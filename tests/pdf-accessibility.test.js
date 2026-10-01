@@ -8,13 +8,17 @@ class FakeDoc {
     this.pages = 1;
     this.fontSize = 16;
     this.measured = [];
+    this.color = null;
+    this.colored = [];
     this.internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 }, getNumberOfPages: () => this.pages };
   }
   setFontSize(size) {
     this.fontSize = size;
   }
   setFont() {}
-  setTextColor() {}
+  setTextColor(...color) {
+    this.color = color;
+  }
   setFillColor() {}
   setDrawColor() {}
   setLineWidth() {}
@@ -37,7 +41,10 @@ class FakeDoc {
     return lines;
   }
   text(value) {
-    for (const entry of Array.isArray(value) ? value : [value]) this.texts.push(String(entry));
+    for (const entry of Array.isArray(value) ? value : [value]) {
+      this.texts.push(String(entry));
+      this.colored.push({ text: String(entry), color: this.color });
+    }
   }
   getTextWidth(value) {
     return String(value ?? "").length * 2;
@@ -109,5 +116,41 @@ describe("pdf export accessibility", () => {
     await generateItineraryPdf(pdfInput({ name: "Burnham Park", metadata: {} }));
 
     expect(state.instance.texts.join("\n")).not.toContain("Accessibility:");
+  });
+});
+
+describe("pdf export accessibility line colour", () => {
+  const checkedAt = "2026-10-01T00:00:00.000Z";
+  const colourOfAccessibilityLine = () =>
+    state.instance.colored.find((entry) => entry.text.startsWith("Accessibility:"))?.color;
+
+  it("is the amber caution colour when any warning is present", async () => {
+    await generateItineraryPdf(
+      pdfInput({
+        name: "Burnham Park",
+        metadata: { accessibility: { wheelchairAccessibleEntrance: false, wheelchairAccessibleRestroom: true, source: "GOOGLE_PLACES", checkedAt } },
+      })
+    );
+
+    expect(colourOfAccessibilityLine()).toEqual([146, 64, 14]);
+  });
+
+  it("is a neutral grey when the place was checked but nothing is verified", async () => {
+    await generateItineraryPdf(
+      pdfInput({ name: "Burnham Park", metadata: { accessibility: { source: "GOOGLE_PLACES", checkedAt } } })
+    );
+
+    expect(colourOfAccessibilityLine()).toEqual([130, 150, 160]);
+  });
+
+  it("stays green when accessibility features are confirmed", async () => {
+    await generateItineraryPdf(
+      pdfInput({
+        name: "Burnham Park",
+        metadata: { accessibility: { wheelchairAccessibleEntrance: true, source: "GOOGLE_PLACES", checkedAt } },
+      })
+    );
+
+    expect(colourOfAccessibilityLine()).toEqual([21, 94, 67]);
   });
 });
