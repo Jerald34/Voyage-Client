@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
+import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -49,7 +50,23 @@ describe("useItineraryWeather", () => {
     expect(api.fetchItineraryWeather).not.toHaveBeenCalled();
   });
 
-  it("falls back to no weather on errors", async () => {
+  it("falls back to no weather when a refetch fails", async () => {
+    api.fetchItineraryWeather.mockResolvedValueOnce({ weather });
+
+    const { result, rerender } = renderHook((props) => useItineraryWeather(props), {
+      initialProps: { agencyId: "agency-1", itineraryId: "it-1", version: 1 },
+    });
+    await waitFor(() => expect(result.current.byDayId.size).toBe(1));
+
+    api.fetchItineraryWeather.mockRejectedValueOnce(new Error("offline"));
+    rerender({ agencyId: "agency-1", itineraryId: "it-1", version: 2 });
+
+    await waitFor(() => expect(result.current.byDayId.size).toBe(0));
+    expect(result.current.attribution).toBeNull();
+    expect(api.fetchItineraryWeather).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays empty when the first request fails", async () => {
     api.fetchItineraryWeather.mockRejectedValue(new Error("offline"));
 
     const { result } = renderHook(() => useItineraryWeather({ agencyId: "agency-1", itineraryId: "it-1" }));
@@ -57,6 +74,57 @@ describe("useItineraryWeather", () => {
     await waitFor(() => expect(api.fetchItineraryWeather).toHaveBeenCalled());
     expect(result.current.byDayId.size).toBe(0);
     expect(result.current.attribution).toBeNull();
+  });
+
+  it("ignores a stale response that resolves after a newer version's", async () => {
+    const weatherV2 = {
+      ...weather,
+      days: [{ dayId: "day-2", dayNumber: 2, date: "2026-10-11", status: "OK", weather: { kind: "FORECAST", condition: "CLEAR" } }],
+    };
+    let resolveV1;
+    api.fetchItineraryWeather
+      .mockReturnValueOnce(new Promise((resolve) => { resolveV1 = resolve; }))
+      .mockResolvedValueOnce({ weather: weatherV2 });
+
+    const { result, rerender } = renderHook((props) => useItineraryWeather(props), {
+      initialProps: { agencyId: "agency-1", itineraryId: "it-1", version: 1 },
+    });
+    rerender({ agencyId: "agency-1", itineraryId: "it-1", version: 2 });
+    await waitFor(() => expect(result.current.byDayId.has("day-2")).toBe(true));
+
+    await act(async () => {
+      resolveV1({ weather });
+    });
+
+    expect(result.current.byDayId.has("day-2")).toBe(true);
+    expect(result.current.byDayId.has("day-1")).toBe(false);
+  });
+
+  it("clears the previous itinerary's weather straight away when the itinerary changes", async () => {
+    api.fetchItineraryWeather.mockResolvedValueOnce({ weather }).mockReturnValueOnce(new Promise(() => {}));
+
+    const { result, rerender } = renderHook((props) => useItineraryWeather(props), {
+      initialProps: { agencyId: "agency-1", itineraryId: "it-1", version: 1 },
+    });
+    await waitFor(() => expect(result.current.byDayId.size).toBe(1));
+
+    rerender({ agencyId: "agency-1", itineraryId: "it-2", version: 1 });
+
+    expect(result.current.byDayId.size).toBe(0);
+    expect(result.current.attribution).toBeNull();
+  });
+
+  it("keeps showing the current weather while a new version is loading", async () => {
+    api.fetchItineraryWeather.mockResolvedValueOnce({ weather }).mockReturnValueOnce(new Promise(() => {}));
+
+    const { result, rerender } = renderHook((props) => useItineraryWeather(props), {
+      initialProps: { agencyId: "agency-1", itineraryId: "it-1", version: 1 },
+    });
+    await waitFor(() => expect(result.current.byDayId.size).toBe(1));
+
+    rerender({ agencyId: "agency-1", itineraryId: "it-1", version: 2 });
+
+    expect(result.current.byDayId.size).toBe(1);
   });
 
   it("refetches when the itinerary version changes", async () => {
