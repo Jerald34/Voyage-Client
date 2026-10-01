@@ -8,7 +8,9 @@ import {
 import {
   formatAccessibilitySummary,
   getAccessibilityBadges,
+  describeAccessibilityBadges,
   getAccessibilityPdfText,
+  getPrimaryAccessibilityBadge,
   getPlaceAccessibility,
   summarizeAccessibility,
 } from "../app/lib/accessibility/placeAccessibility.js";
@@ -97,5 +99,25 @@ describe("place accessibility helpers", () => {
     );
     expect(getAccessibilityPdfText(checked())).toBe("Accessibility: not verified");
     expect(getAccessibilityPdfText({ metadata: {} })).toBe("");
+  });
+});
+
+describe("badge helpers for tight or replaced content", () => {
+  it("picks the warning badge first, otherwise the first badge, otherwise nothing", () => {
+    expect(
+      getPrimaryAccessibilityBadge(checked({ wheelchairAccessibleEntrance: false, wheelchairAccessibleRestroom: true }))
+    ).toMatchObject({ key: "entrance-no", tone: "warning" });
+    expect(
+      getPrimaryAccessibilityBadge(checked({ wheelchairAccessibleEntrance: true, wheelchairAccessibleRestroom: true }))
+    ).toMatchObject({ key: "wheelchairAccessibleEntrance" });
+    expect(getPrimaryAccessibilityBadge({ metadata: {} })).toBeNull();
+  });
+
+  it("describes badges as one phrase for an accessible name", () => {
+    expect(describeAccessibilityBadges([{ label: "Accessible entrance" }, { label: "Accessible restroom" }])).toBe(
+      "Accessibility: Accessible entrance, Accessible restroom"
+    );
+    expect(describeAccessibilityBadges([])).toBe("");
+    expect(describeAccessibilityBadges(undefined)).toBe("");
   });
 });

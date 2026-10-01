@@ -68,3 +68,15 @@ export function getAccessibilityPdfText(snapshot) {
   if (badges.length === 1 && badges[0].key === "unverified") return "Accessibility: not verified";
   return `Accessibility: ${badges.map((badge) => badge.label.toLowerCase()).join(", ")}`;
 }
+
+/** The one badge worth showing where space is tight: a warning if there is one, else the first. */
+export function getPrimaryAccessibilityBadge(snapshot) {
+  const badges = getAccessibilityBadges(snapshot);
+  return badges.find((badge) => badge.tone === "warning") ?? badges[0] ?? null;
+}
+
+/** Badge labels as one sentence fragment, for an accessible name that replaces the visible content. */
+export function describeAccessibilityBadges(badges) {
+  const labels = (Array.isArray(badges) ? badges : []).map((badge) => badge.label).filter(Boolean);
+  return labels.length > 0 ? `Accessibility: ${labels.join(", ")}` : "";
+}

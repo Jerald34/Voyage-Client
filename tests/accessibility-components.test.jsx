@@ -44,3 +44,22 @@ describe("TripAccessibilitySummary", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe("AccessibilityBadges inline variant", () => {
+  it("renders spans, not a list, so it is valid inside a button", () => {
+    const badges = [
+      { key: "a", label: "Accessible entrance", tone: "positive" },
+      { key: "b", label: "Accessible restroom", tone: "positive" },
+    ];
+    render(
+      <button type="button">
+        <AccessibilityBadges badges={badges} inline />
+      </button>
+    );
+
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+    expect(screen.getByRole("button")).toHaveTextContent("Accessible entrance");
+    expect(screen.getByRole("button")).toHaveTextContent("Accessible restroom");
+  });
+});

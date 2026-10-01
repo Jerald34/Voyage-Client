@@ -10,23 +10,43 @@ const TONES = {
   neutral: "border-border/30 bg-surface text-text-muted",
 };
 
+const BADGE_CLASS = "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium";
+
 /**
  * Static, repeated per stop like PlaceStatusBadge. Pass `badges` (precomputed)
  * or `snapshot`. Renders nothing for a place that was never checked.
+ *
+ * `inline` renders plain spans instead of a list. Use it inside a button or
+ * link, where a list is invalid content and its semantics are discarded.
  */
-export default function AccessibilityBadges({ snapshot = null, badges = null, className = "" }) {
+export default function AccessibilityBadges({ snapshot = null, badges = null, inline = false, className = "" }) {
   const list = Array.isArray(badges) ? badges : getAccessibilityBadges(snapshot);
   if (list.length === 0) return null;
+
+  const content = (badge) => (
+    <>
+      <AccessibilityIcon size={12} className="flex-shrink-0" />
+      {badge.label}
+    </>
+  );
+
+  if (inline) {
+    return (
+      <span className={`flex flex-wrap gap-1 ${className}`.trim()}>
+        {list.map((badge) => (
+          <span key={badge.key} className={`${BADGE_CLASS} ${TONES[badge.tone] ?? TONES.neutral}`}>
+            {content(badge)}
+          </span>
+        ))}
+      </span>
+    );
+  }
 
   return (
     <ul aria-label="Accessibility" className={`m-0 flex list-none flex-wrap gap-1 p-0 ${className}`.trim()}>
       {list.map((badge) => (
-        <li
-          key={badge.key}
-          className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${TONES[badge.tone] ?? TONES.neutral}`}
-        >
-          <AccessibilityIcon size={12} className="flex-shrink-0" />
-          {badge.label}
+        <li key={badge.key} className={`${BADGE_CLASS} ${TONES[badge.tone] ?? TONES.neutral}`}>
+          {content(badge)}
         </li>
       ))}
     </ul>

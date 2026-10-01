@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 // components/icons/index.js contains JSX in a .js file, which vitest cannot parse.
@@ -75,5 +75,78 @@ describe("accessibility on itinerary views", () => {
 
     expect(screen.getByText("Accessible entrance")).toBeInTheDocument();
     expect(screen.getByText(/Accessibility this day:/)).toBeInTheDocument();
+  });
+});
+
+describe("accessibility inside selectable cards", () => {
+  const placeEntities = [{ id: "itinerary:snap-1", lat: 16.41, lng: 120.59 }];
+
+  it("announces the badges in the selectable stop's accessible name, with no list inside the button", () => {
+    render(<RichItineraryMessage itinerary={itinerary} placeEntities={placeEntities} onPlaceSelect={vi.fn()} />);
+
+    const button = screen.getByRole("button", { name: /Select Burnham Park/ });
+    expect(button).toHaveAccessibleName("Select Burnham Park. Accessibility: Accessible entrance");
+    expect(within(button).queryByRole("list")).toBeNull();
+    expect(within(button).getByText("Accessible entrance")).toBeInTheDocument();
+  });
+
+  it("keeps the Select name unchanged for a stop that was never checked", () => {
+    const unchecked = { ...day, items: [{ ...item, placeSnapshot: { ...accessibleSnapshot, metadata: {} } }] };
+    render(<RichItineraryMessage itinerary={{ ...itinerary, days: [unchecked] }} placeEntities={placeEntities} onPlaceSelect={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Select Burnham Park" })).toBeInTheDocument();
+  });
+
+  it("renders the compact place card badge without a list inside its button", () => {
+    render(<CompactPlaceCard item={item} onSelect={vi.fn()} />);
+
+    const button = screen.getByRole("button");
+    expect(within(button).queryByRole("list")).toBeNull();
+    expect(button).toHaveAccessibleName(/Accessible entrance/);
+  });
+
+  it("shows only the most important badge on the compact card, warning first", () => {
+    const snapshot = {
+      ...accessibleSnapshot,
+      metadata: {
+        accessibility: {
+          wheelchairAccessibleEntrance: false,
+          wheelchairAccessibleRestroom: true,
+          wheelchairAccessibleParking: true,
+          source: "GOOGLE_PLACES",
+          checkedAt: "2026-10-01T00:00:00.000Z",
+        },
+      },
+    };
+    render(<CompactPlaceCard item={{ ...item, placeSnapshot: snapshot }} onSelect={vi.fn()} />);
+
+    expect(screen.getByText("Entrance not wheelchair accessible")).toBeInTheDocument();
+    expect(screen.queryByText("Accessible restroom")).toBeNull();
+    expect(screen.queryByText("Accessible parking")).toBeNull();
+  });
+
+  it("shows just the first badge on the compact card when there is no warning", () => {
+    const snapshot = {
+      ...accessibleSnapshot,
+      metadata: {
+        accessibility: {
+          wheelchairAccessibleEntrance: true,
+          wheelchairAccessibleRestroom: true,
+          source: "GOOGLE_PLACES",
+          checkedAt: "2026-10-01T00:00:00.000Z",
+        },
+      },
+    };
+    render(<CompactPlaceCard item={{ ...item, placeSnapshot: snapshot }} onSelect={vi.fn()} />);
+
+    expect(screen.getByText("Accessible entrance")).toBeInTheDocument();
+    expect(screen.queryByText("Accessible restroom")).toBeNull();
+  });
+
+  it("balances the wrapped trip summary in the chat header", () => {
+    render(<RichItineraryMessage itinerary={itinerary} />);
+
+    const summary = screen.getByText(/1 of 1 stops have a wheelchair-accessible entrance/).closest("p");
+    expect(summary).toHaveClass("text-center", "text-balance");
   });
 });

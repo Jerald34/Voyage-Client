@@ -3,6 +3,7 @@ import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
 import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
 import TripAccessibilitySummary from "../../accessibility/TripAccessibilitySummary.jsx";
 import { buildRichItinerarySections } from "../../../lib/trip-dashboard/richItinerary.js";
+import { describeAccessibilityBadges } from "../../../lib/accessibility/placeAccessibility.js";
 
 function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
   const isSelected = stop.isSelectable && stop.placeId === selectedPlaceId;
@@ -58,7 +59,7 @@ function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
             {stop.placeType ? <span>• {stop.placeType}</span> : null}
             {stop.userRatingCount ? <span className="font-normal opacity-80">({stop.userRatingCount.toLocaleString()})</span> : null}
           </div>
-          <AccessibilityBadges badges={stop.accessibilityBadges} />
+          <AccessibilityBadges badges={stop.accessibilityBadges} inline={stop.isSelectable} />
         </div>
       </div>
 
@@ -89,12 +90,16 @@ function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
     return <div className={className}>{content}</div>;
   }
 
+  // aria-label replaces the button content as its name, so the badges must be spelled out in it.
+  const badgeSummary = describeAccessibilityBadges(stop.accessibilityBadges);
+  const selectLabel = badgeSummary ? `Select ${stop.title}. ${badgeSummary}` : `Select ${stop.title}`;
+
   return (
     <button
       type="button"
       className={className}
       onClick={() => onPlaceSelect?.(stop.placeId)}
-      aria-label={`Select ${stop.title}`}
+      aria-label={selectLabel}
       aria-current={isSelected ? "true" : undefined}
     >
       {content}
@@ -127,7 +132,7 @@ export default function RichItineraryMessage({
             {sections.summary}
           </p>
         ) : null}
-        <TripAccessibilitySummary days={itinerary?.days} className="justify-center" />
+        <TripAccessibilitySummary days={itinerary?.days} className="justify-center text-center text-balance" />
       </header>
 
       <div className="grid gap-8">
