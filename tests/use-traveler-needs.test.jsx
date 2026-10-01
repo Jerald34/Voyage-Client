@@ -21,7 +21,7 @@ function setup(initial = {}) {
             ? tripStates[activeContext.id]
             : null;
       const api = useTravelerNeeds({ activeContext, activeTripState, setDraftThreadStates, setTripStates });
-      return { ...api, draftThreadStates, tripStates };
+      return { ...api, draftThreadStates, tripStates, setDraftThreadStates, setTripStates };
     },
     { initialProps: { context: initial.context ?? null } },
   );
@@ -204,5 +204,56 @@ describe("traveler needs are sent only when changed in this tab", () => {
       await hook.result.current.sendWithNeeds(dispatch);
     });
     expect(dispatch).toHaveBeenCalledWith(null);
+  });
+});
+
+describe("an unsent needs edit survives a draft being saved as a trip", () => {
+  it("sends the edit with the first message after the draft becomes a trip", async () => {
+    const hook = setup({
+      drafts: { "thread-1": { threadId: "thread-1", travelerNeeds: SENIOR } },
+      context: { type: "draft", id: "thread-1" },
+    });
+    act(() => hook.result.current.saveTravelerNeeds(WHEELCHAIR));
+
+    // Mirrors HomePage.submitDraftApproval: the draft state is copied under the new trip id
+    // (thread id unchanged), the draft is removed, and the context switches to the trip.
+    act(() => {
+      const draftState = hook.result.current.draftThreadStates["thread-1"];
+      hook.result.current.setTripStates((prev) => ({ ...prev, "trip-9": { ...draftState, threadId: "thread-1", tripId: "trip-9" } }));
+      hook.result.current.setDraftThreadStates(() => ({}));
+    });
+    hook.rerender({ context: { type: "trip", id: "trip-9" } });
+
+    const dispatch = sentOk("trip-9");
+    await act(async () => {
+      await hook.result.current.sendWithNeeds(dispatch);
+    });
+    expect(dispatch).toHaveBeenCalledWith(WHEELCHAIR);
+
+    // And once delivered, it is not re-sent.
+    const next = sentOk();
+    await act(async () => {
+      await hook.result.current.sendWithNeeds(next);
+    });
+    expect(next).toHaveBeenCalledWith(null);
+  });
+
+  it("queues the needs under the thread id when the first send failed", async () => {
+    const hook = setup({
+      drafts: { "thread-1": { threadId: "thread-1", travelerNeeds: WHEELCHAIR } },
+      context: { type: "draft", id: "pending-A" },
+    });
+    act(() => hook.result.current.saveTravelerNeeds(WHEELCHAIR));
+    await act(async () => {
+      await hook.result.current.sendWithNeeds(vi.fn(async () => ({ sent: false, contextId: "thread-1", threadId: "thread-1" })));
+    });
+    hook.rerender({ context: { type: "trip", id: "trip-9" } });
+    act(() => hook.result.current.setTripStates(() => ({ "trip-9": { threadId: "thread-1", travelerNeeds: WHEELCHAIR } })));
+
+    const retry = sentOk();
+    await act(async () => {
+      await hook.result.current.sendWithNeeds(retry);
+    });
+    expect(retry).toHaveBeenCalledWith(WHEELCHAIR);
   });
 });

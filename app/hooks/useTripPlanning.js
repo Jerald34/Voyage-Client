@@ -367,9 +367,9 @@ export function useTripPlanning(agencyId) {
     return promise;
   };
 
-  // Resolves to { sent, contextId } so callers can track what reached the server.
+  // Resolves to { sent, contextId, threadId } so callers can track what reached the server.
   const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null) => {
-    const outcome = { sent: false, contextId: null };
+    const outcome = { sent: false, contextId: null, threadId: null };
     if (!agencyId) {
       setAgentError("Missing agency context. Refresh and log in again.");
       return outcome;
@@ -400,6 +400,7 @@ export function useTripPlanning(agencyId) {
       const currentThreadId = ensuredState?.threadId;
       if (!currentThreadId) throw new Error("Failed to create agent thread.");
       outcome.contextId = currentContext.id;
+      outcome.threadId = currentThreadId;
 
       // Persist the chosen needs on the thread as soon as it exists. The chips
       // (and HomePage's pending-needs hand-off) key off this, so it must not

@@ -67,7 +67,7 @@ describe("traveler needs plumbing", () => {
     await act(async () => {
       outcome = await result.current.dispatchMessage("Plan Bohol", vi.fn());
     });
-    expect(outcome).toEqual({ sent: true, contextId: "thread-6" });
+    expect(outcome).toEqual({ sent: true, contextId: "thread-6", threadId: "thread-6" });
 
     api.createAgentThread.mockResolvedValue({ thread: { id: "thread-7", title: "", events: [] } });
     api.uploadChatImages.mockRejectedValue(new Error("upload down"));
@@ -76,7 +76,7 @@ describe("traveler needs plumbing", () => {
     await act(async () => {
       outcome = await failing.result.current.dispatchMessage("Plan Bohol", vi.fn(), [image]);
     });
-    expect(outcome).toEqual({ sent: false, contextId: "thread-7" });
+    expect(outcome).toEqual({ sent: false, contextId: "thread-7", threadId: "thread-7" });
   });
 
   it("restores needs from the workspace bootstrap", async () => {
