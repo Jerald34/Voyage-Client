@@ -196,9 +196,11 @@ export function useTripPlanning(agencyId) {
         travelerNeeds: existingState?.travelerNeeds ?? null,
       };
 
+      // Merge inside the setter: a needs edit made while the thread was hydrating lives in the
+      // current entry, not in the snapshot taken before the await, and must win.
       setTripStates((previous) => ({
         ...previous,
-        [tripId]: nextState,
+        [tripId]: { ...nextState, travelerNeeds: previous[tripId]?.travelerNeeds ?? nextState.travelerNeeds },
       }));
 
       return nextState;
@@ -237,9 +239,10 @@ export function useTripPlanning(agencyId) {
         itinerary: hydrated.itinerary ?? existingState.itinerary ?? null,
         loaded: true,
       };
+      // Same as trips: the current entry's needs win over the pre-await snapshot.
       setDraftThreadStates((previous) => ({
         ...previous,
-        [draftId]: nextState,
+        [draftId]: { ...nextState, travelerNeeds: previous[draftId]?.travelerNeeds ?? nextState.travelerNeeds },
       }));
       return nextState;
     })();
@@ -388,7 +391,8 @@ export function useTripPlanning(agencyId) {
       if (!currentContext || (currentContext.type === "draft" && String(currentContext.id).startsWith("pending-"))) {
         ensuredState = await createDraftThread();
         currentContext = createPlanningContext("draft", ensuredState?.threadId ?? null);
-        setActiveContext(currentContext);
+        // Without a thread, stay on the pending context: replacing it would drop the needs chosen for it.
+        if (ensuredState?.threadId) setActiveContext(currentContext);
       } else if (currentContext.type === "draft") {
         ensuredState = (await ensureDraftThreadState(currentContext.id))
           ?? draftThreadStatesRef.current[currentContext.id]

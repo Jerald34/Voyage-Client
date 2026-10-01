@@ -136,3 +136,74 @@ describe("traveler needs on trip threads", () => {
     expect(result.current.tripStates["trip-1"].travelerNeeds).toEqual({ needs: ["WHEELCHAIR"], notes: null });
   });
 });
+
+describe("traveler needs edits survive thread hydration", () => {
+  const BOOTSTRAPPED = { needs: ["SENIOR"], notes: null };
+  const EDITED = { needs: ["WHEELCHAIR"], notes: "Foldable chair" };
+
+  function deferMessages() {
+    let release;
+    api.fetchThreadMessages.mockImplementationOnce(
+      () => new Promise((resolve) => { release = () => resolve({ messages: [] }); }),
+    );
+    return () => release();
+  }
+
+  it("keeps a needs edit made while a trip thread was hydrating", async () => {
+    api.bootstrapAgentWorkspace.mockResolvedValue({
+      trips: [],
+      threads: [{ id: "thread-5", title: "Trip", tripId: "trip-1", createdAt: "2026-10-01T00:00:00.000Z", travelerNeeds: BOOTSTRAPPED }],
+      itinerarySummaries: {},
+    });
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+    await act(async () => { await result.current.loadInitialThreads(); });
+
+    const release = deferMessages();
+    let hydrating;
+    await act(async () => { hydrating = result.current.ensureTripThreadState("trip-1"); });
+    act(() => {
+      result.current.setTripStates((prev) => ({ ...prev, "trip-1": { ...prev["trip-1"], travelerNeeds: EDITED } }));
+    });
+    await act(async () => { release(); await hydrating; });
+
+    expect(result.current.tripStates["trip-1"].loaded).toBe(true);
+    expect(result.current.tripStates["trip-1"].travelerNeeds).toEqual(EDITED);
+  });
+
+  it("keeps a needs edit made while a draft thread was hydrating", async () => {
+    api.bootstrapAgentWorkspace.mockResolvedValue({
+      trips: [],
+      threads: [{ id: "thread-8", title: "Draft", tripId: null, createdAt: "2026-10-01T00:00:00.000Z", travelerNeeds: BOOTSTRAPPED }],
+      itinerarySummaries: {},
+    });
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+    await act(async () => { await result.current.loadInitialThreads(); });
+
+    const release = deferMessages();
+    let hydrating;
+    await act(async () => { hydrating = result.current.ensureDraftThreadState("thread-8"); });
+    act(() => {
+      result.current.setDraftThreadStates((prev) => ({ ...prev, "thread-8": { ...prev["thread-8"], travelerNeeds: EDITED } }));
+    });
+    await act(async () => { release(); await hydrating; });
+
+    expect(result.current.draftThreadStates["thread-8"].loaded).toBe(true);
+    expect(result.current.draftThreadStates["thread-8"].travelerNeeds).toEqual(EDITED);
+  });
+});
+
+describe("a failed thread creation keeps the pending context", () => {
+  it("does not replace the pending context when no thread could be created", async () => {
+    api.createAgentThread.mockResolvedValue({ thread: null });
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+    const pending = { type: "draft", id: "pending-123" };
+    act(() => result.current.setActiveContext(pending));
+
+    await act(async () => {
+      await result.current.dispatchMessage("Plan Baguio", vi.fn(), [], { needs: ["WHEELCHAIR"], notes: null });
+    });
+
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    expect(result.current.activeContext).toEqual(pending);
+  });
+});
