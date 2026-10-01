@@ -398,6 +398,19 @@ export function useTripPlanning(agencyId) {
       const currentThreadId = ensuredState?.threadId;
       if (!currentThreadId) throw new Error("Failed to create agent thread.");
 
+      // Persist the chosen needs on the thread as soon as it exists. The chips
+      // (and HomePage's pending-needs hand-off) key off this, so it must not
+      // wait for the image upload, which can fail and return early.
+      if (travelerNeeds) {
+        const needsPatch = { travelerNeeds };
+        const applyNeeds = (prev) => ({
+          ...prev,
+          [currentContext.id]: { ...(prev[currentContext.id] || {}), ...needsPatch },
+        });
+        if (currentContext.type === "draft") setDraftThreadStates(applyNeeds);
+        else setTripStates(applyNeeds);
+      }
+
       runTargetRef.current = createRunTargetKey(currentContext);
 
       // Upload images to Cloudinary (if any) before sending the message.
@@ -418,13 +431,11 @@ export function useTripPlanning(agencyId) {
       const messageContent = cleanContent || (hasImages ? "Sent image(s)" : "");
       const metadata = imageUrls.length > 0 ? { imageUrls } : undefined;
       const message = { id: `user-${Date.now()}`, role: "user", content: messageContent, metadata };
-      const needsPatch = travelerNeeds ? { travelerNeeds } : {};
       if (currentContext.type === "draft") {
         setDraftThreadStates((prev) => ({
           ...prev,
           [currentContext.id]: {
             ...(prev[currentContext.id] || {}),
-            ...needsPatch,
             messages: [...(prev[currentContext.id]?.messages || []), message],
           },
         }));
@@ -433,7 +444,6 @@ export function useTripPlanning(agencyId) {
           ...prev,
           [currentContext.id]: {
             ...(prev[currentContext.id] || {}),
-            ...needsPatch,
             messages: [...(prev[currentContext.id]?.messages || []), message],
           },
         }));

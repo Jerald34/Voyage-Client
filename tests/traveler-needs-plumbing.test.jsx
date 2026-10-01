@@ -44,6 +44,21 @@ describe("traveler needs plumbing", () => {
     expect(api.sendMessage).toHaveBeenCalledWith("agency-1", "thread-2", "Plan Cebu", [], null);
   });
 
+  it("keeps the needs on the thread when the first send fails at the image upload", async () => {
+    api.createAgentThread.mockResolvedValue({ thread: { id: "thread-4", title: "", events: [] } });
+    api.uploadChatImages.mockRejectedValue(new Error("upload down"));
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+    const needs = { needs: ["WHEELCHAIR"], notes: null };
+    const image = new File(["x"], "photo.png", { type: "image/png" });
+
+    await act(async () => {
+      await result.current.dispatchMessage("Plan Baguio", vi.fn(), [image], needs);
+    });
+
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    expect(result.current.draftThreadStates["thread-4"].travelerNeeds).toEqual(needs);
+  });
+
   it("restores needs from the workspace bootstrap", async () => {
     api.bootstrapAgentWorkspace.mockResolvedValue({
       trips: [],
