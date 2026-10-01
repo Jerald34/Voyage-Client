@@ -33,7 +33,16 @@ export default function TravelerNeedsDialog({ open, initialNeeds = null, onCance
   useEffect(() => {
     if (!open) return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") onCancel?.();
+      if (event.key === "Escape") {
+        onCancel?.();
+        return;
+      }
+      // Focus can land outside the dialog (e.g. after clicking the backdrop
+      // edge); the first Tab pulls it back in instead of tabbing the page behind.
+      if (event.key === "Tab" && dialogRef.current && !dialogRef.current.contains(document.activeElement)) {
+        event.preventDefault();
+        firstOptionRef.current?.focus();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -74,9 +83,10 @@ export default function TravelerNeedsDialog({ open, initialNeeds = null, onCance
       <div
         ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-[min(100%,520px)] max-h-[calc(100dvh-40px)] overflow-y-auto bg-white/[0.98] dark:bg-[#1e293b] border border-[#e5e7eb] dark:border-[#334155] rounded-[20px] shadow-[0_28px_60px_rgba(15,23,42,0.18)] transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] starting:opacity-0 starting:scale-[0.97]"
+        className="w-[min(100%,520px)] max-h-[calc(100dvh-40px)] overflow-y-auto bg-white/[0.98] dark:bg-[#1e293b] border border-[#e5e7eb] dark:border-[#334155] rounded-[20px] shadow-[0_28px_60px_rgba(15,23,42,0.18)] transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] starting:opacity-0 starting:scale-[0.97] motion-reduce:starting:scale-100 focus:outline-none"
         onMouseDown={(event) => event.stopPropagation()}
         onKeyDown={trapFocus}
       >
@@ -97,7 +107,7 @@ export default function TravelerNeedsDialog({ open, initialNeeds = null, onCance
               return (
                 <label
                   key={option.id}
-                  className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-[12px] border px-3 py-2.5 transition-[border-color,background-color,box-shadow] duration-150 focus-within:shadow-[0_0_0_3px_rgba(182,93,72,0.25)] ${isChecked ? "border-[#b65d48] bg-[rgba(182,93,72,0.06)]" : "border-[#e5e7eb] dark:border-[#334155] hover:border-[#d1d5db] dark:hover:border-[#475569]"}`}
+                  className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-[12px] border px-3 py-2.5 transition-[border-color,background-color,box-shadow] duration-150 focus-within:shadow-[0_0_0_3px_rgba(182,93,72,0.25)] ${isChecked ? "border-[#b65d48] bg-[rgba(182,93,72,0.06)]" : "border-[#e5e7eb] dark:border-[#334155] [@media(hover:hover)_and_(pointer:fine)]:hover:border-[#d1d5db] dark:[@media(hover:hover)_and_(pointer:fine)]:hover:border-[#475569]"}`}
                 >
                   <input
                     ref={index === 0 ? firstOptionRef : undefined}

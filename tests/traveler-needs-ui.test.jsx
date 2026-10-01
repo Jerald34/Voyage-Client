@@ -62,6 +62,58 @@ describe("TravelerNeedsDialog focus management", () => {
   });
 });
 
+describe("TravelerNeedsDialog polish", () => {
+  it("keeps in-progress toggles when the parent re-renders with a new initialNeeds object", () => {
+    const props = { open: true, onCancel: vi.fn(), onSave: vi.fn() };
+    const { rerender } = render(<TravelerNeedsDialog {...props} initialNeeds={{ needs: ["SENIOR"], notes: null }} />);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Wheelchair user/ }));
+    expect(screen.getByRole("checkbox", { name: /Wheelchair user/ })).toBeChecked();
+
+    rerender(<TravelerNeedsDialog {...props} initialNeeds={{ needs: ["SENIOR"], notes: null }} />);
+
+    expect(screen.getByRole("checkbox", { name: /Wheelchair user/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Senior travelers/ })).toBeChecked();
+  });
+
+  it("makes the dialog programmatically focusable so clicking its whitespace stays inside the trap", () => {
+    render(<TravelerNeedsDialog open onCancel={vi.fn()} onSave={vi.fn()} />);
+
+    expect(screen.getByRole("dialog", { name: "Traveler needs" })).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("pulls focus back to the first option when Tab is pressed with focus outside the dialog", () => {
+    render(<TravelerNeedsDialog open onCancel={vi.fn()} onSave={vi.fn()} />);
+    const outside = document.createElement("button");
+    document.body.appendChild(outside);
+    outside.focus();
+
+    fireEvent.keyDown(window, { key: "Tab" });
+
+    expect(document.activeElement).toBe(screen.getByRole("checkbox", { name: /Wheelchair user/ }));
+    outside.remove();
+  });
+
+  it("animates the CSS scale property (not transform) and drops the scale under reduced motion", () => {
+    render(<TravelerNeedsDialog open onCancel={vi.fn()} onSave={vi.fn()} />);
+    const classes = screen.getByRole("dialog", { name: "Traveler needs" }).className.split(/\s+/);
+
+    expect(classes).toContain("transition-[opacity,scale]");
+    expect(classes).not.toContain("transition-[opacity,transform]");
+    expect(classes).toContain("starting:opacity-0");
+    expect(classes).toContain("motion-reduce:starting:scale-100");
+  });
+
+  it("only applies option hover styles on devices with a fine hover pointer", () => {
+    render(<TravelerNeedsDialog open onCancel={vi.fn()} onSave={vi.fn()} />);
+    const label = screen.getByRole("checkbox", { name: /Wheelchair user/ }).closest("label");
+    const tokens = label.className.split(/\s+/);
+
+    expect(tokens.filter((token) => /(^|:)hover:/.test(token) && !token.includes("[@media(hover:hover)_and_(pointer:fine)]:"))).toEqual([]);
+    expect(tokens.some((token) => token.startsWith("[@media(hover:hover)_and_(pointer:fine)]:hover:border-"))).toBe(true);
+  });
+});
+
 describe("TravelerNeedsChips", () => {
   it("lists selected needs and offers an edit button", () => {
     const onEdit = vi.fn();
