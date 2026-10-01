@@ -5,6 +5,7 @@ const state = { instance: null };
 class FakeDoc {
   constructor() {
     this.texts = [];
+    this.calls = [];
     this.pages = 1;
     this.fontSize = 16;
     this.measured = [];
@@ -40,7 +41,8 @@ class FakeDoc {
     for (let index = 0; index < value.length; index += perLine) lines.push(value.slice(index, index + perLine));
     return lines;
   }
-  text(value) {
+  text(value, x, y) {
+    this.calls.push({ lines: (Array.isArray(value) ? value : [value]).map(String), y, page: this.pages });
     for (const entry of Array.isArray(value) ? value : [value]) {
       this.texts.push(String(entry));
       this.colored.push({ text: String(entry), color: this.color });
@@ -185,5 +187,44 @@ describe("pdf export page breaks with the accessibility line", () => {
 
     // Somewhere a stop that fits without the line must move to the next page once the line is counted.
     expect(grewAt).not.toBeNull();
+  });
+});
+
+describe("pdf export keeps every item inside the page's bottom margin", () => {
+  const checkedAt = "2026-10-01T00:00:00.000Z";
+  // Mirrors the exporter: A4 is 297mm tall and checkPageBreak keeps a 28mm bottom margin
+  // (the footer sits below it). An item's reserved space includes its trailing 5mm gap.
+  const PAGE_BOTTOM = 297 - 28;
+  const ACCESSIBILITY_LINE_HEIGHT = 4;
+  const AFTER_ACCESSIBILITY = 1 + 5; // gap after the line + spacing between items
+
+  it("never draws an item's accessibility line past the bottom margin", async () => {
+    const metadata = { accessibility: { wheelchairAccessibleEntrance: true, source: "GOOGLE_PLACES", checkedAt } };
+    let checked = 0;
+
+    // Vary the title length so items start at different heights; some land right at the page edge,
+    // where only an estimate that counts the accessibility line pushes them to the next page.
+    for (const titleLength of [8, 20, 40, 60, 80, 100]) {
+      vi.resetModules();
+      ({ generateItineraryPdf } = await import("../app/lib/pdfExport.js"));
+      const items = Array.from({ length: 40 }, (_, index) => ({
+        title: `${"S".repeat(titleLength)}${index}`,
+        placeSnapshot: { name: `Stop ${index + 1}`, metadata },
+      }));
+      await generateItineraryPdf({
+        title: "Trip",
+        summary: "",
+        days: [{ id: "day-1", dayNumber: 1, title: "Arrival", date: null, summary: "", items }],
+      });
+
+      for (const call of state.instance.calls) {
+        if (!call.lines[0]?.startsWith("Accessibility:")) continue;
+        checked += 1;
+        const bottom = call.y + call.lines.length * ACCESSIBILITY_LINE_HEIGHT + AFTER_ACCESSIBILITY;
+        expect(bottom, `title length ${titleLength}, page ${call.page}`).toBeLessThanOrEqual(PAGE_BOTTOM);
+      }
+    }
+
+    expect(checked).toBeGreaterThan(100);
   });
 });
