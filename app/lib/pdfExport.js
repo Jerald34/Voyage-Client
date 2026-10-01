@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { describeDayWeather } from "./weather/weatherDisplay.js";
+import { getAccessibilityPdfText } from "./accessibility/placeAccessibility.js";
 
 /**
  * Generates a styled PDF from itinerary data.
@@ -205,6 +206,17 @@ export async function generateItineraryPdf({
         ? doc.splitTextToSize(closureText, contentWidth - 8)
         : [];
 
+      // Public provider data only. The traveler's own needs never reach an export.
+      // Measured at the size it is drawn in (8.5pt), like the weather line.
+      const accessibilityText = getAccessibilityPdfText(item.placeSnapshot);
+      if (accessibilityText) {
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+      }
+      const accessibilityLines = accessibilityText
+        ? doc.splitTextToSize(accessibilityText, contentWidth - 8)
+        : [];
+
       const estimatedHeight =
         (timeStr ? 5 : 0) +
         titleLines.length * 5.5 +
@@ -214,6 +226,7 @@ export async function generateItineraryPdf({
         // Counted BEFORE the page-break check: a line drawn but not measured is
         // exactly how an item overflows the bottom of a page.
         closureLines.length * 4 +
+        accessibilityLines.length * 4 +
         8; // padding
 
       checkPageBreak(estimatedHeight);
@@ -272,6 +285,15 @@ export async function generateItineraryPdf({
         doc.setTextColor(146, 64, 14);
         doc.text(closureLines, margin + 10, y);
         y += closureLines.length * 4 + 1;
+      }
+
+      // Accessibility (Google wheelchair flags)
+      if (accessibilityLines.length > 0) {
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(21, 94, 67);
+        doc.text(accessibilityLines, margin + 10, y);
+        y += accessibilityLines.length * 4 + 1;
       }
 
       y += 5; // spacing between items
