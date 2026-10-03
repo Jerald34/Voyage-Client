@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ fetchApi: vi.fn() }));
@@ -39,6 +39,37 @@ function serve({ failing = [], sharesFail = false } = {}) {
 
 function renderPanel() {
   return render(<TripSlideOver isOpen onClose={() => {}} agencyId="agency-1" tripId="t-1" tripTitle="Kyoto" />);
+}
+
+/** A promise the test settles by hand. */
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+/** Lets every pending request and state update land. */
+const settle = () =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+/** Each trip's share-list request is the promise the test hands in; share comments answer at once. */
+function serveByTrip(sharesByTrip) {
+  mocks.fetchApi.mockImplementation((path) => {
+    const comments = /\/shares\/([^/?]+)\/comments$/.exec(String(path));
+    if (comments) return Promise.resolve({ comments: [comment(comments[1])] });
+    const trip = /\/shares\?tripId=([^&]+)/.exec(String(path));
+    return sharesByTrip[decodeURIComponent(trip[1])].promise;
+  });
+}
+
+function Panel(props) {
+  return <TripSlideOver isOpen onClose={() => {}} agencyId="agency-1" tripId="t-1" tripTitle="Kyoto" {...props} />;
 }
 
 beforeEach(() => {
@@ -90,5 +121,119 @@ describe("TripSlideOver comment loading", () => {
 
     expect(await screen.findByText("Comment on s-1")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+  });
+});
+
+describe("TripSlideOver out-of-date responses", () => {
+  it("keeps the open trip's comments when an earlier trip's response arrives late", async () => {
+    const a = deferred();
+    const b = deferred();
+    serveByTrip({ "t-A": a, "t-B": b });
+    const { rerender } = render(<Panel tripId="t-A" tripTitle="Trip A" />);
+
+    rerender(<Panel tripId="t-B" tripTitle="Trip B" />);
+    await act(async () => b.resolve({ shares: [{ id: "s-B" }] }));
+    expect(await screen.findByText("Comment on s-B")).toBeInTheDocument();
+
+    await act(async () => a.resolve({ shares: [{ id: "s-A" }] }));
+    await settle();
+
+    expect(screen.getByText("Comment on s-B")).toBeInTheDocument();
+    expect(screen.queryByText("Comment on s-A")).not.toBeInTheDocument();
+    expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the spinner up for the open trip when an earlier trip's response lands first", async () => {
+    const a = deferred();
+    const b = deferred();
+    serveByTrip({ "t-A": a, "t-B": b });
+    const { rerender } = render(<Panel tripId="t-A" tripTitle="Trip A" />);
+
+    rerender(<Panel tripId="t-B" tripTitle="Trip B" />);
+    await act(async () => a.resolve({ shares: [{ id: "s-A" }] }));
+    await settle();
+
+    // Trip B is still loading: A's answer must neither show nor end the wait.
+    expect(screen.getByText("Loading comments…")).toBeInTheDocument();
+    expect(screen.queryByText("Comment on s-A")).not.toBeInTheDocument();
+
+    await act(async () => b.resolve({ shares: [{ id: "s-B" }] }));
+    expect(await screen.findByText("Comment on s-B")).toBeInTheDocument();
+    expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument();
+  });
+
+  it("does not report an earlier trip's late failure against the open trip", async () => {
+    const a = deferred();
+    const b = deferred();
+    serveByTrip({ "t-A": a, "t-B": b });
+    const { rerender } = render(<Panel tripId="t-A" tripTitle="Trip A" />);
+
+    rerender(<Panel tripId="t-B" tripTitle="Trip B" />);
+    await act(async () => b.resolve({ shares: [{ id: "s-B" }] }));
+    expect(await screen.findByText("Comment on s-B")).toBeInTheDocument();
+
+    await act(async () => a.reject(new Error("Request validation failed.")));
+    await settle();
+
+    expect(screen.getByText("Comment on s-B")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("drops a response that arrives after the panel closed, and loads cleanly on reopening", async () => {
+    const a = deferred();
+    serveByTrip({ "t-A": a });
+    const { rerender } = render(<Panel tripId="t-A" />);
+
+    rerender(<Panel tripId="t-A" isOpen={false} />);
+    await act(async () => a.resolve({ shares: [{ id: "s-A" }] }));
+    await settle();
+    expect(screen.queryByText("Comment on s-A")).not.toBeInTheDocument();
+
+    rerender(<Panel tripId="t-A" />);
+    expect(await screen.findByText("Comment on s-A")).toBeInTheDocument();
+    expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument();
+  });
+});
+
+describe("TripSlideOver focus when Retry is pressed", () => {
+  it.each([
+    ["every request fails", { failing: ["s-1", "s-2"] }, "Couldn't load comments."],
+    ["only some requests fail", { failing: ["s-2"] }, "Some comments couldn't load."],
+  ])("keeps focus inside the dialog when %s", async (_, options, message) => {
+    serve(options);
+    renderPanel();
+    const alert = await screen.findByRole("alert");
+    const retry = within(alert).getByRole("button", { name: "Retry" });
+    retry.focus();
+    expect(retry).toHaveFocus();
+
+    fireEvent.click(retry);
+
+    // Retry and its alert are gone while the request runs; focus must not have gone with them.
+    expect(retry).not.toBeInTheDocument();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(screen.getByRole("dialog")).toContainElement(document.activeElement);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(screen.getByRole("dialog")).toContainElement(document.activeElement);
+  });
+
+  it("leaves Tab to the browser from wherever Retry sent focus", async () => {
+    serve({ failing: ["s-1", "s-2"] });
+    renderPanel();
+    const retry = within(await screen.findByRole("alert")).getByRole("button", { name: "Retry" });
+    retry.focus();
+    fireEvent.click(retry);
+    await screen.findByRole("alert");
+
+    const home = document.activeElement;
+    expect(screen.getByRole("dialog")).toContainElement(home);
+
+    // Close and Retry/footer sit either side of it, so neither direction needs the wrap-around.
+    expect(fireEvent.keyDown(home, { key: "Tab" })).toBe(true);
+    expect(fireEvent.keyDown(home, { key: "Tab", shiftKey: true })).toBe(true);
+    expect(home).toHaveFocus();
   });
 });

@@ -298,6 +298,10 @@ export default function TripSlideOver({
   const [partialError, setPartialError] = useState(false);
   const closeButtonRef = useRef(null);
   const panelRef = useRef(null);
+  // Where focus rests while the list's own controls (the Retry button) are swapped out.
+  const listRef = useRef(null);
+  // Stamps each load; a response only counts while its stamp is still the latest.
+  const requestIdRef = useRef(0);
 
   // Read at close time, so a parent passing a fresh ref object each render cannot re-run the focus effect.
   const returnFocusRefLatest = useRef(returnFocusRef);
@@ -367,11 +371,17 @@ export default function TripSlideOver({
   // ── Fetch all comments across shares ──
   const fetchComments = useCallback(async () => {
     if (!agencyId || !tripId) return;
+    // The panel stays mounted between trips, so a slow answer for an earlier
+    // trip can land after a later one has loaded. Drop any answer that is no
+    // longer the latest request.
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestId === requestIdRef.current;
     setLoading(true);
     setError(null);
     setPartialError(false);
     try {
       const sharesRes = await listTripShares(agencyId, tripId);
+      if (!isCurrent()) return;
       const shares = Array.isArray(sharesRes?.shares) ? sharesRes.shares : [];
 
       // allSettled, not a per-request catch: a failed request must not pass
@@ -379,6 +389,7 @@ export default function TripSlideOver({
       const results = await Promise.allSettled(
         shares.map((share) => listShareComments(agencyId, share.id)),
       );
+      if (!isCurrent()) return;
       const loaded = results.flatMap((result, index) =>
         result.status === "fulfilled" && Array.isArray(result.value?.comments)
           ? result.value.comments.map((c) => ({ ...c, shareId: shares[index].id }))
@@ -394,17 +405,29 @@ export default function TripSlideOver({
         setPartialError(failed > 0);
       }
     } catch {
+      if (!isCurrent()) return;
       setComments([]);
       setError("Couldn't load comments.");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [agencyId, tripId]);
+
+  // Retry swaps its own alert for the spinner, which would drop focus to <body>
+  // inside an aria-modal dialog. Park focus on the list first.
+  const retryComments = useCallback(() => {
+    listRef.current?.focus();
+    fetchComments();
+  }, [fetchComments]);
 
   useEffect(() => {
     if (isOpen && tripId) {
       fetchComments();
     }
+    // Closing, switching trips or unmounting retires whatever is still in flight.
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [isOpen, tripId, fetchComments]);
 
   // Close on Escape
@@ -564,7 +587,14 @@ export default function TripSlideOver({
         </header>
 
         {/* ── Comment list ── */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 min-h-0">
+        {/* Not a tab stop: Retry moves focus here before its alert unmounts, so it stays inside the dialog. */}
+        <div
+          ref={listRef}
+          role="region"
+          aria-label="Comments"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 min-h-0 focus:outline-none"
+        >
           {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
@@ -574,11 +604,11 @@ export default function TripSlideOver({
           )}
 
           {/* Error */}
-          {!loading && error && <LoadAlert message={error} onRetry={fetchComments} />}
+          {!loading && error && <LoadAlert message={error} onRetry={retryComments} />}
 
           {/* Some shares' comments failed; what loaded is listed below */}
           {!loading && !error && partialError && (
-            <LoadAlert message="Some comments couldn't load." onRetry={fetchComments} />
+            <LoadAlert message="Some comments couldn't load." onRetry={retryComments} />
           )}
 
           {/* Empty state */}
