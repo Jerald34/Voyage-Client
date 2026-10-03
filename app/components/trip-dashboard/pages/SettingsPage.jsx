@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider";
 import { voyageTourHelpBullets, voyageTourSteps } from "../tutorial/tutorialContent.js";
 import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
+import TeamPage from "../../team/TeamPage.jsx";
 import { createProblemReport } from "../../../lib/api/support.js";
 
 function formatReadOnlyValue(value) {
@@ -97,6 +98,8 @@ export default function SettingsPage({
   onUpdateProfile,
   onUpdateAgency,
   onReplayTutorial,
+  focusSection = null,
+  onFocusSectionHandled,
 }) {
   const { theme, setTheme } = useTheme();
   const isPersonal = user?.accountType === "PERSONAL";
@@ -121,6 +124,15 @@ export default function SettingsPage({
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportSent, setReportSent] = useState(false);
+
+  const teamRef = useRef(null);
+
+  // A `tab=team` link opens Settings scrolled to the Team panel, once.
+  useEffect(() => {
+    if (focusSection !== "team" || !teamRef.current) return;
+    teamRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
+    onFocusSectionHandled?.();
+  }, [focusSection, onFocusSectionHandled]);
 
   useEffect(() => {
     const nextDisplayName = String(user?.displayName ?? "");
@@ -511,6 +523,17 @@ export default function SettingsPage({
             </button>
           </div>
         </Panel>
+
+        {!isPersonal && agency?.id ? (
+          <section
+            ref={teamRef}
+            id="settings-team"
+            aria-label="Team"
+            className="scroll-mt-4 rounded-[24px] border border-border bg-surface/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] xl:col-span-2"
+          >
+            <TeamPage agencyId={agency.id} embedded />
+          </section>
+        ) : null}
 
         {!isPersonal && membership?.role === "OWNER" && agency?.id ? (
           <DangerZoneCard

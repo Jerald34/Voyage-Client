@@ -83,6 +83,7 @@ export default function HomePage({
   onNewItinerary,
   initialTab = "command-center",
   showJoinedNotice = false,
+  initialSettingsSection = null,
 }) {
   const { theme } = useTheme();
   const { logout } = useAuth();
@@ -145,6 +146,8 @@ export default function HomePage({
   const [approvalError, setApprovalError] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [settingsFocus, setSettingsFocus] = useState(initialSettingsSection);
+  const clearSettingsFocus = useCallback(() => setSettingsFocus(null), []);
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
   const [isClientMenuOpen, setIsClientMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -907,6 +910,8 @@ export default function HomePage({
               onUpdateProfile={handleUserProfileUpdate}
               onUpdateAgency={handleAgencySettingsUpdate}
               onReplayTutorial={replayFirstUseTutorial}
+              focusSection={settingsFocus}
+              onFocusSectionHandled={clearSettingsFocus}
             />
           ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
             <AdminPage onPendingCountChange={refreshPendingCount} />
