@@ -267,7 +267,11 @@ function LoadAlert({ message, onRetry }) {
       className="rounded-[12px] bg-status-danger/10 border border-status-danger/20 px-4 py-3 text-sm text-status-danger flex items-center gap-2"
     >
       <span className="flex-1">{message}</span>
-      <button type="button" onClick={onRetry} className="font-bold underline hover:no-underline">
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded px-1 min-h-6 pointer-coarse:min-h-11 font-bold underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
+      >
         Retry
       </button>
     </div>
