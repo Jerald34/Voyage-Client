@@ -74,7 +74,7 @@ function StatusChip({ status }) {
 
 export default function HeroContinueCard({ trip, onContinue }) {
   if (!trip) {
-    return <EmptyState variant="staff-hero" />;
+    return <EmptyState variant="staff-hero" compact />;
   }
 
   return (

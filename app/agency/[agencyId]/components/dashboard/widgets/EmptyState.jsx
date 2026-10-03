@@ -39,7 +39,11 @@ const EMPTY_STATE_CONTENT = {
   },
 };
 
-export default function EmptyState({ variant, onAction }) {
+/**
+ * `compact` is for a narrow column (the 280px side column): less padding and
+ * a sans semibold title instead of the heading font's faux-bold.
+ */
+export default function EmptyState({ variant, onAction, compact = false }) {
   const content = EMPTY_STATE_CONTENT[variant];
 
   if (!content) {
@@ -50,8 +54,20 @@ export default function EmptyState({ variant, onAction }) {
   const showCta = content.cta && onAction;
 
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-8 text-center sm:py-12">
-      <h3 className="text-sm font-extrabold text-text-primary mb-2">
+    <div
+      className={
+        compact
+          ? "flex flex-col items-center justify-center px-3 py-4 text-center"
+          : "flex flex-col items-center justify-center px-6 py-8 text-center sm:py-12"
+      }
+    >
+      <h3
+        className={
+          compact
+            ? "font-sans text-[13px] font-semibold tracking-normal text-text-primary mb-2"
+            : "text-sm font-extrabold text-text-primary mb-2"
+        }
+      >
         {content.heading}
       </h3>
       {content.body && (

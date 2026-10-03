@@ -42,7 +42,8 @@ export default function DashboardGreeting({ name, count, onNewTrip, now }) {
         <h1 className="max-w-none text-[28px] leading-tight min-[1280px]:text-[32px]">
           {firstName ? `${greeting}, ${firstName}` : greeting}
         </h1>
-        {summary ? <p className="mt-1 text-sm text-text-muted">{summary}</p> : null}
+        {/* Always rendered, one line tall, so the page doesn't shift when the count arrives. */}
+        <p className="mt-1 min-h-5 text-sm text-text-muted">{summary}</p>
       </div>
       <button
         type="button"

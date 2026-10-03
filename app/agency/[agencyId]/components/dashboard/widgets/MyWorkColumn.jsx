@@ -46,12 +46,14 @@ function StatusChip({ status }) {
   );
 }
 
-/** "2h ago", "3d ago"; the raw string if it can't be read. */
+/** "Just now", "5m ago", "2h ago", "3d ago"; the raw string if it can't be read. */
 function relativeTime(isoString) {
   if (!isoString) return "";
   const diff = Date.now() - new Date(isoString).getTime();
   if (Number.isNaN(diff)) return isoString;
-  const minutes = Math.floor(diff / 60_000);
+  // A clock a little ahead of the server's makes the difference negative.
+  const minutes = Math.max(0, Math.floor(diff / 60_000));
+  if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
