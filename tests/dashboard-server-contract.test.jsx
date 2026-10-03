@@ -250,7 +250,7 @@ describe("Staff dashboard with real server payloads", () => {
   it("says why each client is waiting", () => {
     renderStaff();
 
-    const worklist = screen.getByRole("region", { name: "Clients waiting on you" });
+    const worklist = screen.getByRole("region", { name: "Needs you today" });
     expect(within(worklist).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
     for (const text of ["Waiting 1d", "Waiting 6h", "Last edited 4d ago", "Link expires in 20h", "Starts in 3 days"]) {
       expect(within(worklist).getByText(text)).toBeInTheDocument();

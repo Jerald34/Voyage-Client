@@ -68,15 +68,15 @@ export default function HeroContinueCard({ trip, onContinue }) {
   }
 
   return (
-    <div className="h-[200px] dashboard-card p-6 flex flex-col justify-between">
+    <div className="frame-tile flex flex-col gap-3 rounded-[16px] p-4">
       {/* Top: status chip, title, client name */}
       <div>
         <div className="mb-3">
           <StatusChip status={trip.statusChip} />
         </div>
-        <h2 className="text-lg font-extrabold text-text-primary mb-1 line-clamp-2">
+        <h3 className="mb-1 line-clamp-2 font-sans text-[15px] font-semibold tracking-normal text-text-primary">
           {trip.tripTitle}
-        </h2>
+        </h3>
         <p className="text-sm text-text-muted">
           {trip.clientName}
         </p>
@@ -93,7 +93,7 @@ export default function HeroContinueCard({ trip, onContinue }) {
       <button
         type="button"
         onClick={() => onContinue(trip.tripId)}
-        className="w-full h-11 rounded-lg bg-secondary text-white font-bold text-sm shadow-soft hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+        className="h-11 w-full rounded-lg bg-secondary-strong text-sm font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
       >
         Continue
       </button>

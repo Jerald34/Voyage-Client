@@ -853,6 +853,7 @@ export default function HomePage({
                 <StaffMyWork
                   agencyId={agencyId}
                   initialData={null}
+                  viewerName={user?.displayName}
                   onOpenTrip={(tripId) => {
                     explicitContextRef.current = true;
                     setActiveTab("command-center");

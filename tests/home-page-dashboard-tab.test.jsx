@@ -151,9 +151,7 @@ describe("HomePage Dashboard tab", () => {
 
     // Above the first dashboard section, not buried in the Team section at the bottom.
     const notice = screen.getByText(JOINED_NOTICE);
-    const firstSection = screen.getByRole("heading", {
-      name: role === "STAFF" ? "Clients waiting on you" : "Needs you today",
-    });
+    const firstSection = screen.getByRole("heading", { name: "Needs you today" });
     expect(notice.compareDocumentPosition(firstSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
