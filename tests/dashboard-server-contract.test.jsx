@@ -30,7 +30,7 @@ import OwnerOverview from "../app/agency/[agencyId]/components/dashboard/OwnerOv
 import StaffMyWork from "../app/agency/[agencyId]/components/dashboard/StaffMyWork.jsx";
 
 function kpiTile(label) {
-  return screen.getByRole("button", { name: new RegExp(`^${label}:`) });
+  return screen.getByRole("group", { name: new RegExp(`^${label}:`) });
 }
 
 /** The owner's to-do group headed e.g. "Client comments to answer (2)". */
@@ -108,10 +108,9 @@ describe("Owner dashboard with real server payloads", () => {
   it("treats slower share and response times as regressions", () => {
     renderOwner(fixtures.ownerBusy);
 
-    for (const label of ["Time to share", "Time to reply"]) {
-      expect(within(kpiTile(label)).getByText("▲").parentElement.className).toContain("--danger");
-    }
-    expect(within(kpiTile("Win rate")).getByText("▲").parentElement.className).toContain("--success");
+    expect(within(kpiTile("Time to share")).getByText("0.8d slower").className).toContain("--danger");
+    expect(within(kpiTile("Time to reply")).getByText("1.2h slower").className).toContain("--danger");
+    expect(within(kpiTile("Win rate")).getByText("+16.7 pts").className).toContain("--success");
   });
 });
 
