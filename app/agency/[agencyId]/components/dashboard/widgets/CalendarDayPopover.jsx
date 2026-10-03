@@ -1,0 +1,124 @@
+"use client";
+
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import KindIcon from "./KindIcon";
+import { describeDayItems, fullDayLabel, relativeDayLabel } from "@/app/lib/calendarDays";
+
+const KIND_BADGE = {
+  trip: "bg-secondary/15 text-secondary-strong",
+  share_expires: "bg-status-warning/15 text-status-warning",
+};
+const DEFAULT_BADGE = "bg-text-muted/15 text-text-muted";
+
+/**
+ * A calendar day's details. Floats beside the day inside the calendar card
+ * (flipping left near the right edge) or, on narrow screens, sits inline
+ * under the grid. Focus moves to the first action (the close button on an
+ * empty day). Escape and the close button call `onClose({ restoreFocus: true })`.
+ */
+export default function CalendarDayPopover({ cell, todayKey, anchorEl, containerEl, inline = false, onClose, onAction }) {
+  const titleId = useId();
+  const ref = useRef(null);
+  const [position, setPosition] = useState(null);
+  const items = describeDayItems(cell);
+
+  useLayoutEffect(() => {
+    if (inline) return;
+    if (!anchorEl || !containerEl || !ref.current) {
+      setPosition({ left: 8, top: 8 });
+      return;
+    }
+    const box = containerEl.getBoundingClientRect();
+    const anchor = anchorEl.getBoundingClientRect();
+    const { offsetWidth: width, offsetHeight: height } = ref.current;
+    let left = anchor.right - box.left + 8;
+    if (left + width > box.width - 4) left = Math.max(4, anchor.left - box.left - width - 8);
+    let top = anchor.top - box.top;
+    if (top + height > box.height - 4) top = Math.max(4, box.height - height - 4);
+    setPosition({ left, top });
+  }, [inline, anchorEl, containerEl, cell.key]);
+
+  useEffect(() => {
+    ref.current?.querySelector("[data-autofocus]")?.focus();
+  }, [cell.key]);
+
+  function handleKeyDown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose({ restoreFocus: true });
+    }
+  }
+
+  const title = cell.isToday ? "Today" : fullDayLabel(cell.date);
+  const subtitle = cell.isToday ? fullDayLabel(cell.date) : relativeDayLabel(cell.key, todayKey);
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-labelledby={titleId}
+      data-calendar-popover=""
+      onKeyDown={handleKeyDown}
+      className={
+        inline
+          ? "frame-tile mt-3 rounded-[16px] p-3"
+          : "frame-popover frame-pop-in absolute z-30 w-[260px] rounded-[16px] p-3"
+      }
+      style={
+        inline
+          ? undefined
+          : { left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? "visible" : "hidden" }
+      }
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p id={titleId} className="text-[13px] font-semibold text-text-primary">
+            {title}
+          </p>
+          <p className="text-[12px] text-text-muted">{subtitle}</p>
+        </div>
+        <button
+          type="button"
+          aria-label="Close"
+          data-autofocus={items.length === 0 ? "" : undefined}
+          onClick={() => onClose({ restoreFocus: true })}
+          className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-text-muted hover:bg-text-primary/5 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="mt-2 text-[12px] text-text-muted">Nothing on this day.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-[color:var(--frame-border)]">
+          {items.map((item, index) => (
+            <li key={item.key} className="flex gap-2 py-2">
+              <span
+                aria-hidden="true"
+                className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full ${KIND_BADGE[item.kind] ?? DEFAULT_BADGE}`}
+              >
+                <KindIcon kind={item.kind} className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold leading-snug text-text-primary">{item.title}</p>
+                {item.detail ? <p className="text-[12px] text-text-muted">{item.detail}</p> : null}
+                <button
+                  type="button"
+                  data-autofocus={index === 0 ? "" : undefined}
+                  onClick={() => onAction(item)}
+                  className="mt-1 min-h-8 rounded text-[12px] font-semibold text-secondary-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                >
+                  {item.actionLabel} <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
