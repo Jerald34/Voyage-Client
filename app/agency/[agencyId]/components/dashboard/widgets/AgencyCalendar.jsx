@@ -104,7 +104,7 @@ function DayDots({ events }) {
   );
 }
 
-function DayTile({ cell, isOpen, tabbable, buttonRef, onClick, onFocus, onKeyDown }) {
+function DayTile({ cell, isOpen, tabbable, loading, buttonRef, onClick, onFocus, onKeyDown }) {
   const label = cell.spans.find((span) => span.showLabel) ?? null;
   const allPast = cell.spans.length > 0 && cell.spans.every((span) => span.isPast);
   return (
@@ -132,6 +132,13 @@ function DayTile({ cell, isOpen, tabbable, buttonRef, onClick, onFocus, onKeyDow
         </span>
         <DayDots events={cell.events} />
       </span>
+      {loading && cell.inMonth ? (
+        <span
+          aria-hidden="true"
+          data-skeleton=""
+          className="mt-auto mb-1 h-2 w-3/5 rounded-full bg-text-primary/10 motion-safe:animate-pulse"
+        />
+      ) : null}
       {label ? <span className="mt-auto truncate pb-1 text-[11px] leading-[13px] text-text-primary">{label.placeLabel}</span> : null}
       {cell.spans.length > 0 ? (
         <span aria-hidden="true" className={`absolute inset-x-0 bottom-0 h-[3px] bg-secondary ${allPast ? "opacity-45" : ""}`} />
@@ -162,6 +169,7 @@ export default function AgencyCalendar({ agencyId, onOpenTrip }) {
   const { data, error, isLoading, refetch } = useCalendarEvents({ agencyId, month });
   const cells = useMemo(() => buildCalendarDays(data, month, today), [data, month, today]);
   const weeks = [0, 1, 2, 3, 4, 5].map((week) => cells.slice(week * 7, week * 7 + 7));
+  const isFirstLoad = isLoading && !data;
   const activeFocusKey = cells.some((cell) => cell.key === focusKey) ? focusKey : toDateKey(month);
   const openCell = openKey ? cells.find((cell) => cell.key === openKey) ?? null : null;
 
@@ -261,7 +269,7 @@ export default function AgencyCalendar({ agencyId, onOpenTrip }) {
         </div>
       </div>
 
-      <div role="grid" aria-labelledby={titleId} aria-busy={isLoading && !data ? "true" : undefined} className="mt-3 flex flex-col gap-1">
+      <div role="grid" aria-labelledby={titleId} aria-busy={isFirstLoad ? "true" : undefined} className="mt-3 flex flex-col gap-1">
         <div role="row" className="grid grid-cols-7 gap-1">
           {WEEKDAY_SHORT.map((label, index) => (
             <div key={label} role="columnheader" aria-label={WEEKDAY_NAMES[index]} className="px-1 text-[11px] font-semibold text-text-muted">
@@ -277,6 +285,7 @@ export default function AgencyCalendar({ agencyId, onOpenTrip }) {
                   cell={cell}
                   isOpen={openKey === cell.key}
                   tabbable={cell.key === activeFocusKey}
+                  loading={isFirstLoad}
                   buttonRef={(element) => {
                     if (element) buttonRefs.current.set(cell.key, element);
                     else buttonRefs.current.delete(cell.key);

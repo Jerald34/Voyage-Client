@@ -242,3 +242,45 @@ describe("AgencyCalendar Escape", () => {
     expect(outside).not.toHaveBeenCalled();
   });
 });
+
+describe("AgencyCalendar loading", () => {
+  const skeletons = (container) => container.querySelectorAll("[data-skeleton]");
+
+  it("puts a quiet placeholder in each day of the month while the first load is in flight", () => {
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ data: null, isLoading: true }));
+    const { container } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    expect(screen.getByRole("grid")).toHaveAttribute("aria-busy", "true");
+    expect(skeletons(container)).toHaveLength(31);
+    for (const bar of skeletons(container)) {
+      expect(bar).toHaveAttribute("aria-hidden", "true");
+      expect(bar.className).toContain("motion-safe:animate-pulse");
+    }
+    // Nothing extra is announced for a tile.
+    expect(day("Saturday, October 3")).toHaveAccessibleName("Saturday, October 3, today");
+  });
+
+  it("leaves the days outside the month without a placeholder", () => {
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ data: null, isLoading: true }));
+    const { container } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    const outside = day("Sunday, September 27");
+    expect(skeletons(outside)).toHaveLength(0);
+    expect(skeletons(container)).toHaveLength(31);
+  });
+
+  it("shows no placeholders while refreshing a month that already has data", () => {
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ isLoading: true }));
+    const { container } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    expect(screen.getByRole("grid")).not.toHaveAttribute("aria-busy");
+    expect(skeletons(container)).toHaveLength(0);
+  });
+
+  it("shows no placeholders once loading has failed", () => {
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ data: null, isLoading: false, error: new Error("offline") }));
+    const { container } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    expect(skeletons(container)).toHaveLength(0);
+  });
+});

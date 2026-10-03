@@ -39,7 +39,8 @@ export function useCalendarEvents({ agencyId, month }) {
   const warnedRef = useRef(false);
   const [data, setData] = useState(() => rangeCache.get(rangeKey) ?? null);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // A fetch starts on mount, so the first render already counts as loading.
+  const [isLoading, setIsLoading] = useState(Boolean(agencyId));
 
   const load = useCallback(async () => {
     // Whatever was in flight belongs to a range or agency nobody is looking at.

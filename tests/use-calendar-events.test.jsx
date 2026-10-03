@@ -82,6 +82,20 @@ describe("useCalendarEvents", () => {
 });
 
 describe("useCalendarEvents requests", () => {
+  it("is loading from the first render and stops once the calendar arrives", async () => {
+    mocks.fetchApi.mockResolvedValue(payloadFrom("2026-09-27"));
+    const { result } = renderHook(() => useCalendarEvents({ agencyId: "agency-1", month: OCT }));
+    expect(result.current.isLoading).toBe(true);
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data).not.toBeNull();
+  });
+
+  it("is not loading without an agency", () => {
+    const { result } = renderHook(() => useCalendarEvents({ agencyId: null, month: OCT }));
+    expect(result.current.isLoading).toBe(false);
+  });
+
   it("drops a response that lands after the agency was cleared", async () => {
     const pending = deferred();
     mocks.fetchApi.mockReturnValue(pending.promise);
