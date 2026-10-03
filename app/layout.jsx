@@ -29,16 +29,18 @@ export const metadata = {
   formatDetection: {
     telephone: false,
   },
+  // `?v=` must match public/manifest.json. Bump both when the icon artwork
+  // changes, or installed apps and iOS keep showing the old icon.
   icons: {
     icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png?v=2", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png?v=2", sizes: "512x512", type: "image/png" },
+      { url: "/icon.svg?v=2", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/icons/icon-192.png",
+    shortcut: "/icons/icon-192.png?v=2",
   },
   openGraph: {
     title: "Voyage Planner",
