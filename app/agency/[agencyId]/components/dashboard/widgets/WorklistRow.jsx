@@ -7,7 +7,8 @@ import KindIcon, { hasKindIcon } from "./KindIcon";
  * One row in "Needs you today".
  *
  * - Leading badge: the row's kind as an icon on a tone-tinted circle, plus an
- *   sr-only tone label, so the meaning never rests on colour alone.
+ *   sr-only label for tones that carry meaning (info rows need none), so the
+ *   meaning never rests on colour alone.
  * - The row body is a <button> when onRowClick is set; the action is its own
  *   ≥44px button, and its clicks never reach onRowClick.
  * - Enter animation: fade + 8px rise over 240ms, started `enterDelay` ms late
@@ -26,6 +27,13 @@ const TONE_DOT_CLASS = {
   success: "bg-status-success",
   warning: "bg-status-warning",
   danger: "bg-status-danger",
+};
+
+/** What a tone means, read by screen readers. Info rows get no label. */
+const TONE_LABEL = {
+  success: "Coming up",
+  warning: "Needs attention",
+  danger: "Urgent",
 };
 
 export default function WorklistRow({
@@ -89,7 +97,7 @@ export default function WorklistRow({
             <span className={`block h-2 w-2 rounded-full ${TONE_DOT_CLASS[tone] ?? TONE_DOT_CLASS.info}`} />
           )}
         </span>
-        <span className="sr-only">{tone}</span>
+        {TONE_LABEL[tone] ? <span className="sr-only">{TONE_LABEL[tone]}</span> : null}
       </div>
 
       <BodyTag {...bodyProps}>

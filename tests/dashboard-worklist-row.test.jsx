@@ -23,11 +23,18 @@ describe("WorklistRow", () => {
     expect(screen.getByRole("button", { name: "Reply" })).toBeInTheDocument();
   });
 
-  it("includes a screen-reader status label paired with the tone color (not color-only)", () => {
-    const { container } = renderRow({ tone: "warning" });
-    const srLabel = container.querySelector(".sr-only");
-    expect(srLabel).toBeTruthy();
-    expect(srLabel.textContent.toLowerCase()).toContain("warning");
+  it.each([
+    ["warning", "Needs attention"],
+    ["danger", "Urgent"],
+    ["success", "Coming up"],
+  ])('names the %s tone for screen readers in words ("%s"), not the raw key', (tone, label) => {
+    const { container } = renderRow({ tone });
+    expect(container.querySelector(".sr-only").textContent).toBe(label);
+  });
+
+  it("adds no tone label to plain info rows", () => {
+    const { container } = renderRow({ tone: "info" });
+    expect(container.querySelector(".sr-only")).toBeNull();
   });
 
   it("fires onAction when the action button is clicked", () => {
@@ -67,9 +74,9 @@ describe("WorklistRow", () => {
   });
 
   it("shows the row's kind as an icon, keeping the tone label for screen readers", () => {
-    const { container } = renderRow({ kind: "unreadComments" });
+    const { container } = renderRow({ kind: "unreadComments", tone: "warning" });
     expect(container.querySelector("svg")).toBeInTheDocument();
-    expect(container.querySelector(".sr-only").textContent).toBe("info");
+    expect(container.querySelector(".sr-only").textContent).toBe("Needs attention");
   });
 
   it("enters after the delay it is given", () => {
