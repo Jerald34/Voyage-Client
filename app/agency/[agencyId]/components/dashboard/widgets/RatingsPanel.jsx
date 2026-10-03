@@ -14,7 +14,8 @@ function formatDate(isoString) {
   }
 }
 
-function StarRating({ rating }) {
+function StarRating({ rating: raw }) {
+  const rating = Math.min(5, Math.max(0, Math.round(Number(raw) || 0)));
   return (
     <span className="inline-block text-[13px]" style={{ color: 'var(--rating-star)' }}>
       <span aria-hidden="true">

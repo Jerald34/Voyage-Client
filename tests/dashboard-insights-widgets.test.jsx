@@ -27,6 +27,12 @@ describe("biggestDrop", () => {
     expect(biggestDrop(STAGES)).toBe("Biggest drop: drafted to shared (50%)");
   });
 
+  it("skips a stage it has no name for instead of throwing", () => {
+    const unknown = { key: "mystery", count: 1, dropOffPct: 90 };
+    expect(biggestDrop([...STAGES.slice(0, 3), unknown])).toBe("Biggest drop: drafted to shared (50%)");
+    expect(biggestDrop([STAGES[0], unknown, { key: "sent", count: 1, dropOffPct: 99 }])).toBeNull();
+  });
+
   it("says nothing when no stage loses trips", () => {
     expect(biggestDrop(STAGES.map((stage) => ({ ...stage, dropOffPct: stage.dropOffPct === null ? null : 0 })))).toBeNull();
   });
@@ -40,6 +46,11 @@ describe("FunnelChart", () => {
     expect(within(section).getByText("Last 30 days: 6 trips created, 2 approved.")).toBeInTheDocument();
     expect(within(section).getByRole("button", { name: "Shared with client: 3. Open trip list." })).toBeInTheDocument();
     expect(within(section).getByText("Biggest drop: drafted to shared (50%)")).toBeInTheDocument();
+  });
+
+  it("still renders a stage it has no name for", () => {
+    render(<FunnelChart stages={[...STAGES, { key: "mystery", count: 1, dropOffPct: 50 }]} agencyId="agency-1" />);
+    expect(screen.getByRole("button", { name: "mystery: 1. Open trip list." })).toBeInTheDocument();
   });
 
   it("renders nothing without stages", () => {
@@ -58,6 +69,12 @@ describe("RatingsPanel", () => {
 
     fireEvent.click(within(section).getByRole("button", { name: "All reviews (3)" }));
     expect(within(section).getByText("Review c")).toBeInTheDocument();
+  });
+
+  it("keeps a rating outside 0 to 5 within five stars", () => {
+    render(<RatingsPanel reviews={[review("high", { rating: 7 }), review("low", { rating: -2 })]} />);
+    expect(screen.getByText("5 out of 5 stars")).toBeInTheDocument();
+    expect(screen.getByText("0 out of 5 stars")).toBeInTheDocument();
   });
 
   it("explains when reviews will appear", () => {

@@ -226,3 +226,19 @@ describe("AgencyCalendar across midnight", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("AgencyCalendar Escape", () => {
+  it("handles Escape on a day tile without letting it travel further", () => {
+    const outside = vi.fn();
+    document.addEventListener("keydown", outside);
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    fireEvent.click(day("Thursday, October 8"));
+    day("Friday, October 9").focus();
+    const notPrevented = fireEvent.keyDown(day("Friday, October 9"), { key: "Escape" });
+    document.removeEventListener("keydown", outside);
+
+    expect(notPrevented).toBe(false);
+    expect(outside).not.toHaveBeenCalled();
+  });
+});

@@ -17,6 +17,8 @@ export function biggestDrop(stages) {
   let worst = null;
   stages.forEach((stage, index) => {
     if (index === 0 || stage.dropOffPct == null || stage.dropOffPct <= 0) return;
+    // A stage the server added after this build has no short name; leave it out.
+    if (!STAGE_SHORT[stage.key] || !STAGE_SHORT[stages[index - 1].key]) return;
     if (!worst || stage.dropOffPct > worst.pct) {
       worst = { from: stages[index - 1].key, to: stage.key, pct: stage.dropOffPct };
     }
@@ -56,10 +58,10 @@ export default function FunnelChart({ stages = [], agencyId, periodLabel }) {
               <button
                 type="button"
                 onClick={() => setActiveStage(stage)}
-                aria-label={`${STAGE_LABELS[stage.key]}: ${stage.count}. Open trip list.`}
+                aria-label={`${STAGE_LABELS[stage.key] ?? stage.key}: ${stage.count}. Open trip list.`}
                 className="grid w-full grid-cols-[64px_minmax(0,1fr)_28px] items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
               >
-                <span className="text-[12px] text-text-muted">{STAGE_SHORT[stage.key]}</span>
+                <span className="text-[12px] text-text-muted">{STAGE_SHORT[stage.key] ?? stage.key}</span>
                 <span className="h-1.5 rounded-full bg-text-primary/10">
                   <span className="block h-1.5 rounded-full bg-secondary" style={{ width: `${(stage.count / maxCount) * 100}%` }} />
                 </span>

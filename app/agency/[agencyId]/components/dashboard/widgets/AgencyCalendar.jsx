@@ -198,6 +198,7 @@ export default function AgencyCalendar({ agencyId, onOpenTrip }) {
     // Escape also closes an open popover while focus is back on a day tile.
     if (event.key === "Escape" && openKey) {
       event.preventDefault();
+      event.stopPropagation();
       setOpenKey(null);
       return;
     }
