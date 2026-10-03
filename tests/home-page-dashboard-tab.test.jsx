@@ -105,11 +105,28 @@ describe("HomePage Dashboard tab", () => {
     expect(within(scroller).getByRole("heading", { name: "How your agency is doing" })).toBeInTheDocument();
   });
 
-  it("hides the Command Center header controls on the Dashboard", () => {
+  it("shows no Command Center header content on the Dashboard", () => {
     render(<HomePage user={agencyUser("OWNER")} initialTab="dashboard" />);
 
     expect(screen.queryByRole("button", { name: "New Itinerary" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Toggle menu" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Save to Client")).not.toBeInTheDocument();
+  });
+
+  it("always renders the compact header on the Dashboard and hides it on desktop with CSS", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="dashboard" />);
+
+    // Rendered unconditionally, so phones get the menu button on first paint
+    // instead of after a JS media-query check. jsdom applies no CSS, so assert
+    // the class that hides it at >= 900px.
+    const menuButton = screen.getByRole("button", { name: "Toggle menu" });
+    expect(menuButton.closest("header")).toHaveClass("min-[900px]:hidden");
+  });
+
+  it("does not hide the full header on the Command Center", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="command-center" />);
+
+    const menuButton = screen.getByRole("button", { name: "Toggle menu" });
+    expect(menuButton.closest("header")).not.toHaveClass("min-[900px]:hidden");
   });
 
   it("keeps the Command Center header on the Command Center tab", () => {

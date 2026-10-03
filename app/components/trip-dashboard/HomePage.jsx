@@ -453,9 +453,6 @@ export default function HomePage({
     ? "command-center"
     : activeTab;
 
-  // The Dashboard has its own greeting row; on phones the header stays for the menu button.
-  const showHeader = currentTab !== "dashboard" || isMobile;
-
   useEffect(() => {
     setSelectedPlaceId("");
   }, [activeContextKey]);
@@ -675,40 +672,38 @@ export default function HomePage({
           />
 
           <div className="relative flex min-w-0 flex-1 flex-col">
-            {showHeader ? (
-              <DashboardHeader
-                variant={currentTab === "dashboard" ? "compact" : "full"}
-                isSidebarOpen={isSidebarOpen}
-                setIsSidebarOpen={setIsSidebarOpen}
-                liveStatus={liveStatus}
-                scopedStreamError={isVisible ? streamError : null}
-                scopedIsStreaming={isVisible ? isStreaming : false}
-                getInitials={getInitials}
-                activeTab={currentTab}
-                onNewItinerary={() => {
-                  setPendingClientName(null);
-                  handleNewItinerary();
-                }}
-                isCreatingDraftThread={isCreatingDraftThread}
-                isClientMenuOpen={isClientMenuOpen}
-                setIsClientMenuOpen={setIsClientMenuOpen}
-                clientMenuRef={clientMenuRef}
-                hasOptions={effectivePlanningOptions.length > 0}
-                activeTripClientName={activeTripClientName}
-                activeTripInitials={activeTripInitials}
-                activeTripOrganizerInitials={activeTripOrganizerInitials}
-                clientMenuEmptyTitle={clientMenuEmptyTitle}
-                clientMenuEmptyBody={clientMenuEmptyBody}
-                safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
-                activeOption={effectiveActiveOption}
-                onPlanningOptionDelete={handleDeleteOption}
-                deletingThreadId={deletingThreadId}
-                onPlanningOptionChange={(ctx) => { setActiveContext(createPlanningContext(ctx?.type, ctx?.id)); setComposerInput(""); }}
-                onRenameThread={renameThread}
-                canApproveDraft={activeContext?.type === "draft" && Boolean(activeTripState?.itinerary?.id)}
-                onApproveDraft={() => { setApprovalError(""); setIsApprovalModalOpen(true); }}
-              />
-            ) : null}
+            <DashboardHeader
+              variant={currentTab === "dashboard" ? "compact" : "full"}
+              isSidebarOpen={isSidebarOpen}
+              setIsSidebarOpen={setIsSidebarOpen}
+              liveStatus={liveStatus}
+              scopedStreamError={isVisible ? streamError : null}
+              scopedIsStreaming={isVisible ? isStreaming : false}
+              getInitials={getInitials}
+              activeTab={currentTab}
+              onNewItinerary={() => {
+                setPendingClientName(null);
+                handleNewItinerary();
+              }}
+              isCreatingDraftThread={isCreatingDraftThread}
+              isClientMenuOpen={isClientMenuOpen}
+              setIsClientMenuOpen={setIsClientMenuOpen}
+              clientMenuRef={clientMenuRef}
+              hasOptions={effectivePlanningOptions.length > 0}
+              activeTripClientName={activeTripClientName}
+              activeTripInitials={activeTripInitials}
+              activeTripOrganizerInitials={activeTripOrganizerInitials}
+              clientMenuEmptyTitle={clientMenuEmptyTitle}
+              clientMenuEmptyBody={clientMenuEmptyBody}
+              safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
+              activeOption={effectiveActiveOption}
+              onPlanningOptionDelete={handleDeleteOption}
+              deletingThreadId={deletingThreadId}
+              onPlanningOptionChange={(ctx) => { setActiveContext(createPlanningContext(ctx?.type, ctx?.id)); setComposerInput(""); }}
+              onRenameThread={renameThread}
+              canApproveDraft={activeContext?.type === "draft" && Boolean(activeTripState?.itinerary?.id)}
+              onApproveDraft={() => { setApprovalError(""); setIsApprovalModalOpen(true); }}
+            />
 
             <main className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 max-[900px]:overflow-hidden max-[900px]:p-0">
           {currentTab === "command-center" ? (

@@ -6,8 +6,10 @@ import ClientSwitcher from "../command-center/ClientSwitcher.jsx";
  * New Itinerary, the client/trip switcher, "Save to Client" and the agent's
  * live status. The brand and the account live in the rail.
  *
- * `variant="compact"` (phones, Dashboard tab) keeps only the menu button and
- * the logo. On desktop the Dashboard renders no header at all.
+ * `variant="compact"` (Dashboard tab) keeps only the menu button and the
+ * logo. It is always rendered and hidden on desktop with CSS, so phones never
+ * wait on JS to show the menu button (no pop-in); the Dashboard has its own
+ * greeting row there.
  */
 export default function DashboardHeader({
   variant = "full",
@@ -42,7 +44,7 @@ export default function DashboardHeader({
   const isFull = variant === "full";
   const showCenterActions = isFull && activeTab !== "itineraries";
   return (
-    <header className="flex h-[84px] flex-shrink-0 items-center justify-between gap-5 border-b border-[color:var(--frame-border)] px-7 max-[900px]:h-[48px] max-[900px]:gap-2 max-[900px]:px-3">
+    <header className={`flex h-[84px] flex-shrink-0 items-center justify-between gap-5 border-b border-[color:var(--frame-border)] px-7 max-[900px]:h-[48px] max-[900px]:gap-2 max-[900px]:px-3 ${isFull ? "" : "min-[900px]:hidden"}`}>
       <div className="flex items-center gap-2">
         <button
           className="hidden max-[900px]:flex bg-transparent border-none text-primary p-2 cursor-pointer"
