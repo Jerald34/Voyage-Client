@@ -103,13 +103,20 @@ export function useDashboardPoll({
   useEffect(() => {
     if (!enabled || !agencyId) return;
 
+    // A background fetch that fails is already recorded in `error`; only a
+    // caller of `refetch` gets the rejection, so swallow it here instead of
+    // leaving an unhandled rejection behind.
+    const fetchQuietly = () => {
+      doFetch().catch(() => {});
+    };
+
     // Kick off an initial fetch immediately so the client data is fresh even
     // when SSR data was already provided (avoids a 60s wait for first refresh).
-    doFetch();
+    fetchQuietly();
 
     const intervalId = setInterval(() => {
       if (document.hidden) return; // paused while tab is hidden
-      doFetch();
+      fetchQuietly();
     }, intervalMs);
 
     function handleVisibilityChange() {
@@ -122,7 +129,7 @@ export function useDashboardPoll({
           : Date.now() - lastFetchedAtRef.current;
 
       if (elapsed >= intervalMsRef.current) {
-        doFetch();
+        fetchQuietly();
       }
     }
 

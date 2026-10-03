@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import useDashboardPoll from "@/app/hooks/useDashboardPoll";
 import AgencyCalendar from "./widgets/AgencyCalendar";
 import DashboardGreeting from "./widgets/DashboardGreeting";
-import DashboardSkeleton, { DASHBOARD_GRID_CLASS } from "./widgets/DashboardSkeleton";
+import DashboardStaleBanner from "./widgets/DashboardStaleBanner";
+import { DASHBOARD_GRID_CLASS, NeedsYouSkeleton, SideColumnSkeleton } from "./widgets/DashboardSkeleton";
 import JoinedNotice from "./widgets/JoinedNotice";
 import MyWorkColumn from "./widgets/MyWorkColumn";
 import NeedsYouList from "./widgets/NeedsYouList";
@@ -17,6 +18,8 @@ import { STAFF_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
  * the server to trips this person created or organizes) on the left, their
  * own work on the right. Nothing here depends on a period, so there is no
  * period switcher.
+ * The calendar loads on its own, so it is always mounted: only the parts that
+ * need the dashboard payload wait for it, or say it failed.
  */
 export default function StaffMyWork({
   agencyId,
@@ -29,7 +32,7 @@ export default function StaffMyWork({
 }) {
   const router = useRouter();
 
-  const { data, isStale, isFetching, error, refetch } = useDashboardPoll({
+  const { data, isStale, error, refetch } = useDashboardPoll({
     agencyId,
     view: "staff",
     period: "30d",
@@ -73,49 +76,26 @@ export default function StaffMyWork({
 
       <DashboardGreeting name={viewerName} count={data ? needsYou.length : null} onNewTrip={newTrip} />
 
-      {isStale && (
-        <div
-          role="status"
-          className="mt-4 inline-flex items-center gap-3 rounded-xl border border-secondary/30 bg-secondary/10 px-4 py-2 text-sm font-semibold text-secondary-strong"
-        >
-          <span>Data may be outdated.</span>
-          <button
-            type="button"
-            onClick={refetch}
-            className="rounded-pill bg-secondary-strong px-3 py-1 text-xs font-bold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] pointer-coarse:min-h-11 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-          >
-            Refresh
-          </button>
-        </div>
-      )}
+      {(isStale || error) && <DashboardStaleBanner hasData={!!data} onRetry={refetch} />}
 
-      {error && !isStale && (
-        <div role="alert" className="frame-tile mt-4 rounded-xl px-4 py-3 text-[13px] text-text-muted">
-          Could not refresh data.{" "}
-          <button type="button" onClick={refetch} className="font-semibold text-secondary-strong hover:underline">
-            Try again
-          </button>
+      <div className={DASHBOARD_GRID_CLASS}>
+        <div className="min-w-0 space-y-5">
+          {data ? <NeedsYouList items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
+          <AgencyCalendar agencyId={agencyId} onOpenTrip={openTripSlide} />
         </div>
-      )}
-
-      {isLoading ? (
-        <DashboardSkeleton />
-      ) : (
-        <div className={DASHBOARD_GRID_CLASS}>
-          <div className="min-w-0 space-y-5">
-            <NeedsYouList items={needsYou} onAction={handleNeedsYouAction} />
-            <AgencyCalendar agencyId={agencyId} onOpenTrip={openTripSlide} />
-          </div>
+        {data ? (
           <MyWorkColumn
-            hero={data?.hero ?? null}
-            recent={data?.secondaryRecent ?? []}
-            pipeline={data?.pipeline ?? null}
+            hero={data.hero ?? null}
+            recent={data.secondaryRecent ?? []}
+            pipeline={data.pipeline ?? null}
             agencyId={agencyId}
             onOpenTrip={openTrip}
             onOpenItineraries={onOpenItineraries}
           />
-        </div>
-      )}
+        ) : isLoading ? (
+          <SideColumnSkeleton label="Loading your work" />
+        ) : null}
+      </div>
 
       <TripSlideOver
         isOpen={!!slideTrip}
