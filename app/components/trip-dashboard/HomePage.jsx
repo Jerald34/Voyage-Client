@@ -450,6 +450,9 @@ export default function HomePage({
     ? "command-center"
     : activeTab;
 
+  // The Dashboard has its own greeting row; on phones the header stays for the menu button.
+  const showHeader = currentTab !== "dashboard" || isMobile;
+
   useEffect(() => {
     setSelectedPlaceId("");
   }, [activeContextKey]);
@@ -621,7 +624,8 @@ export default function HomePage({
   }, [activeContext, setTripStates]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-text-primary font-sans">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-background text-text-primary font-sans">
+      <div className="app-frame-streak" aria-hidden="true" />
       <FirstUseTutorial
         open={isFirstUseTutorialOpen}
         onClose={closeFirstUseTutorial}
@@ -649,55 +653,61 @@ export default function HomePage({
         onSave={saveTravelerNeeds}
       />
 
-      <div>
-        <DashboardHeader
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-          liveStatus={liveStatus}
-          scopedStreamError={isVisible ? streamError : null}
-          scopedIsStreaming={isVisible ? isStreaming : false}
-          getInitials={getInitials}
-          displayName={user?.displayName || "Traveler"}
-          agencyId={agencyId}
-          activeTab={currentTab}
-          onNewItinerary={() => {
-            setPendingClientName(null);
-            handleNewItinerary();
-          }}
-          isCreatingDraftThread={isCreatingDraftThread}
-          isClientMenuOpen={isClientMenuOpen}
-          setIsClientMenuOpen={setIsClientMenuOpen}
-          clientMenuRef={clientMenuRef}
-          hasOptions={effectivePlanningOptions.length > 0}
-          activeTripClientName={activeTripClientName}
-          activeTripInitials={activeTripInitials}
-          activeTripOrganizerInitials={activeTripOrganizerInitials}
-          clientMenuEmptyTitle={clientMenuEmptyTitle}
-          clientMenuEmptyBody={clientMenuEmptyBody}
-          safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
-          activeOption={effectiveActiveOption}
-          onPlanningOptionDelete={handleDeleteOption}
-          deletingThreadId={deletingThreadId}
-          onPlanningOptionChange={(ctx) => { setActiveContext(createPlanningContext(ctx?.type, ctx?.id)); setComposerInput(""); }}
-          onRenameThread={renameThread}
-          canApproveDraft={activeContext?.type === "draft" && Boolean(activeTripState?.itinerary?.id)}
-          onApproveDraft={() => { setApprovalError(""); setIsApprovalModalOpen(true); }}
-        />
-      </div>
+      <div className="relative flex min-w-0 flex-1 p-4 max-[900px]:p-0">
+        <div className="relative flex min-w-0 flex-1 overflow-hidden rounded-[24px] shadow-[0_24px_60px_rgba(15,23,42,0.12)] max-[900px]:rounded-none max-[900px]:shadow-none">
+          {/* The glass sits on its own layer: a backdrop-filter on an ancestor
+              would become the containing block for fixed children (slide-overs,
+              the phone drawer) and trap them inside the frame. */}
+          <div className="frame-panel pointer-events-none absolute inset-0 rounded-[inherit] max-[900px]:border-0" aria-hidden="true" />
 
-      <div className="flex flex-1 overflow-hidden relative">
-        <DashboardSidebar
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-          activeTab={currentTab}
-          setActiveTab={setActiveTab}
-          logout={logout}
-          user={user}
-          pendingCount={pendingCount}
-          agencyId={agencyId}
-        />
+          <DashboardSidebar
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            activeTab={currentTab}
+            setActiveTab={setActiveTab}
+            logout={logout}
+            user={user}
+            pendingCount={pendingCount}
+            agencyId={agencyId}
+          />
 
-        <main className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 max-[900px]:p-0 max-[900px]:overflow-hidden">
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            {showHeader ? (
+              <DashboardHeader
+                variant={currentTab === "dashboard" ? "compact" : "full"}
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+                liveStatus={liveStatus}
+                scopedStreamError={isVisible ? streamError : null}
+                scopedIsStreaming={isVisible ? isStreaming : false}
+                getInitials={getInitials}
+                activeTab={currentTab}
+                onNewItinerary={() => {
+                  setPendingClientName(null);
+                  handleNewItinerary();
+                }}
+                isCreatingDraftThread={isCreatingDraftThread}
+                isClientMenuOpen={isClientMenuOpen}
+                setIsClientMenuOpen={setIsClientMenuOpen}
+                clientMenuRef={clientMenuRef}
+                hasOptions={effectivePlanningOptions.length > 0}
+                activeTripClientName={activeTripClientName}
+                activeTripInitials={activeTripInitials}
+                activeTripOrganizerInitials={activeTripOrganizerInitials}
+                clientMenuEmptyTitle={clientMenuEmptyTitle}
+                clientMenuEmptyBody={clientMenuEmptyBody}
+                safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
+                activeOption={effectiveActiveOption}
+                onPlanningOptionDelete={handleDeleteOption}
+                deletingThreadId={deletingThreadId}
+                onPlanningOptionChange={(ctx) => { setActiveContext(createPlanningContext(ctx?.type, ctx?.id)); setComposerInput(""); }}
+                onRenameThread={renameThread}
+                canApproveDraft={activeContext?.type === "draft" && Boolean(activeTripState?.itinerary?.id)}
+                onApproveDraft={() => { setApprovalError(""); setIsApprovalModalOpen(true); }}
+              />
+            ) : null}
+
+            <main className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 max-[900px]:overflow-hidden max-[900px]:p-0">
           {currentTab === "command-center" ? (
             <section
               data-tour-target="workspace"
@@ -901,9 +911,10 @@ export default function HomePage({
           ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
             <AdminPage onPendingCountChange={refreshPendingCount} />
           ) : null}
-        </main>
+            </main>
+          </div>
+        </div>
       </div>
-
     </div>
   );
 }

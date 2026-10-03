@@ -105,6 +105,19 @@ describe("HomePage Dashboard tab", () => {
     expect(within(scroller).getByRole("heading", { name: "How your agency is doing" })).toBeInTheDocument();
   });
 
+  it("hides the Command Center header controls on the Dashboard", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="dashboard" />);
+
+    expect(screen.queryByRole("button", { name: "New Itinerary" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Toggle menu" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the Command Center header on the Command Center tab", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="command-center" />);
+
+    expect(screen.getByRole("button", { name: "New Itinerary" })).toBeInTheDocument();
+  });
+
   it("falls back to the Command Center when the user has no agency workspace", () => {
     const { container } = render(
       <HomePage user={{ id: "user-new", displayName: "New", memberships: [] }} initialTab="dashboard" />,
