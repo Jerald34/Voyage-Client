@@ -258,6 +258,22 @@ function tabbablesIn(root) {
   return [...root.querySelectorAll(TABBABLE_SELECTOR)].filter((element) => isTabbable(element, root));
 }
 
+// ─── Load failure notice ─────────────────────────────────────────────────────
+
+function LoadAlert({ message, onRetry }) {
+  return (
+    <div
+      role="alert"
+      className="rounded-[12px] bg-status-danger/10 border border-status-danger/20 px-4 py-3 text-sm text-status-danger flex items-center gap-2"
+    >
+      <span className="flex-1">{message}</span>
+      <button type="button" onClick={onRetry} className="font-bold underline hover:no-underline">
+        Retry
+      </button>
+    </div>
+  );
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 /**
@@ -278,6 +294,8 @@ export default function TripSlideOver({
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Some shares' comments failed to load; the rest are shown.
+  const [partialError, setPartialError] = useState(false);
   const closeButtonRef = useRef(null);
   const panelRef = useRef(null);
 
@@ -351,24 +369,33 @@ export default function TripSlideOver({
     if (!agencyId || !tripId) return;
     setLoading(true);
     setError(null);
+    setPartialError(false);
     try {
       const sharesRes = await listTripShares(agencyId, tripId);
       const shares = Array.isArray(sharesRes?.shares) ? sharesRes.shares : [];
 
-      const commentArrays = await Promise.all(
-        shares.map((share) =>
-          listShareComments(agencyId, share.id)
-            .then((r) =>
-              Array.isArray(r?.comments)
-                ? r.comments.map((c) => ({ ...c, shareId: share.id }))
-                : [],
-            )
-            .catch(() => []),
-        ),
+      // allSettled, not a per-request catch: a failed request must not pass
+      // for a share with no comments.
+      const results = await Promise.allSettled(
+        shares.map((share) => listShareComments(agencyId, share.id)),
       );
-      setComments(commentArrays.flat());
-    } catch (err) {
-      setError(err?.message || "Failed to load comments");
+      const loaded = results.flatMap((result, index) =>
+        result.status === "fulfilled" && Array.isArray(result.value?.comments)
+          ? result.value.comments.map((c) => ({ ...c, shareId: shares[index].id }))
+          : [],
+      );
+      const failed = results.filter((result) => result.status === "rejected").length;
+
+      if (failed > 0 && failed === results.length) {
+        setComments([]);
+        setError("Couldn't load comments.");
+      } else {
+        setComments(loaded);
+        setPartialError(failed > 0);
+      }
+    } catch {
+      setComments([]);
+      setError("Couldn't load comments.");
     } finally {
       setLoading(false);
     }
@@ -547,21 +574,15 @@ export default function TripSlideOver({
           )}
 
           {/* Error */}
-          {!loading && error && (
-            <div className="rounded-[12px] bg-status-danger/10 border border-status-danger/20 px-4 py-3 text-sm text-status-danger flex items-center gap-2">
-              <span className="flex-1">{error}</span>
-              <button
-                type="button"
-                onClick={fetchComments}
-                className="font-bold underline hover:no-underline"
-              >
-                Retry
-              </button>
-            </div>
+          {!loading && error && <LoadAlert message={error} onRetry={fetchComments} />}
+
+          {/* Some shares' comments failed; what loaded is listed below */}
+          {!loading && !error && partialError && (
+            <LoadAlert message="Some comments couldn't load." onRetry={fetchComments} />
           )}
 
           {/* Empty state */}
-          {!loading && !error && grouped.length === 0 && (
+          {!loading && !error && !partialError && grouped.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
               <ChatIcon
                 width={40}
