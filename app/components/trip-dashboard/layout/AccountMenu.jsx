@@ -8,12 +8,17 @@ const ROLE_LABELS = { OWNER: "Owner", ADMIN: "Admin", STAFF: "Staff" };
  * The avatar at the bottom of the rail and its account menu (WAI-ARIA menu
  * button). Click, Enter, Space or ArrowDown opens it with focus on the first
  * item; arrows, Home and End move between items; Escape closes it and returns
- * focus to the avatar; clicking outside or tabbing away closes it.
+ * focus to the avatar; clicking outside or tabbing away closes it. Choosing an
+ * item also returns focus to the avatar, so it is not lost when the menu
+ * unmounts. The signed-in identity sits above the menu, not inside it, and
+ * describes it.
  */
 export default function AccountMenu({ initials, displayName, email, role, agencyName, onOpenSettings, onSignOut }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
+  const identityId = useId();
   const buttonRef = useRef(null);
+  const popoverRef = useRef(null);
   const menuRef = useRef(null);
 
   const menuItems = () => Array.from(menuRef.current?.querySelectorAll('[role="menuitem"]') ?? []);
@@ -22,7 +27,7 @@ export default function AccountMenu({ initials, displayName, email, role, agency
     if (!open) return undefined;
     menuItems()[0]?.focus();
     function handlePointerDown(event) {
-      if (menuRef.current?.contains(event.target) || buttonRef.current?.contains(event.target)) return;
+      if (popoverRef.current?.contains(event.target) || buttonRef.current?.contains(event.target)) return;
       setOpen(false);
     }
     document.addEventListener("mousedown", handlePointerDown);
@@ -52,6 +57,8 @@ export default function AccountMenu({ initials, displayName, email, role, agency
 
   function choose(action) {
     setOpen(false);
+    // The focused item is about to unmount; hand focus back before running the action.
+    buttonRef.current?.focus();
     action?.();
   }
 
@@ -75,30 +82,28 @@ export default function AccountMenu({ initials, displayName, email, role, agency
             setOpen(true);
           }
         }}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-[12px] font-bold tracking-[0.04em] text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-[12px] font-bold tracking-[0.04em] text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {initials}
       </button>
       {open ? (
         <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
-          aria-label="Account"
-          onKeyDown={handleMenuKeyDown}
-          className="frame-popover frame-pop-in absolute bottom-0 left-[calc(100%+12px)] z-50 w-60 rounded-2xl p-2"
+          ref={popoverRef}
+          className="frame-popover frame-pop-in absolute bottom-0 left-[calc(100%+12px)] z-50 w-60 origin-bottom-left rounded-2xl p-2"
         >
-          <div className="mb-1 border-b border-[color:var(--frame-border)] px-2 pb-2 pt-1">
+          <div id={identityId} className="mb-1 border-b border-[color:var(--frame-border)] px-2 pb-2 pt-1">
             <p className="truncate text-[13px] font-semibold text-text-primary">{displayName}</p>
             {email ? <p className="truncate text-[12px] text-text-muted">{email}</p> : null}
             {roleLine ? <p className="truncate text-[12px] text-text-muted">{roleLine}</p> : null}
           </div>
-          <button type="button" role="menuitem" tabIndex={-1} className={itemClass} onClick={() => choose(onOpenSettings)}>
-            Account settings
-          </button>
-          <button type="button" role="menuitem" tabIndex={-1} className={itemClass} onClick={() => choose(onSignOut)}>
-            Sign out
-          </button>
+          <div ref={menuRef} id={menuId} role="menu" aria-label="Account" aria-describedby={identityId} onKeyDown={handleMenuKeyDown}>
+            <button type="button" role="menuitem" tabIndex={-1} className={itemClass} onClick={() => choose(onOpenSettings)}>
+              Account settings
+            </button>
+            <button type="button" role="menuitem" tabIndex={-1} className={itemClass} onClick={() => choose(onSignOut)}>
+              Sign out
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

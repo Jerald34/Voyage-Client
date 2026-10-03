@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import AccountMenu from "../app/components/trip-dashboard/layout/AccountMenu.jsx";
@@ -68,12 +68,28 @@ describe("RailButton", () => {
 describe("AccountMenu", () => {
   it("opens with the signed-in identity and focuses the first item", () => {
     renderMenu();
-    const menu = openMenu();
-    expect(menu).toHaveTextContent("Maria Santos");
-    expect(menu).toHaveTextContent("maria@example.test");
-    expect(menu).toHaveTextContent("Owner · Sunline Travel");
+    openMenu();
+    expect(screen.getByText("Maria Santos")).toBeInTheDocument();
+    expect(screen.getByText("maria@example.test")).toBeInTheDocument();
+    expect(screen.getByText("Owner · Sunline Travel")).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Account settings" })).toHaveFocus();
     expect(screen.getByRole("button", { name: "Account menu" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("keeps the identity outside the menu and describes the menu with it", () => {
+    renderMenu();
+    const menu = openMenu();
+    expect(menu).not.toContainElement(screen.getByText("Maria Santos"));
+    expect(menu).toHaveAccessibleDescription(/Maria Santos/);
+    expect(menu).toHaveAccessibleDescription(/Owner · Sunline Travel/);
+    expect(within(menu).getAllByRole("menuitem")).toHaveLength(2);
+  });
+
+  it("stays open when you click the identity block", () => {
+    renderMenu();
+    openMenu();
+    fireEvent.mouseDown(screen.getByText("Maria Santos"));
+    expect(screen.getByRole("menu", { name: "Account" })).toBeInTheDocument();
   });
 
   it("moves between items with the arrow keys", () => {
@@ -100,6 +116,7 @@ describe("AccountMenu", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
     expect(onSignOut).toHaveBeenCalledOnce();
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Account menu" })).toHaveFocus();
   });
 
   it("opens account settings", () => {
@@ -107,6 +124,8 @@ describe("AccountMenu", () => {
     openMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: "Account settings" }));
     expect(onOpenSettings).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Account menu" })).toHaveFocus();
   });
 
   it("closes when you click outside", () => {
@@ -192,7 +211,7 @@ describe("DashboardSidebar rail", () => {
   it("signs out from the account menu", () => {
     const { logout } = renderRail();
     fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
-    expect(screen.getByRole("menu", { name: "Account" })).toHaveTextContent("Owner · Sunline Travel");
+    expect(screen.getByText("Owner · Sunline Travel")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
     expect(logout).toHaveBeenCalledOnce();
   });
