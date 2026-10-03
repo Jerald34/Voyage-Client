@@ -24,6 +24,11 @@
   --color-sidebar-active: oklch(0.63 0.13 30);
   --color-border: oklch(0.33 0.03 220);
 
+  /* Terracotta for text links and filled buttons with text: the brand
+     terracotta is too light for 4.5:1 text contrast on white. */
+  --color-secondary-strong: #ad5238;
+  --color-on-secondary-strong: #ffffff;
+
   --color-status-success: #047857;
   --color-status-warning: #c2410c;
   --color-status-danger: #b91c1c;
@@ -63,6 +68,15 @@
   --glass-blur: 18px;
   --glass-border: rgba(255, 255, 255, 0.30);
 
+  /* App frame glass (dashboard calendar redesign). Kept apart from --glass-*,
+     which the Command Center chat panel uses. */
+  --frame-panel: rgba(255, 255, 255, 0.55);
+  --frame-tile: rgba(255, 255, 255, 0.72);
+  --frame-border: rgba(34, 56, 67, 0.10);
+  --frame-popover: #ffffff;
+  --frame-streak-1: rgba(255, 255, 255, 0.85);
+  --frame-streak-2: rgba(215, 122, 97, 0.08);
+
   /* Agency Dashboard tokens — aliased to system brand palette so the dashboard
      reads as part of the same product. Don't introduce new flat hues here. */
   --surface: rgb(var(--color-surface-rgb));
@@ -94,6 +108,9 @@
   --color-sidebar-active: oklch(0.70 0.12 35);
   --color-border: oklch(0.35 0.01 250);
 
+  --color-secondary-strong: #e0906f;
+  --color-on-secondary-strong: #111416;
+
   --color-status-success: #34d399;
   --color-status-warning: #fb923c;
   --color-status-danger: #f87171;
@@ -116,6 +133,13 @@
   --glass-bg: rgba(30, 34, 39, 0.75);
   --glass-blur: 24px;
   --glass-border: rgba(255, 255, 255, 0.05);
+
+  --frame-panel: rgba(26, 29, 33, 0.72);
+  --frame-tile: rgba(255, 255, 255, 0.04);
+  --frame-border: rgba(255, 255, 255, 0.08);
+  --frame-popover: #22262b;
+  --frame-streak-1: rgba(255, 255, 255, 0.04);
+  --frame-streak-2: rgba(224, 144, 111, 0.07);
 
   /* Agency Dashboard tokens — aliased to system brand palette so the dashboard
      reads as part of the same product. Don't introduce new flat hues here. */
@@ -157,6 +181,26 @@
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: rgb(var(--color-text-soft-rgb));
+}
+
+/* Glass app frame. `frame-panel` carries the blur, so only use it on layers
+   with no fixed-position children (see HomePage's frame background). */
+@utility frame-panel {
+  background: var(--frame-panel);
+  border: 1px solid var(--frame-border);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+@utility frame-tile {
+  background: var(--frame-tile);
+  border: 1px solid var(--frame-border);
+}
+
+@utility frame-popover {
+  background: var(--frame-popover);
+  border: 1px solid var(--frame-border);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
 }
 
 @utility bg-primary-navy {
@@ -431,5 +475,56 @@ body::before {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transform: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   APP FRAME (dashboard calendar redesign)
+   ═══════════════════════════════════════════════════ */
+
+/* Soft diagonal light streak behind the frame. */
+.app-frame-streak {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 30%, var(--frame-streak-1) 42%, transparent 54%),
+    linear-gradient(115deg, transparent 58%, var(--frame-streak-2) 64%, transparent 70%);
+}
+
+/* No blur support: a solid surface reads better than an unblurred see-through one. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .frame-panel {
+    background: rgb(var(--color-surface-rgb));
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .frame-panel,
+  .frame-tile {
+    background: rgb(var(--color-surface-rgb));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@keyframes frame-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.frame-pop-in {
+  animation: frame-pop-in 120ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame-pop-in {
+    animation: none;
   }
 }
