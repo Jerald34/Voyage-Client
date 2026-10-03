@@ -24,9 +24,9 @@ describe("WorklistRow", () => {
   });
 
   it.each([
-    ["warning", "Needs attention"],
-    ["danger", "Urgent"],
-    ["success", "Coming up"],
+    ["warning", "Needs attention: "],
+    ["danger", "Urgent: "],
+    ["success", "Coming up: "],
   ])('names the %s tone for screen readers in words ("%s"), not the raw key', (tone, label) => {
     const { container } = renderRow({ tone });
     expect(container.querySelector(".sr-only").textContent).toBe(label);
@@ -76,7 +76,7 @@ describe("WorklistRow", () => {
   it("shows the row's kind as an icon, keeping the tone label for screen readers", () => {
     const { container } = renderRow({ kind: "unreadComments", tone: "warning" });
     expect(container.querySelector("svg")).toBeInTheDocument();
-    expect(container.querySelector(".sr-only").textContent).toBe("Needs attention");
+    expect(container.querySelector(".sr-only").textContent).toBe("Needs attention: ");
   });
 
   it("enters after the delay it is given", () => {
@@ -99,5 +99,18 @@ describe("WorklistRow", () => {
   it("shows no dot next to a kind that has an icon", () => {
     const { container } = renderRow({ kind: "unreadComments" });
     expect(container.querySelector(".h-2.w-2.rounded-full")).not.toBeInTheDocument();
+  });
+
+  it("announces the tone as part of the row button's accessible name when tone matters", () => {
+    renderRow({ tone: "danger", onRowClick: () => {} });
+    expect(screen.getByRole("button", { name: /^Urgent/ })).toBeInTheDocument();
+  });
+
+  it("does not include tone in the row button's accessible name for info tone", () => {
+    renderRow({ tone: "info", onRowClick: () => {} });
+    // The row body should be a button with no tone prefix in its name.
+    const button = screen.getByRole("button", { name: /^Reply to Jane Doe/ });
+    expect(button).toBeInTheDocument();
+    expect(button.textContent).not.toMatch(/^Urgent|^Needs attention|^Coming up/);
   });
 });

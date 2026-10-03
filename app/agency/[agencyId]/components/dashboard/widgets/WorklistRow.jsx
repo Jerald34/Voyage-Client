@@ -6,11 +6,11 @@ import KindIcon, { hasKindIcon } from "./KindIcon";
 /**
  * One row in "Needs you today".
  *
- * - Leading badge: the row's kind as an icon on a tone-tinted circle, plus an
- *   sr-only label for tones that carry meaning (info rows need none), so the
- *   meaning never rests on colour alone.
+ * - Leading badge: the row's kind as an icon on a tone-tinted circle.
  * - The row body is a <button> when onRowClick is set; the action is its own
- *   ≥44px button, and its clicks never reach onRowClick.
+ *   ≥44px button, and its clicks never reach onRowClick. For tones that carry
+ *   meaning (info rows get none), an sr-only label precedes the title inside
+ *   the button, so screen readers hear "Urgent: <title>" when tabbing.
  * - Enter animation: fade + 8px rise over 240ms, started `enterDelay` ms late
  *   so a list can stagger; opacity only (no delay) under prefers-reduced-motion.
  */
@@ -97,10 +97,10 @@ export default function WorklistRow({
             <span className={`block h-2 w-2 rounded-full ${TONE_DOT_CLASS[tone] ?? TONE_DOT_CLASS.info}`} />
           )}
         </span>
-        {TONE_LABEL[tone] ? <span className="sr-only">{TONE_LABEL[tone]}</span> : null}
       </div>
 
       <BodyTag {...bodyProps}>
+        {TONE_LABEL[tone] ? <span className="sr-only">{`${TONE_LABEL[tone]}: `}</span> : null}
         <span className="block text-[13px] font-semibold leading-snug text-text-primary">{title}</span>
         {subtitle ? (
           <span className="block truncate text-[12px] text-text-muted" title={subtitle}>
