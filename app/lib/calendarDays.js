@@ -110,6 +110,7 @@ export function buildCalendarDays(payload, month, today = new Date()) {
       dayOfMonth: date.getDate(),
       inMonth: date.getMonth() === monthIndex,
       isToday: key === todayKey,
+      isPast: key < todayKey,
       spans,
       events: eventsByDay.get(key) ?? [],
     });
@@ -134,8 +135,10 @@ function spanCopy(span) {
   if (span.isEnd) {
     return { title: `${who}${span.placeLabel} returns`, detail: travelers(span.travelerCount) ?? span.tripTitle };
   }
+  // Without a client the title is the trip name, which is often just the place.
+  const subject = span.clientName ?? span.tripTitle;
   return {
-    title: `${span.clientName ?? span.tripTitle} in ${span.placeLabel}`,
+    title: subject === span.placeLabel ? subject : `${subject} in ${span.placeLabel}`,
     detail: `Day ${span.dayNumber} of ${span.totalDays}`,
   };
 }
@@ -145,8 +148,8 @@ const EVENT_COPY = {
     title: `Sent ${e.tripTitle}${e.clientName ? ` to ${e.clientName}` : ""}`,
     detail: "Itinerary link shared",
   }),
-  share_expires: (e) => ({
-    title: `${e.tripTitle} link expires`,
+  share_expires: (e, cell) => ({
+    title: `${e.tripTitle} link ${cell.isPast ? "expired" : "expires"}`,
     detail: e.clientName ? `Shared with ${e.clientName}` : "Itinerary link",
   }),
   client_viewed: (e) => ({ title: `${e.clientName ?? "Client"} viewed ${e.tripTitle}`, detail: views(e.detail?.viewCount) }),
@@ -182,7 +185,7 @@ export function describeDayItems(cell) {
       tripTitle: event.tripTitle,
       clientName: event.clientName,
       actionLabel: event.kind === "client_commented" ? "Reply" : "Open trip",
-      ...copy(event),
+      ...copy(event, cell),
     });
   }
   return items;

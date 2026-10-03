@@ -51,6 +51,8 @@ describe("buildCalendarDays", () => {
     expect(cellFor(cells, "2026-09-30").inMonth).toBe(false);
     expect(cellFor(cells, "2026-10-01").inMonth).toBe(true);
     expect(cells.filter((cell) => cell.isToday).map((cell) => cell.key)).toEqual(["2026-10-03"]);
+    expect(cellFor(cells, "2026-10-02").isPast).toBe(true);
+    expect(cellFor(cells, "2026-10-03").isPast).toBe(false);
   });
 
   it("spreads a trip across its days and labels the start of each week", () => {
@@ -114,6 +116,29 @@ describe("describeDayItems", () => {
   it("calls a one-day trip a day trip", () => {
     const cells = buildCalendarDays(payload({ trips: [{ ...kyoto, endDate: "2026-10-08", travelerCount: null }] }), OCT, TODAY);
     expect(describeDayItems(cellFor(cells, "2026-10-08"))[0]).toMatchObject({ title: "Reyes · Kyoto departs", detail: "Day trip" });
+  });
+
+  it("does not repeat the trip name when it is also the place", () => {
+    const trip = { ...kyoto, clientName: null, tripTitle: "Kyoto Trip", placeLabel: "Kyoto Trip" };
+    const cells = buildCalendarDays(payload({ trips: [trip] }), OCT, TODAY);
+    expect(describeDayItems(cellFor(cells, "2026-10-10"))[0].title).toBe("Kyoto Trip");
+
+    const named = { ...trip, tripTitle: "Autumn Escape", placeLabel: "Kyoto" };
+    const namedCells = buildCalendarDays(payload({ trips: [named] }), OCT, TODAY);
+    expect(describeDayItems(cellFor(namedCells, "2026-10-10"))[0].title).toBe("Autumn Escape in Kyoto");
+  });
+
+  it("says a link expired once its day has passed", () => {
+    const base = { tripId: "t1", tripTitle: "Lisbon Getaway", clientName: "Tanaka", kind: "share_expires", detail: {} };
+    const events = [
+      { ...base, id: "share_expires:past", occurredAt: new Date(2026, 9, 1, 9).toISOString() },
+      { ...base, id: "share_expires:today", occurredAt: new Date(2026, 9, 3, 18).toISOString() },
+      { ...base, id: "share_expires:later", occurredAt: new Date(2026, 9, 6, 9).toISOString() },
+    ];
+    const cells = buildCalendarDays(payload({ events }), OCT, TODAY);
+    expect(describeDayItems(cellFor(cells, "2026-10-01"))[0].title).toBe("Lisbon Getaway link expired");
+    expect(describeDayItems(cellFor(cells, "2026-10-03"))[0].title).toBe("Lisbon Getaway link expires");
+    expect(describeDayItems(cellFor(cells, "2026-10-06"))[0].title).toBe("Lisbon Getaway link expires");
   });
 
   it("describes each kind of client activity", () => {
