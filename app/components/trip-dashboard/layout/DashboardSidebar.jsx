@@ -141,7 +141,7 @@ export default function DashboardSidebar({
         aria-label="Dashboard navigation"
         className={[
           "z-50 flex flex-shrink-0 flex-col gap-2",
-          "min-[901px]:relative min-[901px]:w-[72px] min-[901px]:items-center min-[901px]:py-4",
+          "min-[900px]:relative min-[900px]:w-[72px] min-[900px]:items-center min-[900px]:py-4",
           "max-[900px]:frame-panel max-[900px]:fixed max-[900px]:bottom-0 max-[900px]:left-0 max-[900px]:top-12 max-[900px]:w-64 max-[900px]:px-4 max-[900px]:py-5",
           "max-[900px]:transition-transform max-[900px]:duration-300",
           isSidebarOpen ? "max-[900px]:translate-x-0" : "max-[900px]:-translate-x-full",
@@ -154,7 +154,7 @@ export default function DashboardSidebar({
           className="mb-2 h-8 w-8 max-[900px]:hidden"
         />
 
-        <nav aria-label="Main" className="flex flex-col gap-2 min-[901px]:items-center">
+        <nav aria-label="Main" className="flex flex-col gap-2 min-[900px]:items-center">
           {items.map((item) => (
             <RailButton
               key={item.tab}
@@ -168,7 +168,7 @@ export default function DashboardSidebar({
           ))}
         </nav>
 
-        <div className="mt-auto flex flex-col gap-2 min-[901px]:items-center">
+        <div className="mt-auto flex flex-col gap-2 min-[900px]:items-center">
           <RailButton
             label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             icon={isDark ? ICONS.sun : ICONS.moon}

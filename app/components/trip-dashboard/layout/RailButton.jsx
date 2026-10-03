@@ -16,7 +16,7 @@ export default function RailButton({ label, icon, active = false, badge = null, 
       className={[
         "group relative flex shrink-0 items-center transition-colors duration-150",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        "min-[901px]:h-10 min-[901px]:w-10 min-[901px]:justify-center min-[901px]:rounded-full",
+        "min-[900px]:h-10 min-[900px]:w-10 min-[900px]:justify-center min-[900px]:rounded-full",
         "max-[900px]:min-h-11 max-[900px]:w-full max-[900px]:gap-3 max-[900px]:rounded-xl max-[900px]:px-3",
         active ? "bg-secondary text-white dark:text-[#111416]" : "frame-tile text-text-muted hover:text-text-primary",
       ].join(" ")}
@@ -33,10 +33,10 @@ export default function RailButton({ label, icon, active = false, badge = null, 
         aria-hidden="true"
         className={[
           "whitespace-nowrap text-[13px] font-semibold",
-          "min-[901px]:pointer-events-none min-[901px]:absolute min-[901px]:left-[calc(100%+12px)] min-[901px]:top-1/2 min-[901px]:z-50 min-[901px]:-translate-y-1/2",
-          "min-[901px]:rounded-md min-[901px]:bg-text-primary min-[901px]:px-2 min-[901px]:py-1 min-[901px]:text-[12px] min-[901px]:text-background",
-          "min-[901px]:opacity-0 min-[901px]:transition-opacity min-[901px]:duration-150",
-          "min-[901px]:group-hover:opacity-100 min-[901px]:group-focus-visible:opacity-100",
+          "min-[900px]:pointer-events-none min-[900px]:absolute min-[900px]:left-[calc(100%+12px)] min-[900px]:top-1/2 min-[900px]:z-50 min-[900px]:-translate-y-1/2",
+          "min-[900px]:rounded-md min-[900px]:bg-text-primary min-[900px]:px-2 min-[900px]:py-1 min-[900px]:text-[12px] min-[900px]:text-background",
+          "min-[900px]:opacity-0 min-[900px]:transition-opacity min-[900px]:duration-150",
+          "min-[900px]:group-hover:opacity-100 min-[900px]:group-focus-visible:opacity-100",
         ].join(" ")}
       >
         {label}
