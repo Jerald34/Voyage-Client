@@ -29,6 +29,10 @@
   --color-secondary-strong: #ad5238;
   --color-on-secondary-strong: #ffffff;
 
+  /* Text on a primary fill. Primary flips from navy (light) to near-white
+     (dark), so plain white text on it vanishes in dark mode. */
+  --color-on-primary: #ffffff;
+
   --color-status-success: #047857;
   --color-status-warning: #c2410c;
   --color-status-danger: #b91c1c;
@@ -110,6 +114,7 @@
 
   --color-secondary-strong: #e0906f;
   --color-on-secondary-strong: #111416;
+  --color-on-primary: #111416;
 
   --color-status-success: #34d399;
   --color-status-warning: #fb923c;

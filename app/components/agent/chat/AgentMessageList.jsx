@@ -95,7 +95,7 @@ export default function AgentMessageList({
             <div
               className={`p-4 rounded-[18px] flex flex-col gap-2
                 ${msg.role === 'user'
-                  ? 'bg-primary text-white rounded-br-[4px]'
+                  ? 'bg-primary text-on-primary rounded-br-[4px]'
                   : 'bg-background text-text-primary border border-border/20 rounded-bl-[4px]'
                 }`}
             >
