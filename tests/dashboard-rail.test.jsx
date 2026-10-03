@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import AccountMenu from "../app/components/trip-dashboard/layout/AccountMenu.jsx";
+import DashboardHeader from "../app/components/trip-dashboard/layout/DashboardHeader.jsx";
 import DashboardSidebar from "../app/components/trip-dashboard/layout/DashboardSidebar.jsx";
 import RailButton from "../app/components/trip-dashboard/layout/RailButton.jsx";
 
@@ -185,5 +186,12 @@ describe("DashboardSidebar rail", () => {
   it("offers a theme switch", () => {
     renderRail();
     expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
+  });
+});
+
+describe("DashboardHeader", () => {
+  it("sets no z-index, so modals and slide-overs paint above it", () => {
+    render(<DashboardHeader variant="compact" isSidebarOpen={false} setIsSidebarOpen={() => {}} />);
+    expect(screen.getByRole("banner").className).not.toMatch(/(^|\s)z-/);
   });
 });

@@ -42,7 +42,7 @@ export default function DashboardHeader({
   const isFull = variant === "full";
   const showCenterActions = isFull && activeTab !== "itineraries";
   return (
-    <header className="z-[100] flex h-[84px] flex-shrink-0 items-center justify-between gap-5 border-b border-[color:var(--frame-border)] px-7 max-[900px]:h-[48px] max-[900px]:gap-2 max-[900px]:px-3">
+    <header className="flex h-[84px] flex-shrink-0 items-center justify-between gap-5 border-b border-[color:var(--frame-border)] px-7 max-[900px]:h-[48px] max-[900px]:gap-2 max-[900px]:px-3">
       <div className="flex items-center gap-2">
         <button
           className="hidden max-[900px]:flex bg-transparent border-none text-primary p-2 cursor-pointer"
