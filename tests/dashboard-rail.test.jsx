@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import AccountMenu from "../app/components/trip-dashboard/layout/AccountMenu.jsx";
+import DashboardSidebar from "../app/components/trip-dashboard/layout/DashboardSidebar.jsx";
 import RailButton from "../app/components/trip-dashboard/layout/RailButton.jsx";
 
 function renderMenu(props = {}) {
@@ -104,5 +105,85 @@ describe("AccountMenu", () => {
     renderMenu();
     fireEvent.keyDown(screen.getByRole("button", { name: "Account menu" }), { key: "ArrowDown" });
     expect(screen.getByRole("menu", { name: "Account" })).toBeInTheDocument();
+  });
+});
+
+const agencyOwner = {
+  id: "u1",
+  displayName: "Maria Santos",
+  email: "maria@example.test",
+  accountType: "AGENCY_USER",
+  role: "USER",
+  memberships: [
+    { agencyId: "agency-1", role: "OWNER", status: "ACTIVE", agency: { id: "agency-1", name: "Sunline Travel" } },
+  ],
+};
+
+function renderRail(props = {}) {
+  const handlers = { setActiveTab: vi.fn(), setIsSidebarOpen: vi.fn(), logout: vi.fn() };
+  const utils = render(
+    <DashboardSidebar
+      isSidebarOpen={false}
+      activeTab="dashboard"
+      user={agencyOwner}
+      agencyId="agency-1"
+      pendingCount={0}
+      {...handlers}
+      {...props}
+    />,
+  );
+  return { ...handlers, ...utils };
+}
+
+describe("DashboardSidebar rail", () => {
+  it("names every destination and marks the current one", () => {
+    renderRail();
+    for (const name of ["Dashboard", "Command Center", "Itineraries", "Settings"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("button", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("button", { name: "Logout" })).not.toBeInTheDocument();
+  });
+
+  it("shows the logo with the workspace name", () => {
+    renderRail();
+    expect(screen.getByRole("img", { name: "Sunline Travel workspace" })).toBeInTheDocument();
+  });
+
+  it("switches tabs", () => {
+    const { setActiveTab } = renderRail();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(setActiveTab).toHaveBeenCalledWith("settings");
+  });
+
+  it("keeps the first-use tour targets", () => {
+    const { container } = renderRail();
+    expect(container.querySelector('[data-tour-target="settings-replay"]')).toHaveAccessibleName("Settings");
+    expect(container.querySelector('[data-tour-target="dashboard-overview"]')).toHaveAccessibleName("Dashboard");
+  });
+
+  it("shows Admin with its pending count to super admins", () => {
+    renderRail({ user: { ...agencyOwner, role: "SUPER_ADMIN" }, pendingCount: 120 });
+    expect(screen.getByRole("button", { name: "Admin" })).toHaveTextContent("99+");
+  });
+
+  it("calls a personal account's settings My account and has no Dashboard", () => {
+    renderRail({ user: { id: "u2", displayName: "Pat", accountType: "PERSONAL", memberships: [] }, agencyId: null });
+    expect(screen.queryByRole("button", { name: "Dashboard" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "My account" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Voyage workspace" })).toBeInTheDocument();
+  });
+
+  it("signs out from the account menu", () => {
+    const { logout } = renderRail();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menu", { name: "Account" })).toHaveTextContent("Owner · Sunline Travel");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
+    expect(logout).toHaveBeenCalledOnce();
+  });
+
+  it("offers a theme switch", () => {
+    renderRail();
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
   });
 });
