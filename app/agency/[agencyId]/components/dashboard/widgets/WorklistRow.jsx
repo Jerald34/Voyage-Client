@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import KindIcon from "./KindIcon";
+import KindIcon, { hasKindIcon } from "./KindIcon";
 
 /**
  * One row in "Needs you today".
@@ -81,7 +81,7 @@ export default function WorklistRow({
           aria-hidden="true"
           className={`flex h-7 w-7 items-center justify-center rounded-full ${TONE_BADGE_CLASS[tone] ?? TONE_BADGE_CLASS.info}`}
         >
-          {kind ? (
+          {hasKindIcon(kind) ? (
             <KindIcon kind={kind} className="h-3.5 w-3.5" />
           ) : (
             <span className={`block h-2 w-2 rounded-full ${TONE_DOT_CLASS[tone] ?? TONE_DOT_CLASS.info}`} />

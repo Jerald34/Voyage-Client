@@ -58,6 +58,11 @@ const KIND_TO_ICON = {
   share_sent: "send",
 };
 
+/** True when `kind` has an icon, so callers can show their own fallback otherwise. */
+export function hasKindIcon(kind) {
+  return Boolean(PATHS[KIND_TO_ICON[kind]]);
+}
+
 export default function KindIcon({ kind, className = "h-4 w-4" }) {
   const icon = PATHS[KIND_TO_ICON[kind]];
   if (!icon) return null;

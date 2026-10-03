@@ -72,8 +72,20 @@ describe("WorklistRow", () => {
     expect(container.querySelector(".sr-only").textContent).toBe("info");
   });
 
-  it("falls back to a dot when the kind has no icon", () => {
+  it("shows a dot, not an icon, when the row has no kind", () => {
     const { container } = renderRow();
     expect(container.querySelector("svg")).not.toBeInTheDocument();
+    expect(container.querySelector(".h-2.w-2.rounded-full")).toBeInTheDocument();
+  });
+
+  it("falls back to a dot when the kind has no icon", () => {
+    const { container } = renderRow({ kind: "somethingTheServerAddedLater" });
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
+    expect(container.querySelector(".h-2.w-2.rounded-full")).toBeInTheDocument();
+  });
+
+  it("shows no dot next to a kind that has an icon", () => {
+    const { container } = renderRow({ kind: "unreadComments" });
+    expect(container.querySelector(".h-2.w-2.rounded-full")).not.toBeInTheDocument();
   });
 });
