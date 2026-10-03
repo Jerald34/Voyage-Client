@@ -15,7 +15,7 @@ export default function RailButton({ label, icon, active = false, badge = null, 
       data-tour-target={tourTarget}
       onClick={onClick}
       className={[
-        "group relative flex shrink-0 items-center transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97]",
+        "group relative flex shrink-0 items-center transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         "min-[900px]:h-10 min-[900px]:w-10 min-[900px]:justify-center min-[900px]:rounded-full",
         "max-[900px]:min-h-11 max-[900px]:w-full max-[900px]:gap-3 max-[900px]:rounded-xl max-[900px]:px-3",
