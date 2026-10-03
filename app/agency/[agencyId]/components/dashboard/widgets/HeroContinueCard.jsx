@@ -35,12 +35,14 @@ function StatusChip({ status }) {
     muted: 'rgb(var(--color-text-muted-rgb))',
   };
 
-  // Text on the 12% tint must reach 4.5:1 at 12px. Amber text on the draft
-  // tint only gets ~4.3:1, so drafts read in the body colour.
+  // Text on the 12% tint must reach 4.5:1 at 12px. Coloured text (amber,
+  // terracotta, green) only gets ~4.2-4.6:1 there, so labels read in the body
+  // colour; the tint, border and leading dot carry the status. Muted already
+  // clears 4.5:1 for archived.
   const textColorMap = {
     warning: 'rgb(var(--color-text-rgb))',
-    accent: 'var(--color-secondary-strong)',
-    success: 'var(--success)',
+    accent: 'rgb(var(--color-text-rgb))',
+    success: 'rgb(var(--color-text-rgb))',
     muted: 'rgb(var(--color-text-muted-rgb))',
   };
 
@@ -67,6 +69,11 @@ function StatusChip({ status }) {
         border: `1px solid ${borderColor}`,
       }}
     >
+      <span
+        aria-hidden="true"
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: toneColorMap[tone] }}
+      />
       {label}
     </span>
   );
