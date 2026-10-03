@@ -164,7 +164,7 @@ export default function DashboardSidebar({
           "z-50 flex flex-shrink-0 flex-col gap-2",
           "min-[900px]:relative min-[900px]:w-[72px] min-[900px]:items-center min-[900px]:py-4",
           "max-[900px]:frame-panel max-[900px]:fixed max-[900px]:bottom-0 max-[900px]:left-0 max-[900px]:top-12 max-[900px]:w-64 max-[900px]:px-4 max-[900px]:py-5",
-          "max-[900px]:transition-transform max-[900px]:duration-300",
+          "max-[900px]:transition-transform max-[900px]:duration-300 max-[900px]:ease-[var(--ease-drawer)]",
           isSidebarOpen ? "max-[900px]:translate-x-0" : "max-[900px]:-translate-x-full",
         ].join(" ")}
       >
