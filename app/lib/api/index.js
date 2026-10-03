@@ -97,3 +97,6 @@ export {
 
 // Personal account (/me/*)
 export * from "./personal.js";
+
+// Weather
+export { fetchItineraryWeather, fetchSharedItineraryWeather } from "./weather.js";

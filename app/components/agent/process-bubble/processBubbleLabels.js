@@ -14,6 +14,7 @@ const TOOL_ACTIVE_LABEL_MAP = {
   add_itinerary_item: "Adding itinerary item…",
   update_itinerary_item: "Updating itinerary item…",
   map_pinpoint: "Pinpointing on map…",
+  weather_forecast: "Checking the weather…",
 };
 
 /**

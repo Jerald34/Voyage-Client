@@ -1,5 +1,7 @@
 import { getSnapshotPhotoUrl } from "../../../lib/trip-dashboard/richItinerary.js";
 import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
+import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
+import { getPrimaryAccessibilityBadge } from "../../../lib/accessibility/placeAccessibility.js";
 
 export default function CompactPlaceCard({
   item,
@@ -8,6 +10,8 @@ export default function CompactPlaceCard({
 }) {
   const snapshot = item?.placeSnapshot ?? null;
   const photoUrl = getSnapshotPhotoUrl(snapshot);
+  // Space is tight on the compact card: one badge, the most important. Inline spans, as this is inside a button.
+  const primaryBadge = getPrimaryAccessibilityBadge(snapshot);
   const placeName = snapshot?.name || item?.placeName || item?.title || "Untitled";
   const timeLabel =
     item?.startTime && item?.endTime
@@ -47,6 +51,7 @@ export default function CompactPlaceCard({
           placeAdvisory={item?.placeAdvisory}
           className="self-start"
         />
+        <AccessibilityBadges badges={primaryBadge ? [primaryBadge] : []} inline className="self-start" />
         {timeLabel && (
           <span className="text-[0.75rem] text-secondary font-semibold leading-tight">
             {timeLabel}

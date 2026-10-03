@@ -41,6 +41,8 @@ import AdminPage from "../admin/AdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatInput from "./command-center/ChatInput.jsx";
+import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
+import { useTravelerNeeds } from "../../hooks/useTravelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
 import {
   TUTORIAL_MOCK_TRIPS,
@@ -136,6 +138,7 @@ export default function HomePage({
   const explicitContextRef = useRef(false);
 
   const [composerInput, setComposerInput] = useState("");
+  const [isTravelerNeedsOpen, setIsTravelerNeedsOpen] = useState(false);
   const [deletingThreadId, setDeletingThreadId] = useState(null);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isApprovingDraft, setIsApprovingDraft] = useState(false);
@@ -156,6 +159,11 @@ export default function HomePage({
   const isMobile = useMobileViewport();
   const clientMenuRef = useRef(null);
   const mobileTextareaRef = useRef(null);
+  // Where the traveler-needs dialog hands focus back if the control that opened it unmounted
+  // (the chips' Edit button disappears when the last need is cleared). One per layout: the
+  // desktop and mobile composers can both be mounted, but only the visible one can take focus.
+  const desktopNeedsToggleRef = useRef(null);
+  const mobileNeedsToggleRef = useRef(null);
 
   // Poll pending count for admin users
   useEffect(() => {
@@ -390,6 +398,19 @@ export default function HomePage({
   const safeTrips = Array.isArray(agencyTrips) ? agencyTrips : [];
   const activeTrip = activeContext?.type === "trip" ? safeTrips.find(t => t?.id === activeContext.id) : null;
   const activeTripState = activeContext?.type === "draft" ? draftThreadStates[activeContext.id] : (activeContext?.type === "trip" && activeContext.id ? tripStates[activeContext.id] : null);
+  // Pending needs are keyed to the unsaved context they were chosen for, so they can never
+  // leak into a different new plan; once a thread exists they live on that thread's state.
+  const { activeTravelerNeeds, saveTravelerNeeds: saveNeeds, clearPendingNeeds, sendWithNeeds } = useTravelerNeeds({
+    activeContext,
+    activeTripState,
+    setDraftThreadStates,
+    setTripStates,
+  });
+
+  const saveTravelerNeeds = (next) => {
+    setIsTravelerNeedsOpen(false);
+    saveNeeds(next);
+  };
 
   const planningOptions = useMemo(
     () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext }),
@@ -452,7 +473,7 @@ export default function HomePage({
   function handleMobileSubmit(event) {
     event.preventDefault();
     if (!composerInput.trim()) return;
-    void dispatchMessage(composerInput, startStream);
+    void sendWithNeeds((needs) => dispatchMessage(composerInput, startStream, [], needs));
     setComposerInput("");
   }
 
@@ -483,7 +504,10 @@ export default function HomePage({
     // setter and erase the seed (same-event setState calls take the last value).
     // Reset to "command-center" tab so user sees the new draft being created
     setActiveTab("command-center");
-    
+
+    // One client's traveler needs must never ride along with another client's new plan.
+    clearPendingNeeds();
+
     // Set a placeholder context to immediately transition the UI to a "creating" state
     // and avoid race conditions where the UI might try to render a null context.
     const placeholderId = `pending-${Date.now()}`;
@@ -617,6 +641,14 @@ export default function HomePage({
         />
       )}
 
+      <TravelerNeedsDialog
+        open={isTravelerNeedsOpen}
+        initialNeeds={activeTravelerNeeds}
+        returnFocusRef={isMobile ? mobileNeedsToggleRef : desktopNeedsToggleRef}
+        onCancel={() => setIsTravelerNeedsOpen(false)}
+        onSave={saveTravelerNeeds}
+      />
+
       <div>
         <DashboardHeader
           isSidebarOpen={isSidebarOpen}
@@ -714,7 +746,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files)}
+                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -733,6 +765,9 @@ export default function HomePage({
                     targetItinerary={effectiveTripState?.itinerary ?? null}
                     onSystemVisibleMessage={handleReuseSystemMessage}
                     onReuseInserted={handleReuseInserted}
+                    travelerNeeds={activeTravelerNeeds}
+                    onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
+                    needsToggleRef={desktopNeedsToggleRef}
                   />
                 </div>
               </div>
@@ -755,6 +790,9 @@ export default function HomePage({
                       agentError={agentError}
                       onStop={isVisible ? stopStream : undefined}
                       containerClassName="px-3 pb-3"
+                      travelerNeeds={activeTravelerNeeds}
+                      onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
+                      needsToggleRef={mobileNeedsToggleRef}
                     />
                   }
                 >
@@ -767,7 +805,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files)}
+                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -787,6 +825,8 @@ export default function HomePage({
                     targetItinerary={effectiveTripState?.itinerary ?? null}
                     onSystemVisibleMessage={handleReuseSystemMessage}
                     onReuseInserted={handleReuseInserted}
+                    travelerNeeds={activeTravelerNeeds}
+                    onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                   />
                 </MobileGlassSheet>
               )}

@@ -6,6 +6,9 @@ import { BuildingIcon } from "../../icons/index.js";
 import { getSnapshotPhotoUrl, getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
 import { formatDayDate, getItemTimeLabel, getAccommodationLabel } from "../../../lib/formatters.js";
 import CommentsPanel from "./CommentsPanel.jsx";
+import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
+import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
+import TripAccessibilitySummary from "../../accessibility/TripAccessibilitySummary.jsx";
 
 const ItineraryLiveMap = dynamic(
   () => import("../itinerary/ItineraryLiveMap.jsx"),
@@ -29,6 +32,7 @@ export default function ItineraryDayView({
   showCommentsPanel,
   setShowCommentsPanel,
   theme,
+  dayWeather = null,
 }) {
   if (isLoadingItinerary) {
     return (
@@ -80,6 +84,8 @@ export default function ItineraryDayView({
                   {dayAccommodation}
                 </div>
               )}
+              <DayWeatherSummary entry={dayWeather} />
+              <TripAccessibilitySummary days={[selectedDay]} label="Accessibility this day" />
               <div className="flex flex-col gap-3">
                 {(selectedDay.items || []).map((item, iIdx) => {
                   const dayItemIdx = selectedDayMapItems.findIndex(
@@ -142,6 +148,7 @@ export default function ItineraryDayView({
                           )}
                         </div>
                       </div>
+                      <AccessibilityBadges snapshot={snapshot} />
 
                       {/* Description + highlights */}
                       {(description || highlights.length > 0) && (

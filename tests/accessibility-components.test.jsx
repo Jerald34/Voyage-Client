@@ -1,0 +1,79 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import AccessibilityBadges from "../app/components/accessibility/AccessibilityBadges.jsx";
+import TripAccessibilitySummary from "../app/components/accessibility/TripAccessibilitySummary.jsx";
+
+const checked = (flags = {}) => ({
+  metadata: { accessibility: { ...flags, source: "GOOGLE_PLACES", checkedAt: "2026-10-01T00:00:00.000Z" } },
+});
+
+describe("AccessibilityBadges", () => {
+  it("lists known features from a snapshot", () => {
+    render(<AccessibilityBadges snapshot={checked({ wheelchairAccessibleEntrance: true, wheelchairAccessibleRestroom: true })} />);
+
+    const list = screen.getByRole("list", { name: "Accessibility" });
+    expect(list).toHaveTextContent("Accessible entrance");
+    expect(list).toHaveTextContent("Accessible restroom");
+  });
+
+  it("accepts precomputed badges and renders nothing for an unchecked place", () => {
+    const { rerender, container } = render(
+      <AccessibilityBadges badges={[{ key: "unverified", label: "Accessibility not verified", tone: "neutral" }]} />
+    );
+    expect(screen.getByText("Accessibility not verified")).toBeInTheDocument();
+
+    rerender(<AccessibilityBadges snapshot={{ metadata: {} }} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("TripAccessibilitySummary", () => {
+  it("summarizes once any stop was checked", () => {
+    render(
+      <TripAccessibilitySummary
+        days={[{ items: [{ placeSnapshot: checked({ wheelchairAccessibleEntrance: true }) }, { placeSnapshot: { metadata: {} } }] }]}
+      />
+    );
+
+    expect(screen.getByText(/1 of 2 stops have a wheelchair-accessible entrance · 1 not verified/)).toBeInTheDocument();
+  });
+
+  it("stays silent when nothing was checked", () => {
+    const { container } = render(<TripAccessibilitySummary days={[{ items: [{ placeSnapshot: { metadata: {} } }] }]} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("AccessibilityBadges inline variant", () => {
+  it("renders spans, not a list, so it is valid inside a button", () => {
+    const badges = [
+      { key: "a", label: "Accessible entrance", tone: "positive" },
+      { key: "b", label: "Accessible restroom", tone: "positive" },
+    ];
+    render(
+      <button type="button">
+        <AccessibilityBadges badges={badges} inline />
+      </button>
+    );
+
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+    expect(screen.getByRole("button")).toHaveTextContent("Accessible entrance");
+    expect(screen.getByRole("button")).toHaveTextContent("Accessible restroom");
+  });
+});
+
+describe("AccessibilityBadges warning tone", () => {
+  it("renders a non-accessible entrance in the amber caution style, in both layouts", () => {
+    const snapshot = checked({ wheelchairAccessibleEntrance: false });
+    const { rerender } = render(<AccessibilityBadges snapshot={snapshot} />);
+
+    const listed = screen.getByText("Entrance not wheelchair accessible").closest("li");
+    expect(listed).toHaveClass("bg-amber-100", "text-amber-950", "border-amber-700/30");
+
+    rerender(<AccessibilityBadges snapshot={snapshot} inline />);
+    const inline = screen.getByText("Entrance not wheelchair accessible").closest("span");
+    expect(inline).toHaveClass("bg-amber-100", "text-amber-950");
+  });
+});

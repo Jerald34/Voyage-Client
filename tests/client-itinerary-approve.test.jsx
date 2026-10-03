@@ -106,6 +106,7 @@ vi.mock("../app/lib/api/index.js", () => ({
   fetchItineraryDraft: vi.fn().mockResolvedValue(null),
   getUnreadCommentCount: vi.fn().mockResolvedValue({ count: 0 }),
   getUnreadCommentCountsByTrip: vi.fn().mockResolvedValue({ counts: [] }),
+  fetchItineraryWeather: vi.fn().mockResolvedValue({ weather: { provider: null, attribution: null, days: [] } }),
 }));
 
 // ── Test data ────────────────────────────────────────────────────────────────

@@ -7,7 +7,12 @@ import { fetchPublicItinerary, postPublicComment, listPublicComments } from "../
 import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import { generateItineraryPdf, titleToFilename } from "../../../lib/pdfExport.js";
+import WeatherChip from "../../../components/weather/WeatherChip.jsx";
+import WeatherAttribution from "../../../components/weather/WeatherAttribution.jsx";
+import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
+import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import ThemeToggle from "../../../components/theme/ThemeToggle";
+import AccessibilityBadges from "../../../components/accessibility/AccessibilityBadges.jsx";
 import Spinner from "../../../components/ui/Spinner";
 import {
   PlaneIcon,
@@ -426,6 +431,17 @@ export default function PublicItineraryPage() {
     );
   }, [data]);
 
+  const shareWeather = useItineraryWeather({
+    shareToken: token,
+    version: data?.itinerary?.version ?? null,
+    enabled: Boolean(token && data),
+  });
+  // PAST, NO_DATE and NO_LOCATION entries show nothing, so they earn no credit.
+  const hasVisibleWeather = useMemo(
+    () => Array.from(shareWeather.byDayId.values()).some((entry) => Boolean(describeDayWeather(entry))),
+    [shareWeather.byDayId],
+  );
+
   /* ── map callbacks ── */
   const handleHoverItem = useCallback((index) => {
     setActiveIndex(index);
@@ -567,7 +583,7 @@ export default function PublicItineraryPage() {
         summary:       itinerary.summary,
         dateRange,
         travelerCount: trip.travelerCount,
-        days:          itinerary.days,
+        days:          attachWeatherToDays(itinerary.days, shareWeather.byDayId),
         agencyName:    "Voyage",
       });
       doc.save(titleToFilename(trip.title || itinerary.title));
@@ -719,6 +735,7 @@ export default function PublicItineraryPage() {
                     {day.date && (
                       <span className="text-[12px] text-text-soft font-medium">{formatDate(day.date)}</span>
                     )}
+                    <WeatherChip entry={shareWeather.byDayId.get(day.id)} className="mt-1 self-start" />
                   </div>
                   <div className="ml-auto">
                     <CommentTriggerBtn
@@ -820,6 +837,7 @@ export default function PublicItineraryPage() {
                               )}
                             </div>
                           )}
+                          <AccessibilityBadges snapshot={item.placeSnapshot} className="pl-9" />
 
                           {item.clientNotes && (
                             <div className="flex items-start gap-[6px] px-3 py-2 ml-9 mt-[2px] bg-secondary/[0.06] rounded-sm border-l-[3px] border-secondary text-[12px] text-text-muted leading-[1.5]">
@@ -854,6 +872,11 @@ export default function PublicItineraryPage() {
               </section>
             ))}
           </div>
+          {hasVisibleWeather ? (
+            <p className="m-0 mt-4 text-center">
+              <WeatherAttribution attribution={shareWeather.attribution} />
+            </p>
+          ) : null}
 
           {/* ── proposal rating ── */}
           <div className="mt-10 max-sm:mt-7">

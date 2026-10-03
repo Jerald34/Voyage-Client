@@ -1,5 +1,8 @@
 import React, { useEffect, useCallback } from "react";
 import ImagePreviewStrip from "../../chat/ImagePreviewStrip";
+import AccessibilityIcon from "../../accessibility/AccessibilityIcon.jsx";
+import TravelerNeedsChips from "../../accessibility/TravelerNeedsChips.jsx";
+import { formatTravelerNeedsSummary, hasTravelerNeeds } from "../../../lib/accessibility/travelerNeeds.js";
 
 const composerSurfaceClass =
   "composer-shell isolate flex w-full min-w-0 items-center gap-2.5 rounded-[18px] border border-border bg-[rgba(255,255,255,0.88)] px-3 py-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-all duration-200 focus-within:border-secondary focus-within:shadow-[0_0_0_4px_rgba(215,122,97,0.12)] dark:bg-[rgba(26,29,33,0.88)]";
@@ -21,6 +24,9 @@ export default function ChatInput({
   onAddFiles,
   onRemoveAttachment,
   fileInputRef,
+  travelerNeeds = null,
+  onEditTravelerNeeds,
+  needsToggleRef,
 }) {
   useEffect(() => {
     const textarea = textareaRef?.current;
@@ -68,6 +74,7 @@ export default function ChatInput({
           <ImagePreviewStrip attachments={attachments} onRemove={onRemoveAttachment} />
         </div>
       )}
+      <TravelerNeedsChips travelerNeeds={travelerNeeds} onEdit={onEditTravelerNeeds} className="mb-1.5 px-1" />
       <form
         className={`${composerSurfaceClass} ${isSending ? "composer-shell--loading" : ""}`}
         onSubmit={submitComposer}
@@ -95,6 +102,22 @@ export default function ChatInput({
             <polyline points="21 15 16 10 5 21" />
           </svg>
         </button>
+        {onEditTravelerNeeds && (
+          <button
+            ref={needsToggleRef}
+            type="button"
+            onClick={onEditTravelerNeeds}
+            title="Traveler needs"
+            aria-label={
+              hasTravelerNeeds(travelerNeeds)
+                ? `Traveler needs: ${formatTravelerNeedsSummary(travelerNeeds)}`
+                : "Add traveler needs"
+            }
+            className={`composer-control relative z-[1] flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-md transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] cursor-pointer before:absolute before:-inset-0.5 before:content-[''] ${hasTravelerNeeds(travelerNeeds) ? "text-secondary bg-secondary/10" : "text-text-soft [@media(hover:hover)_and_(pointer:fine)]:hover:text-text-primary [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/10"}`}
+          >
+            <AccessibilityIcon size={18} />
+          </button>
+        )}
         <textarea
           ref={textareaRef}
           rows={1}

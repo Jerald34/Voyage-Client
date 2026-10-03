@@ -18,6 +18,10 @@ describe("toolToActiveLabel", () => {
     expect(toolToActiveLabel("map_pinpoint")).toBe("Pinpointing on map…");
   });
 
+  it('maps weather_forecast to "Checking the weather…"', () => {
+    expect(toolToActiveLabel("weather_forecast")).toBe("Checking the weather…");
+  });
+
   it("falls back to humanized name + ellipsis for unknown tools", () => {
     expect(toolToActiveLabel("some_unknown_tool")).toBe("Some Unknown Tool…");
   });
