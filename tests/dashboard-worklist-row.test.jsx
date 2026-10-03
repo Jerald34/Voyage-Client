@@ -65,4 +65,15 @@ describe("WorklistRow", () => {
     fireEvent.click(btn);
     expect(onAction).not.toHaveBeenCalled();
   });
+
+  it("shows the row's kind as an icon, keeping the tone label for screen readers", () => {
+    const { container } = renderRow({ kind: "unreadComments" });
+    expect(container.querySelector("svg")).toBeInTheDocument();
+    expect(container.querySelector(".sr-only").textContent).toBe("info");
+  });
+
+  it("falls back to a dot when the kind has no icon", () => {
+    const { container } = renderRow();
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
+  });
 });
