@@ -8,7 +8,7 @@
  * Each parent comment gets its own inline reply input.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   listTripShares,
   listShareComments,
@@ -251,6 +251,19 @@ export default function TripSlideOver({
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const closeButtonRef = useRef(null);
+
+  // ── Focus: in on open, back to the opener on close ──
+  // Whatever had focus when the panel opened (a calendar day, a to-do row) is
+  // where the person was, so return there if it is still on the page.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [isOpen]);
 
   // ── Fetch all comments across shares ──
   const fetchComments = useCallback(async () => {
@@ -388,10 +401,13 @@ export default function TripSlideOver({
       />
 
       {/* Panel */}
+      {/* While closed the panel only sits off-screen, so `inert` keeps its buttons out of the tab order and `aria-hidden` out of the accessibility tree. */}
       <aside
         role="dialog"
         aria-label={`Trip comments: ${tripTitle}`}
         aria-modal="true"
+        aria-hidden={isOpen ? undefined : true}
+        inert={!isOpen}
         className={`fixed top-0 right-0 z-[61] flex h-full w-full max-w-md flex-col border-l border-border/10 bg-background shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -428,6 +444,7 @@ export default function TripSlideOver({
           </div>
 
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             className="shrink-0 mt-0.5 rounded-lg p-1.5 text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"

@@ -238,6 +238,10 @@ export default function AgencyCalendar({ agencyId, onOpenTrip }) {
   }
 
   function handleAction(item) {
+    // The popover (and the focus inside it) is about to unmount. Put focus back
+    // on the day first, so whatever opens next (the trip slide-over) remembers
+    // the day as where to return focus to, rather than finding <body>.
+    if (openKey) buttonRefs.current.get(openKey)?.focus();
     setOpenKey(null);
     onOpenTrip?.(item.tripId, item.tripTitle, item.clientName);
   }
