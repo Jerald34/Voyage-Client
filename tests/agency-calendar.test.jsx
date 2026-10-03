@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ useCalendarEvents: vi.fn() }));
@@ -174,5 +174,55 @@ describe("AgencyCalendar", () => {
 
     fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Retry" }));
     expect(refetch).toHaveBeenCalledOnce();
+  });
+});
+
+describe("AgencyCalendar across midnight", () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+  });
+
+  it("moves the today marker when the local date changes", () => {
+    vi.setSystemTime(new Date(2026, 9, 3, 23, 59, 30));
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+    expect(day("Saturday, October 3")).toHaveAccessibleName("Saturday, October 3, today");
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(day("Saturday, October 3")).toHaveAccessibleName("Saturday, October 3");
+    expect(day("Sunday, October 4")).toHaveAccessibleName("Sunday, October 4, today");
+    expect(screen.getByRole("heading", { name: "October 2026" })).toBeInTheDocument();
+  });
+
+  it("keeps tracking the date after the first rollover", () => {
+    vi.setSystemTime(new Date(2026, 9, 3, 23, 59, 30));
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    act(() => {
+      vi.advanceTimersByTime(60_000 + 24 * 60 * 60 * 1000);
+    });
+    expect(day("Monday, October 5")).toHaveAccessibleName("Monday, October 5, today");
+  });
+
+  it("catches up when the tab becomes visible again", () => {
+    vi.setSystemTime(new Date(2026, 9, 3, 22, 0));
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    // The laptop slept through midnight: no timer fired, but the clock moved on.
+    vi.setSystemTime(new Date(2026, 9, 5, 8, 0));
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(day("Monday, October 5")).toHaveAccessibleName("Monday, October 5, today");
+  });
+
+  it("stops watching the clock when it unmounts", () => {
+    vi.setSystemTime(new Date(2026, 9, 3, 23, 59, 30));
+    const { unmount } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

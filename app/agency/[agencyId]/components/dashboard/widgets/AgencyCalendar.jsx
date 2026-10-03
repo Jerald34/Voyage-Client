@@ -33,6 +33,43 @@ function useIsNarrow() {
   return narrow;
 }
 
+/**
+ * "Now", kept current: refreshes when the local date changes (a timer to the
+ * next midnight, re-armed each time) and when the tab becomes visible again,
+ * since timers stall while a laptop sleeps.
+ */
+function useToday() {
+  const [today, setToday] = useState(() => new Date());
+  useEffect(() => {
+    let timer;
+    function sync() {
+      const now = new Date();
+      setToday((current) => (toDateKey(current) === toDateKey(now) ? current : now));
+    }
+    function arm() {
+      clearTimeout(timer);
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      timer = setTimeout(() => {
+        sync();
+        arm();
+      }, nextMidnight - now + 50);
+    }
+    function handleVisibility() {
+      if (document.hidden) return;
+      sync();
+      arm();
+    }
+    arm();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+  return today;
+}
+
 function sameMonth(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
@@ -116,7 +153,7 @@ export default function AgencyCalendar({ agencyId, onOpenTrip }) {
   const focusAfterRenderRef = useRef(false);
   const isNarrow = useIsNarrow();
 
-  const [today] = useState(() => new Date());
+  const today = useToday();
   const todayKey = toDateKey(today);
   const [month, setMonth] = useState(() => startOfMonth(today));
   const [focusKey, setFocusKey] = useState(todayKey);
