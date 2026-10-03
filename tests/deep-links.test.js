@@ -16,6 +16,19 @@ describe("resolveInitialView", () => {
     });
   });
 
+  it("opens the Command Center, with no notice, for an unknown tab", () => {
+    expect(view("authenticated=1&tab=nonsense")).toEqual({ initialTab: "command-center", showJoinedNotice: false, settingsSection: null });
+    expect(view("authenticated=1&tab=nonsense&invited=1")).toEqual({
+      initialTab: "command-center",
+      showJoinedNotice: false,
+      settingsSection: null,
+    });
+  });
+
+  it("ignores invited=1 without tab=team", () => {
+    expect(view("authenticated=1&invited=1")).toEqual({ initialTab: "command-center", showJoinedNotice: false, settingsSection: null });
+  });
+
   it("opens Settings at the Team panel for a plain team link", () => {
     expect(view("authenticated=1&tab=team")).toEqual({ initialTab: "settings", showJoinedNotice: false, settingsSection: "team" });
   });
