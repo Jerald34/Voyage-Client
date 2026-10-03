@@ -38,9 +38,23 @@ describe("RailButton", () => {
     expect(screen.getByRole("button", { name: "Settings" })).not.toHaveAttribute("aria-current");
   });
 
-  it("shows a badge next to the icon", () => {
+  it("shows a badge next to the icon and announces it in the accessible name", () => {
     render(<RailButton label="Admin" icon={<svg />} badge="3" onClick={() => {}} />);
-    expect(screen.getByRole("button", { name: "Admin" })).toHaveTextContent("3");
+    const button = screen.getByRole("button", { name: "Admin, 3 pending" });
+    expect(button).toHaveTextContent("3");
+  });
+
+  it("is named by its label alone when there is no badge", () => {
+    render(<RailButton label="Admin" icon={<svg />} onClick={() => {}} />);
+    expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
+  });
+
+  it("uses a higher-contrast active state in the phone drawer", () => {
+    render(<RailButton label="Dashboard" icon={<svg />} active onClick={() => {}} />);
+    expect(screen.getByRole("button", { name: "Dashboard" })).toHaveClass(
+      "max-[900px]:bg-secondary-strong",
+      "max-[900px]:text-on-secondary-strong",
+    );
   });
 
   it("calls onClick", () => {
@@ -165,7 +179,7 @@ describe("DashboardSidebar rail", () => {
 
   it("shows Admin with its pending count to super admins", () => {
     renderRail({ user: { ...agencyOwner, role: "SUPER_ADMIN" }, pendingCount: 120 });
-    expect(screen.getByRole("button", { name: "Admin" })).toHaveTextContent("99+");
+    expect(screen.getByRole("button", { name: "Admin, 99+ pending" })).toHaveTextContent("99+");
   });
 
   it("calls a personal account's settings My account and has no Dashboard", () => {

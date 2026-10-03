@@ -3,22 +3,25 @@
 /**
  * One icon button in the app rail. On desktop its label is a tooltip that
  * shows on hover and keyboard focus; in the phone drawer the label sits
- * beside the icon. The accessible name is always `label`.
+ * beside the icon. The accessible name is `label`, plus the pending count when
+ * there is a badge (the badge itself is decorative to assistive tech).
  */
 export default function RailButton({ label, icon, active = false, badge = null, onClick, tourTarget }) {
   return (
     <button
       type="button"
-      aria-label={label}
+      aria-label={badge ? `${label}, ${badge} pending` : label}
       aria-current={active ? "page" : undefined}
       data-tour-target={tourTarget}
       onClick={onClick}
       className={[
-        "group relative flex shrink-0 items-center transition-colors duration-150",
+        "group relative flex shrink-0 items-center transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         "min-[900px]:h-10 min-[900px]:w-10 min-[900px]:justify-center min-[900px]:rounded-full",
         "max-[900px]:min-h-11 max-[900px]:w-full max-[900px]:gap-3 max-[900px]:rounded-xl max-[900px]:px-3",
-        active ? "bg-secondary text-white dark:text-[#111416]" : "frame-tile text-text-muted hover:text-text-primary",
+        active
+          ? "bg-secondary text-white dark:text-[#111416] max-[900px]:bg-secondary-strong max-[900px]:text-on-secondary-strong"
+          : "frame-tile text-text-muted hover:text-text-primary",
       ].join(" ")}
     >
       <span className="relative inline-flex" aria-hidden="true">
