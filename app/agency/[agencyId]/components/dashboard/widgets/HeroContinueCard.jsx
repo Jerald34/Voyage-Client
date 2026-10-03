@@ -26,12 +26,22 @@ function StatusChip({ status }) {
   const tone = STATUS_TONES[status] || 'muted';
   const label = STATUS_LABELS[status] || status;
 
-  // CSS color mappings for each tone — use system tokens so colors track theme
+  // Each tone's own colour, used for its tint and border. System tokens, so
+  // they track the theme.
   const toneColorMap = {
     warning: 'var(--warning)',
     accent: 'var(--accent)',
     success: 'var(--success)',
-    muted: 'rgb(var(--color-text-soft-rgb))',
+    muted: 'rgb(var(--color-text-muted-rgb))',
+  };
+
+  // Text on the 12% tint must reach 4.5:1 at 12px. Amber text on the draft
+  // tint only gets ~4.3:1, so drafts read in the body colour.
+  const textColorMap = {
+    warning: 'rgb(var(--color-text-rgb))',
+    accent: 'var(--color-secondary-strong)',
+    success: 'var(--success)',
+    muted: 'rgb(var(--color-text-muted-rgb))',
   };
 
   const bgColorMap = {
@@ -41,7 +51,7 @@ function StatusChip({ status }) {
     muted:   'rgb(var(--color-border-rgb) / 0.08)',
   };
 
-  const color = toneColorMap[tone];
+  const color = textColorMap[tone];
   const bgColor = bgColorMap[tone];
 
   const borderColor = toneColorMap[tone]
@@ -50,7 +60,7 @@ function StatusChip({ status }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.7rem] font-extrabold uppercase tracking-[0.05em]"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-[0.05em]"
       style={{
         backgroundColor: bgColor,
         color: color,

@@ -21,21 +21,24 @@ const STATUS_BG = {
   ARCHIVED: "rgb(var(--color-border-rgb) / 0.08)",
 };
 
+// Text on a 12% tint of its own colour needs 4.5:1 at 12px. Amber text on the
+// draft tint only reaches ~4.3:1, so drafts read in the body colour (the tint
+// still says "draft"), and the muted/strong tokens are the ones that pass.
 const STATUS_COLOR = {
-  DRAFT: "var(--warning)",
-  IN_REVIEW: "var(--accent)",
+  DRAFT: "rgb(var(--color-text-rgb))",
+  IN_REVIEW: "var(--color-secondary-strong)",
   APPROVED_INTERNAL: "var(--success)",
-  ARCHIVED: "rgb(var(--color-text-soft-rgb))",
+  ARCHIVED: "rgb(var(--color-text-muted-rgb))",
 };
 
 function StatusChip({ status }) {
   if (!status) return null;
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-lg px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-[0.04em]"
+      className="inline-flex shrink-0 items-center rounded-lg px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-[0.04em]"
       style={{
         backgroundColor: STATUS_BG[status] ?? "rgb(var(--color-border-rgb) / 0.08)",
-        color: STATUS_COLOR[status] ?? "rgb(var(--color-text-soft-rgb))",
+        color: STATUS_COLOR[status] ?? "rgb(var(--color-text-muted-rgb))",
       }}
     >
       {STATUS_LABELS[status] ?? status}
