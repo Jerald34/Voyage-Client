@@ -145,10 +145,11 @@ describe("Owner dashboard in plain words", () => {
   it("describes trip progress without funnel jargon", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const progress = screen.getByRole("heading", { name: "From new trip to approval" }).closest("section");
+    const progress = screen.getByRole("region", { name: "Trip progress" });
     expect(within(progress).getByText("Last 30 days: 6 trips created, 2 approved.")).toBeInTheDocument();
     expect(within(progress).getByRole("button", { name: /^Shared with client: 3\./ })).toBeInTheDocument();
     expect(within(progress).getByRole("button", { name: /^Viewed by client: 3\./ })).toBeInTheDocument();
+    expect(within(progress).getByText("Biggest drop: drafted to shared (50%)")).toBeInTheDocument();
   });
 
   it("titles the page with the question it answers", () => {
