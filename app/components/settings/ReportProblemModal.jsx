@@ -60,7 +60,7 @@ export default function ReportProblemModal({ open, onClose, onSubmit }) {
             <label htmlFor="report-message" className="text-xs font-semibold uppercase tracking-[0.08em] text-text-soft">Details</label>
             <textarea id="report-message" value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className={field} placeholder="What happened?" />
           </div>
-          {error && <p className="text-sm font-medium text-red-400" role="alert">{error}</p>}
+          {error && <p className="text-sm font-medium text-status-danger" role="alert">{error}</p>}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="min-h-11 rounded-pill border border-border bg-background px-4 text-sm font-semibold text-text-primary transition active:scale-[0.97] motion-reduce:transition-none">Cancel</button>
             <button type="submit" disabled={submitting} className="min-h-11 rounded-pill bg-secondary px-5 text-sm font-semibold text-white transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">

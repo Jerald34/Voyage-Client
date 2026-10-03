@@ -42,4 +42,21 @@ describe("theme-safe colour classes", () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  // Tailwind's 50–400 shades are pale: fine on dark surfaces, unreadable on
+  // light ones. Unless the class is dark-only (`dark:`), use a theme token.
+  const PALE_TEXT = /^text-(red|rose|emerald|green|amber|yellow|orange|sky|blue|slate|gray|zinc|neutral)-(50|100|200|300|400)(\/\d+)?$/;
+  // The Command Center's look is frozen until the colour sweep is signed off.
+  const PALE_TEXT_ALLOWED = new Set(["app/components/trip-dashboard/command-center/ChatInput.jsx"]);
+
+  it("never uses a pale palette text colour outside dark mode", () => {
+    const offenders = [];
+    for (const { where, rel, tokens } of classLines()) {
+      if (PALE_TEXT_ALLOWED.has(rel)) continue;
+      for (const { token, variants, utility } of tokens) {
+        if (PALE_TEXT.test(utility) && !variants.includes("dark")) offenders.push(`${where} ${token}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 });

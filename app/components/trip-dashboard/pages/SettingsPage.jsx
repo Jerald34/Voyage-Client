@@ -22,15 +22,17 @@ function formatVerifiedValue(emailVerifiedAt) {
   })}`;
 }
 
+// Theme tokens, so the pills read in light and dark mode. An 8% tint keeps
+// every status colour at 4.5:1 (warning drops below it at 10%).
 function getStatusClass(status) {
   const normalized = String(status ?? "").trim().toUpperCase();
   if (normalized === "ACTIVE" || normalized === "VERIFIED") {
-    return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    return "bg-status-success/8 text-status-success border-status-success/30";
   }
   if (normalized === "PENDING" || normalized === "INVITED") {
-    return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+    return "bg-status-warning/8 text-status-warning border-status-warning/30";
   }
-  return "bg-slate-500/15 text-slate-300 border-white/10";
+  return "bg-text-primary/5 text-text-muted border-border/20";
 }
 
 function getFieldClass(readOnly = false) {
@@ -339,7 +341,7 @@ export default function SettingsPage({
               <span className="text-sm text-text-soft">Account status</span>
             </div>
 
-            {profileError ? <p className="text-sm font-medium text-red-400" role="alert">{profileError}</p> : null}
+            {profileError ? <p className="text-sm font-medium text-status-danger" role="alert">{profileError}</p> : null}
 
             <div className="flex items-center justify-end">
               <button
@@ -391,7 +393,7 @@ export default function SettingsPage({
               <span className="text-sm text-text-soft">Agency status</span>
             </div>
 
-            {workspaceError ? <p className="text-sm font-medium text-red-400" role="alert">{workspaceError}</p> : null}
+            {workspaceError ? <p className="text-sm font-medium text-status-danger" role="alert">{workspaceError}</p> : null}
 
             <div className="flex items-center justify-end">
               <button
@@ -515,7 +517,7 @@ export default function SettingsPage({
         >
           <div className="flex flex-col gap-3">
             {reportSent ? (
-              <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400" role="status">
+              <p className="rounded-2xl border border-status-success/30 bg-status-success/8 px-4 py-3 text-sm text-status-success" role="status">
                 Thanks — your report was sent. We'll take a look.
               </p>
             ) : null}
