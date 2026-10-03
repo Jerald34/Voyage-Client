@@ -98,6 +98,42 @@ describe("CalendarDayPopover", () => {
     );
     expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Open trip" })).toHaveFocus();
   });
+
+  it("caps the floating popover at the card's height and scrolls its list", () => {
+    render(
+      <CalendarDayPopover
+        cell={cellFor([kyoto, osaka], "2026-10-08")}
+        todayKey="2026-10-03"
+        anchorEl={document.createElement("button")}
+        containerEl={document.createElement("div")}
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("max-h-[calc(100%-8px)]");
+    expect(dialog.className).toContain("flex-col");
+    const list = within(dialog).getByRole("list");
+    expect(list.className).toContain("overflow-y-auto");
+    expect(list.className).toContain("min-h-0");
+  });
+
+  it("lets the inline popover grow with the page", () => {
+    render(
+      <CalendarDayPopover
+        cell={cellFor([kyoto], "2026-10-08")}
+        todayKey="2026-10-03"
+        anchorEl={null}
+        containerEl={null}
+        inline
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("dialog").className).not.toContain("max-h-");
+  });
 });
 
 describe("CalendarDayPopover position", () => {

@@ -93,7 +93,8 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
       className={
         inline
           ? "frame-tile mt-3 rounded-[16px] p-3"
-          : "frame-popover frame-pop-in absolute z-30 w-[260px] rounded-[16px] p-3"
+          : // Capped at the calendar card (its positioned parent) so place() can always fit it; the list scrolls.
+            "frame-popover frame-pop-in absolute z-30 flex max-h-[calc(100%-8px)] w-[260px] flex-col rounded-[16px] p-3"
       }
       style={
         inline
@@ -101,7 +102,7 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
           : { left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? "visible" : "hidden" }
       }
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex shrink-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <p id={titleId} className="text-[13px] font-semibold text-text-primary">
             {title}
@@ -124,7 +125,7 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
       {items.length === 0 ? (
         <p className="mt-2 text-[12px] text-text-muted">Nothing on this day.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-[color:var(--frame-border)]">
+        <ul className="mt-2 min-h-0 flex-1 divide-y divide-[color:var(--frame-border)] overflow-y-auto overscroll-contain">
           {items.map((item, index) => (
             <li key={item.key} className="flex gap-2 py-2">
               <span
