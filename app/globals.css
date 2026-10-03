@@ -492,10 +492,19 @@ body::before {
     linear-gradient(115deg, transparent 58%, var(--frame-streak-2) 64%, transparent 70%);
 }
 
-/* No blur support: a solid surface reads better than an unblurred see-through one. */
+/* No blur support: a solid surface reads better than an unblurred see-through one.
+   The phone drawer uses `max-[900px]:frame-panel`, a separate compiled selector,
+   so it is listed too, scoped to the same width Tailwind applies it at (these
+   unlayered rules would otherwise also turn the desktop rail solid). */
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .frame-panel {
     background: rgb(var(--color-surface-rgb));
+  }
+
+  @media (width < 900px) {
+    .max-[900px]:frame-panel {
+      background: rgb(var(--color-surface-rgb));
+    }
   }
 }
 
@@ -505,6 +514,14 @@ body::before {
     background: rgb(var(--color-surface-rgb));
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+
+  @media (width < 900px) {
+    .max-[900px]:frame-panel {
+      background: rgb(var(--color-surface-rgb));
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
   }
 }
 
