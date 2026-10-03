@@ -235,6 +235,30 @@ describe("DashboardHeader", () => {
     expect(toggle).toHaveAttribute("aria-expanded", String(isSidebarOpen));
     expect(toggle).toHaveAttribute("aria-controls", NAV_DRAWER_ID);
   });
+
+  it('gives the flex Save button a single label child, so "Save to Client" keeps its space', () => {
+    render(
+      <DashboardHeader
+        variant="full"
+        activeTab="command-center"
+        isSidebarOpen={false}
+        setIsSidebarOpen={() => {}}
+        isClientMenuOpen={false}
+        setIsClientMenuOpen={() => {}}
+        clientMenuRef={{ current: null }}
+        safeOptions={[]}
+        getInitials={() => ""}
+        canApproveDraft
+        onApproveDraft={() => {}}
+      />,
+    );
+
+    const save = screen.getByRole("button", { name: "Save to Client" });
+    // A bare "Save" text node beside a <span> makes two flex items, and a flex
+    // item drops its leading space, which rendered "Saveto Client".
+    expect(save.childNodes).toHaveLength(1);
+    expect(save.firstChild.textContent).toBe("Save to Client");
+  });
 });
 
 describe("phone drawer", () => {

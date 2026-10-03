@@ -108,7 +108,8 @@ export default function DashboardHeader({
                 onClick={() => onApproveDraft?.()}
                 type="button"
               >
-                Save<span className="max-[900px]:hidden"> to Client</span>
+                {/* One inline label: as two flex items, "to Client" would lose its leading space. */}
+                <span>Save <span className="max-[900px]:hidden">to Client</span></span>
               </button>
             )}
           </div>
