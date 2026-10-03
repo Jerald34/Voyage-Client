@@ -55,6 +55,40 @@ describe("Settings Team panel", () => {
     renderSettings({ focusSection: "team", onFocusSectionHandled });
 
     expect(scrollIntoView).toHaveBeenCalledOnce();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
     expect(onFocusSectionHandled).toHaveBeenCalledOnce();
+  });
+
+  it("jumps without animating when the user prefers reduced motion", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
+
+    try {
+      renderSettings({ focusSection: "team" });
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "auto" });
+  });
+
+  it("moves focus to the Team panel so keyboard and screen reader users land there", () => {
+    renderSettings({ focusSection: "team" });
+
+    const team = screen.getByRole("region", { name: "Team" });
+    expect(team).toHaveAttribute("tabindex", "-1");
+    expect(team).toHaveFocus();
+  });
+
+  it("leaves focus alone when Settings opens without a team link", () => {
+    renderSettings();
+
+    expect(screen.getByRole("region", { name: "Team" })).not.toHaveFocus();
   });
 });

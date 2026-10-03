@@ -127,10 +127,15 @@ export default function SettingsPage({
 
   const teamRef = useRef(null);
 
-  // A `tab=team` link opens Settings scrolled to the Team panel, once.
+  // A `tab=team` link opens Settings scrolled to the Team panel, once. Focus
+  // moves there too (without a second scroll) so keyboard and screen reader
+  // users land on it, and the scroll skips the animation for reduced motion.
   useEffect(() => {
-    if (focusSection !== "team" || !teamRef.current) return;
-    teamRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
+    const panel = teamRef.current;
+    if (focusSection !== "team" || !panel) return;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    panel.scrollIntoView({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+    panel.focus({ preventScroll: true });
     onFocusSectionHandled?.();
   }, [focusSection, onFocusSectionHandled]);
 
@@ -528,6 +533,7 @@ export default function SettingsPage({
           <section
             ref={teamRef}
             id="settings-team"
+            tabIndex={-1}
             aria-label="Team"
             className="scroll-mt-4 rounded-[24px] border border-border bg-surface/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] xl:col-span-2"
           >
