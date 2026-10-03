@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import useDashboardPoll from "@/app/hooks/useDashboardPoll";
 import AgencyCalendar from "./widgets/AgencyCalendar";
@@ -43,6 +43,8 @@ export default function StaffMyWork({
   // one frame of "All caught up" first. No data and no failure yet means loading.
   const isLoading = !data && !error;
   const [slideTrip, setSlideTrip] = useState(null); // { tripId, tripTitle, subtitle }
+  // Where the slide-over returns focus if the row that opened it was removed by a poll.
+  const needsYouRef = useRef(null);
   const needsYou = buildNeedsYouItems(data?.worklist, STAFF_NEEDS_YOU_ORDER);
 
   const openTripSlide = (tripId, tripTitle, subtitle) => {
@@ -80,7 +82,7 @@ export default function StaffMyWork({
 
       <div className={DASHBOARD_GRID_CLASS}>
         <div className="min-w-0 space-y-5">
-          {data ? <NeedsYouList items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
+          {data ? <NeedsYouList ref={needsYouRef} items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
           <AgencyCalendar agencyId={agencyId} onOpenTrip={openTripSlide} />
         </div>
         {data ? (
@@ -104,6 +106,7 @@ export default function StaffMyWork({
         tripId={slideTrip?.tripId}
         tripTitle={slideTrip?.tripTitle}
         subtitle={slideTrip?.subtitle}
+        returnFocusRef={needsYouRef}
         onOpenFull={(tripId) => {
           setSlideTrip(null);
           openTrip(tripId);

@@ -237,8 +237,34 @@ function CommentCard({
   );
 }
 
+// ─── Focus containment ───────────────────────────────────────────────────────
+
+const TABBABLE_SELECTOR =
+  'a[href], button, input, select, textarea, summary, [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+
+/** True when Tab can land on the element: enabled, not inert, and actually rendered. */
+function isTabbable(element, root) {
+  if (element.matches(":disabled")) return false;
+  if (element instanceof HTMLInputElement && element.type === "hidden") return false;
+  if (getComputedStyle(element).visibility === "hidden") return false;
+  for (let node = element; node; node = node.parentElement) {
+    if (node.hidden || node.hasAttribute("inert") || getComputedStyle(node).display === "none") return false;
+    if (node === root) break;
+  }
+  return true;
+}
+
+function tabbablesIn(root) {
+  return [...root.querySelectorAll(TABBABLE_SELECTOR)].filter((element) => isTabbable(element, root));
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
+/**
+ * `returnFocusRef` (optional) names where focus goes on close when the element
+ * that opened the panel has left the page, e.g. a poll dropped its row while
+ * the panel was open. Without it, focus is only returned to a surviving opener.
+ */
 export default function TripSlideOver({
   isOpen,
   onClose,
@@ -247,22 +273,77 @@ export default function TripSlideOver({
   tripTitle = "Trip",
   subtitle = null,
   onOpenFull,
+  returnFocusRef = undefined,
 }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const closeButtonRef = useRef(null);
+  const panelRef = useRef(null);
 
-  // ── Focus: in on open, back to the opener on close ──
+  // Read at close time, so a parent passing a fresh ref object each render cannot re-run the focus effect.
+  const returnFocusRefLatest = useRef(returnFocusRef);
+  useEffect(() => {
+    returnFocusRefLatest.current = returnFocusRef;
+  }, [returnFocusRef]);
+
+  // ── Focus: remember the opener, and send focus back on close ──
   // Whatever had focus when the panel opened (a calendar day, a to-do row) is
-  // where the person was, so return there if it is still on the page.
+  // where the person was, so return there if it is still on the page. If it is
+  // not, use the fallback the parent named. Keyed on isOpen alone: switching to
+  // another trip while open keeps the original opener.
   useEffect(() => {
     if (!isOpen) return undefined;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
+    const active = document.activeElement;
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null;
     return () => {
-      if (opener?.isConnected) opener.focus();
+      if (!opener) return;
+      if (opener.isConnected) {
+        opener.focus();
+        return;
+      }
+      const fallback = returnFocusRefLatest.current?.current;
+      if (fallback?.isConnected) fallback.focus();
     };
+  }, [isOpen]);
+
+  // ── Focus: into the panel on open, and again when it switches trips ──
+  // Declared after the effect above so the opener is read before focus moves.
+  useEffect(() => {
+    if (isOpen) closeButtonRef.current?.focus();
+  }, [isOpen, tripId]);
+
+  // ── Focus: Tab and Shift+Tab cycle inside the open panel (aria-modal) ──
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleTab = (e) => {
+      if (e.key !== "Tab" || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const tabbables = tabbablesIn(panel);
+      if (tabbables.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = tabbables[0];
+      const last = tabbables[tabbables.length - 1];
+      const active = document.activeElement;
+      if (!active || !panel.contains(active)) {
+        // Focus is outside the panel (or on the page body): bring it in.
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
+      // Wrap only when nothing is left to tab to in this direction.
+      const direction = e.shiftKey ? Node.DOCUMENT_POSITION_PRECEDING : Node.DOCUMENT_POSITION_FOLLOWING;
+      const hasNext = tabbables.some((el) => el !== active && active.compareDocumentPosition(el) & direction);
+      if (!hasNext) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
+    document.addEventListener("keydown", handleTab);
+    return () => document.removeEventListener("keydown", handleTab);
   }, [isOpen]);
 
   // ── Fetch all comments across shares ──
@@ -403,6 +484,7 @@ export default function TripSlideOver({
       {/* Panel */}
       {/* While closed the panel only sits off-screen, so `inert` keeps its buttons out of the tab order and `aria-hidden` out of the accessibility tree. */}
       <aside
+        ref={panelRef}
         role="dialog"
         aria-label={`Trip comments: ${tripTitle}`}
         aria-modal="true"

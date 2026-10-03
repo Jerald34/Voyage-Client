@@ -18,8 +18,10 @@ const PRESS = "transition-[color,background-color,scale] duration-150 ease-out a
  * "Needs you today": the flattened worklist, most urgent first. Shows five
  * rows and the rest on request. `onAction(item)` runs for the row body and
  * its action button.
+ * `ref` reaches the section, which can take programmatic focus: the slide-over
+ * returns focus here when the row that opened it has gone.
  */
-export default function NeedsYouList({ items, onAction }) {
+export default function NeedsYouList({ items, onAction, ref }) {
   const headingId = useId();
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? items : items.slice(0, NEEDS_YOU_VISIBLE);
@@ -27,7 +29,12 @@ export default function NeedsYouList({ items, onAction }) {
   const staggerFrom = expanded ? NEEDS_YOU_VISIBLE : 0;
 
   return (
-    <section aria-labelledby={headingId} className="frame-tile rounded-[20px] px-4 py-3">
+    <section
+      ref={ref}
+      tabIndex={-1}
+      aria-labelledby={headingId}
+      className="frame-tile rounded-[20px] px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+    >
       <div className="flex items-center justify-between gap-3 pb-1">
         <h2 id={headingId} className="font-sans text-[15px] font-semibold tracking-normal text-text-primary">
           Needs you today
