@@ -502,7 +502,7 @@ body::before {
   }
 
   @media (width < 900px) {
-    .max-[900px]:frame-panel {
+    .max-\[900px\]\:frame-panel {
       background: rgb(var(--color-surface-rgb));
     }
   }
@@ -517,7 +517,7 @@ body::before {
   }
 
   @media (width < 900px) {
-    .max-[900px]:frame-panel {
+    .max-\[900px\]\:frame-panel {
       background: rgb(var(--color-surface-rgb));
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
