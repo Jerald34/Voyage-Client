@@ -38,9 +38,13 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
     setPosition({ left, top });
   }, [inline, anchorEl, containerEl, cell.key]);
 
+  // The floating popover stays visibility:hidden until it is positioned, and a
+  // hidden element can't take focus, so wait for the position (once per day).
+  const ready = inline || position !== null;
   useEffect(() => {
+    if (!ready) return;
     ref.current?.querySelector("[data-autofocus]")?.focus();
-  }, [cell.key]);
+  }, [cell.key, ready]);
 
   function handleKeyDown(event) {
     if (event.key === "Escape") {
