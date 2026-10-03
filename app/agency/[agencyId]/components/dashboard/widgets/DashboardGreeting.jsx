@@ -1,12 +1,20 @@
 "use client";
 
+import { useLocalHour } from "@/app/hooks/useLocalClock";
+
 /** "Good morning" 05–12, "Good afternoon" 12–17, "Good evening" otherwise. */
-export function greetingFor(date) {
-  const hour = date.getHours();
+function greetingForHour(hour) {
   if (hour >= 5 && hour < 12) return "Good morning";
   if (hour >= 12 && hour < 17) return "Good afternoon";
   return "Good evening";
 }
+
+export function greetingFor(date) {
+  return greetingForHour(date.getHours());
+}
+
+/** What the server render says: the server's clock is not the viewer's. */
+const NEUTRAL_GREETING = "Welcome back";
 
 /** The line under the greeting; null until the worklist has loaded. */
 export function needsYouSummary(count) {
@@ -21,8 +29,11 @@ export function needsYouSummary(count) {
  * one filled button, New trip.
  */
 export default function DashboardGreeting({ name, count, onNewTrip, now }) {
+  const hour = useLocalHour();
   const firstName = String(name ?? "").trim().split(/\s+/)[0];
-  const greeting = greetingFor(now ?? new Date());
+  // `now` pins the time (tests, previews). Otherwise the browser's hour, which
+  // is unknown on the server and while hydrating, so say something neutral then.
+  const greeting = now ? greetingFor(now) : hour === null ? NEUTRAL_GREETING : greetingForHour(hour);
   const summary = needsYouSummary(count);
 
   return (

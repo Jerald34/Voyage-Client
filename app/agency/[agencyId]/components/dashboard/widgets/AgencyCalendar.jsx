@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useCalendarEvents } from "@/app/hooks/useCalendarEvents";
+import { useLocalDateKey } from "@/app/hooks/useLocalClock";
 import {
   MONTH_NAMES,
   WEEKDAY_NAMES,
@@ -9,6 +10,7 @@ import {
   addDays,
   addMonths,
   buildCalendarDays,
+  fromDateKey,
   fullDayLabel,
   startOfMonth,
   toDateKey,
@@ -32,43 +34,6 @@ function useIsNarrow() {
     return () => mql.removeEventListener?.("change", onChange);
   }, []);
   return narrow;
-}
-
-/**
- * "Now", kept current: refreshes when the local date changes (a timer to the
- * next midnight, re-armed each time) and when the tab becomes visible again,
- * since timers stall while a laptop sleeps.
- */
-function useToday() {
-  const [today, setToday] = useState(() => new Date());
-  useEffect(() => {
-    let timer;
-    function sync() {
-      const now = new Date();
-      setToday((current) => (toDateKey(current) === toDateKey(now) ? current : now));
-    }
-    function arm() {
-      clearTimeout(timer);
-      const now = new Date();
-      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      timer = setTimeout(() => {
-        sync();
-        arm();
-      }, nextMidnight - now + 50);
-    }
-    function handleVisibility() {
-      if (document.hidden) return;
-      sync();
-      arm();
-    }
-    arm();
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, []);
-  return today;
 }
 
 function sameMonth(a, b) {
@@ -149,20 +114,52 @@ function DayTile({ cell, isOpen, tabbable, loading, buttonRef, onClick, onFocus,
 }
 
 /**
+ * What a server-rendered page (and the hydration pass) shows in place of the
+ * calendar: the server's date is not the viewer's, so it can't say which month
+ * to draw or which day is today. Same card and grid size, so nothing jumps.
+ */
+function CalendarShell() {
+  return (
+    <section aria-label="Calendar" aria-busy="true" className="frame-tile relative rounded-[20px] p-4">
+      <div className="flex h-9 items-center">
+        <span aria-hidden="true" className="h-4 w-32 rounded-full bg-text-primary/10" />
+      </div>
+      <div aria-hidden="true" className="mt-3 flex flex-col gap-1">
+        <div className="h-4" />
+        {[0, 1, 2, 3, 4, 5].map((week) => (
+          <div key={week} className="grid grid-cols-7 gap-1">
+            {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+              <div key={day} className="h-[56px] rounded-[10px] bg-text-primary/5" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
  * Month calendar of trips (bars) and client activity (dots). Clicking a day
  * opens its details; their actions call `onOpenTrip(tripId, tripTitle, clientName)`.
  * Keyboard: arrows move by day/week, Home/End jump to the week's edges,
  * PageUp/PageDown change month, Enter/Space opens a day, Escape closes it.
+ * It starts on the viewer's current month, so it waits for the browser's
+ * date (see useLocalDateKey) and shows a plain placeholder until then.
  */
-export default function AgencyCalendar({ agencyId, onOpenTrip }) {
+export default function AgencyCalendar(props) {
+  const todayKey = useLocalDateKey();
+  if (todayKey === null) return <CalendarShell />;
+  return <CalendarBody {...props} todayKey={todayKey} />;
+}
+
+function CalendarBody({ agencyId, onOpenTrip, todayKey }) {
   const titleId = useId();
   const sectionRef = useRef(null);
   const buttonRefs = useRef(new Map());
   const focusAfterRenderRef = useRef(false);
   const isNarrow = useIsNarrow();
 
-  const today = useToday();
-  const todayKey = toDateKey(today);
+  const today = useMemo(() => fromDateKey(todayKey), [todayKey]);
   const [month, setMonth] = useState(() => startOfMonth(today));
   const [focusKey, setFocusKey] = useState(todayKey);
   const [openKey, setOpenKey] = useState(null);
