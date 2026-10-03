@@ -10,8 +10,8 @@ import KindIcon, { hasKindIcon } from "./KindIcon";
  *   sr-only tone label, so the meaning never rests on colour alone.
  * - The row body is a <button> when onRowClick is set; the action is its own
  *   ≥44px button, and its clicks never reach onRowClick.
- * - Enter animation: fade + 8px rise over 240ms; opacity only under
- *   prefers-reduced-motion.
+ * - Enter animation: fade + 8px rise over 240ms, started `enterDelay` ms late
+ *   so a list can stagger; opacity only (no delay) under prefers-reduced-motion.
  */
 
 const TONE_BADGE_CLASS = {
@@ -39,6 +39,7 @@ export default function WorklistRow({
   onRowClick,
   actionDisabled = false,
   actionPending = false,
+  enterDelay = 0,
 }) {
   const [mounted, setMounted] = useState(false);
   const reducedMotion = useRef(false);
@@ -57,6 +58,7 @@ export default function WorklistRow({
         opacity: mounted ? 1 : 0,
         transform: mounted ? "translateY(0)" : "translateY(8px)",
         transition: "opacity 240ms var(--ease-out), transform 240ms var(--ease-out)",
+        transitionDelay: `${enterDelay}ms`,
       };
 
   function handleActionClick(event) {

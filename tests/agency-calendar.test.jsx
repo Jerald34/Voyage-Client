@@ -227,6 +227,27 @@ describe("AgencyCalendar across midnight", () => {
   });
 });
 
+describe("AgencyCalendar press feedback and focus", () => {
+  it("presses the header buttons in slightly", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    for (const name of ["Previous month", "Today", "Next month"]) {
+      const { className } = screen.getByRole("button", { name });
+      expect(className).toContain("active:scale-[0.97]");
+      expect(className).toContain("transition-[color,background-color,scale]");
+    }
+  });
+
+  it("uses the stronger accent for the today outline and the day focus ring", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    expect(day("Saturday, October 3").className).toContain("outline-secondary-strong");
+    expect(day("Saturday, October 3").className).not.toMatch(/outline-secondary(?!-)/);
+    expect(day("Friday, October 9").className).toContain("focus-visible:ring-secondary-strong");
+    expect(day("Friday, October 9").className).not.toMatch(/focus-visible:ring-secondary(?!-)/);
+  });
+});
+
 describe("AgencyCalendar Escape", () => {
   it("handles Escape on a day tile without letting it travel further", () => {
     const outside = vi.fn();

@@ -38,6 +38,14 @@ describe("DashboardGreeting", () => {
     expect(screen.queryByText(/need/)).not.toBeInTheDocument();
   });
 
+  it("presses in slightly under the finger", () => {
+    render(<DashboardGreeting name="Maria" count={0} onNewTrip={() => {}} now={MORNING} />);
+    const { className } = screen.getByRole("button", { name: "New trip" });
+    expect(className).toContain("active:scale-[0.97]");
+    expect(className).toContain("transition-[opacity,scale]");
+    expect(className).not.toContain("transition-opacity");
+  });
+
   it("starts a new trip", () => {
     const onNewTrip = vi.fn();
     render(<DashboardGreeting name="Maria" count={0} onNewTrip={onNewTrip} now={MORNING} />);

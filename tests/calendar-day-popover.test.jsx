@@ -192,6 +192,24 @@ describe("CalendarDayPopover actions", () => {
     expect(second).toHaveAccessibleDescription("Tanaka in Osaka");
   });
 
+  it("presses the buttons in slightly", () => {
+    render(
+      <CalendarDayPopover
+        cell={cellFor([kyoto], "2026-10-08")}
+        todayKey="2026-10-03"
+        anchorEl={null}
+        containerEl={null}
+        onClose={vi.fn()}
+        onAction={vi.fn()}
+      />,
+    );
+
+    for (const button of [screen.getByRole("button", { name: "Open trip" }), screen.getByRole("button", { name: "Close" })]) {
+      expect(button.className).toContain("active:scale-[0.97]");
+      expect(button.className).toContain("transition-[color,background-color,scale]");
+    }
+  });
+
   it("makes the buttons 44px tall on touch screens", () => {
     render(
       <CalendarDayPopover

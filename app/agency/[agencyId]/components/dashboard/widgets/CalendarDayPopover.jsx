@@ -9,6 +9,8 @@ const KIND_BADGE = {
   share_expires: "bg-status-warning/15 text-status-warning",
 };
 const DEFAULT_BADGE = "bg-text-muted/15 text-text-muted";
+/** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
+const PRESS = "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]";
 
 /**
  * A calendar day's details. Floats beside the day inside the calendar card
@@ -111,7 +113,7 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
           aria-label="Close"
           data-autofocus={items.length === 0 ? "" : undefined}
           onClick={() => onClose({ restoreFocus: true })}
-          className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-text-muted pointer-coarse:h-11 pointer-coarse:w-11 hover:bg-text-primary/5 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+          className={`flex h-8 w-8 flex-none items-center justify-center rounded-full text-text-muted pointer-coarse:h-11 pointer-coarse:w-11 hover:bg-text-primary/5 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="M18 6 6 18M6 6l12 12" />
@@ -141,7 +143,7 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
                   data-autofocus={index === 0 ? "" : undefined}
                   aria-describedby={`${itemIdPrefix}-${index}`}
                   onClick={() => onAction(item)}
-                  className="mt-1 min-h-8 pointer-coarse:min-h-11 rounded text-[12px] font-semibold text-secondary-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                  className={`mt-1 min-h-8 pointer-coarse:min-h-11 rounded text-[12px] font-semibold text-secondary-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`}
                 >
                   {item.actionLabel} <span aria-hidden="true">→</span>
                 </button>

@@ -72,6 +72,11 @@ describe("WorklistRow", () => {
     expect(container.querySelector(".sr-only").textContent).toBe("info");
   });
 
+  it("enters after the delay it is given", () => {
+    renderRow({ enterDelay: 80 });
+    expect(screen.getByRole("listitem")).toHaveStyle({ transitionDelay: "80ms" });
+  });
+
   it("shows a dot, not an icon, when the row has no kind", () => {
     const { container } = renderRow();
     expect(container.querySelector("svg")).not.toBeInTheDocument();

@@ -17,8 +17,9 @@ import CalendarDayPopover from "./CalendarDayPopover";
 
 const NARROW_QUERY = "(max-width: 600px)";
 const KEY_STEPS = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
-const NAV_BUTTON =
-  "frame-tile flex h-9 w-9 items-center justify-center rounded-full text-text-primary hover:bg-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
+/** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
+const PRESS = "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]";
+const NAV_BUTTON = `frame-tile flex h-9 w-9 items-center justify-center rounded-full text-text-primary hover:bg-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`;
 
 /** True on screens narrow enough that day details sit under the grid. */
 function useIsNarrow() {
@@ -121,9 +122,9 @@ function DayTile({ cell, isOpen, tabbable, loading, buttonRef, onClick, onFocus,
       onKeyDown={onKeyDown}
       className={[
         "relative flex h-full min-h-[56px] w-full flex-col overflow-hidden rounded-[10px] p-1.5 text-left transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-strong",
         isOpen ? "border border-secondary bg-secondary/15" : "frame-tile hover:bg-text-primary/5",
-        cell.isToday ? "outline-dashed outline-[1.5px] outline-offset-[-3px] outline-secondary" : "",
+        cell.isToday ? "outline-dashed outline-[1.5px] outline-offset-[-3px] outline-secondary-strong" : "",
       ].join(" ")}
     >
       <span className="flex items-center justify-between gap-1">
@@ -259,7 +260,7 @@ export default function AgencyCalendar({ agencyId, onOpenTrip }) {
               showMonth(today);
               setFocusKey(todayKey);
             }}
-            className="frame-tile min-h-9 rounded-full px-3 text-[12px] font-semibold text-text-primary hover:bg-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+            className={`frame-tile min-h-9 rounded-full px-3 text-[12px] font-semibold text-text-primary hover:bg-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`}
           >
             Today
           </button>

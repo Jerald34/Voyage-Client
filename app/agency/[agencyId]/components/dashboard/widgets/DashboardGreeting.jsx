@@ -36,7 +36,7 @@ export default function DashboardGreeting({ name, count, onNewTrip, now }) {
       <button
         type="button"
         onClick={onNewTrip}
-        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-secondary-strong px-5 text-sm font-semibold text-on-secondary-strong transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-pill bg-secondary-strong px-5 text-sm font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
       >
         <span aria-hidden="true" className="text-base leading-none">+</span>
         New trip
