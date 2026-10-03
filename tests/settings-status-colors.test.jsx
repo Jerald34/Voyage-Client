@@ -20,8 +20,12 @@ function renderSettings({ userStatus, agencyStatus }) {
   );
 }
 
-/** Each status pill sits just before its label. */
-const pillFor = (label) => screen.getByText(label).previousElementSibling;
+/** The one `rounded-pill` in the row that holds the status label, wherever it sits relative to the label. */
+function pillFor(label) {
+  const pills = screen.getByText(label).parentElement.querySelectorAll(".rounded-pill");
+  expect(pills, `${label}: pills in its row`).toHaveLength(1);
+  return pills[0];
+}
 
 /** Dark-only Tailwind palette classes that wash out on a light surface. */
 const DARK_ONLY = /(^|\s)(text|bg|border)-(emerald|amber|slate|red)-\d+|(^|\s)border-white\//;

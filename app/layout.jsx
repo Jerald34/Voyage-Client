@@ -30,7 +30,9 @@ export const metadata = {
     telephone: false,
   },
   // `?v=` must match public/manifest.json. Bump both when the icon artwork
-  // changes, or installed apps and iOS keep showing the old icon.
+  // changes, or installed apps and iOS keep showing the old icon. Also bump
+  // CACHE_VERSION in public/sw.js: the in-app /icon.svg references are
+  // cache-first, so they keep serving the old artwork until the cache rolls over.
   icons: {
     icon: [
       { url: "/icons/icon-192.png?v=2", sizes: "192x192", type: "image/png" },

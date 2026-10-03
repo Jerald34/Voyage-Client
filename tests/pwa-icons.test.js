@@ -10,11 +10,16 @@ vi.mock("../app/components/theme/ThemeProvider", () => ({ default: ({ children }
 
 import { metadata } from "../app/layout.jsx";
 
-// jsdom replaces the global URL, which node:url's fileURLToPath rejects, so resolve from __dirname.
-const publicFile = (path) => resolve(__dirname, `../public${path}`);
+// jsdom replaces the global URL, which node:url's fileURLToPath rejects, so resolve from import.meta.dirname
+// (a plain string; the CommonJS-style __dirname is a vite-node compatibility shim that Vitest is dropping).
+const publicFile = (path) => resolve(import.meta.dirname, `../public${path}`);
 const manifest = JSON.parse(readFileSync(publicFile("/manifest.json"), "utf8"));
 
-/** Bump (here, in public/manifest.json and in app/layout.jsx) whenever the icon artwork changes. */
+/**
+ * Bump (here, in public/manifest.json and in app/layout.jsx) whenever the icon artwork changes.
+ * Also bump CACHE_VERSION in public/sw.js: the in-app /icon.svg references are cache-first,
+ * so installed apps keep serving the old artwork until the service worker cache rolls over.
+ */
 const ICON_VERSION = "?v=2";
 
 const withoutQuery = (url) => url.split("?")[0];

@@ -3,8 +3,9 @@
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 
-// jsdom replaces the global URL, which node:url's fileURLToPath rejects, so resolve from __dirname.
-const css = readFileSync(resolvePath(__dirname, "../../app/globals.css"), "utf8");
+// jsdom replaces the global URL, which node:url's fileURLToPath rejects, so resolve from import.meta.dirname
+// (a plain string; the CommonJS-style __dirname is a vite-node compatibility shim that Vitest is dropping).
+const css = readFileSync(resolvePath(import.meta.dirname, "../../app/globals.css"), "utf8");
 
 /** The declarations inside the first `<selector> { ... }` block of globals.css. */
 export function declarations(selector) {

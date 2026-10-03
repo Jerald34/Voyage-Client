@@ -111,7 +111,8 @@ describe("HomePage Dashboard tab", () => {
     render(<HomePage user={agencyUser("OWNER")} initialTab="dashboard" />);
 
     expect(screen.queryByRole("button", { name: "New Itinerary" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Save to Client")).not.toBeInTheDocument();
+    // The label is split across nested spans, so match the button by its accessible name.
+    expect(screen.queryByRole("button", { name: "Save to Client" })).not.toBeInTheDocument();
   });
 
   it("always renders the compact header on the Dashboard and hides it on desktop with CSS", () => {
