@@ -1,5 +1,6 @@
 import React from "react";
 import ClientSwitcher from "../command-center/ClientSwitcher.jsx";
+import { NAV_DRAWER_ID } from "./DashboardSidebar.jsx";
 
 /**
  * Top bar for the Command Center, Itineraries, Settings and Admin tabs:
@@ -15,6 +16,7 @@ export default function DashboardHeader({
   variant = "full",
   isSidebarOpen,
   setIsSidebarOpen,
+  menuButtonRef,
   liveStatus,
   scopedStreamError,
   scopedIsStreaming,
@@ -47,9 +49,12 @@ export default function DashboardHeader({
     <header className={`flex h-[84px] flex-shrink-0 items-center justify-between gap-5 border-b border-[color:var(--frame-border)] px-7 max-[900px]:h-[48px] max-[900px]:gap-2 max-[900px]:px-3 ${isFull ? "" : "min-[900px]:hidden"}`}>
       <div className="flex items-center gap-2">
         <button
+          ref={menuButtonRef}
           className="hidden max-[900px]:flex bg-transparent border-none text-primary p-2 cursor-pointer"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           aria-label="Toggle menu"
+          aria-expanded={Boolean(isSidebarOpen)}
+          aria-controls={NAV_DRAWER_ID}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             {isSidebarOpen ? (

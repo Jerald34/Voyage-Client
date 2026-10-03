@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTheme } from "../../theme/ThemeProvider";
 import { getInitials } from "../../../lib/formatters.js";
 import useMobileViewport from "../mobile/useMobileViewport.js";
@@ -79,10 +80,15 @@ const ICONS = {
   ),
 };
 
+/** The phone drawer's id; the header's menu button points at it with aria-controls. */
+export const NAV_DRAWER_ID = "dashboard-navigation";
+
 /**
  * App navigation. Desktop: a 72px icon rail inside the glass frame (logo,
  * destinations, theme switch, account menu). Phones (≤900px): the same items
- * in a slide-in glass drawer under the header, with the account inline.
+ * in a slide-in glass drawer under the header, with the account inline. While
+ * closed the drawer is `inert` (off-screen, so out of the tab order); Escape
+ * closes it and hands focus back to `menuButtonRef`.
  */
 export default function DashboardSidebar({
   isSidebarOpen,
@@ -93,6 +99,7 @@ export default function DashboardSidebar({
   user,
   pendingCount,
   agencyId,
+  menuButtonRef,
 }) {
   const { theme, setTheme } = useTheme();
   const isMobile = useMobileViewport();
@@ -122,6 +129,18 @@ export default function DashboardSidebar({
     { tab: "settings", label: isPersonal ? "My account" : "Settings", icon: ICONS.settings, tourTarget: "settings-replay" },
   ].filter(Boolean);
 
+  const isDrawerOpen = isMobile && isSidebarOpen;
+  useEffect(() => {
+    if (!isDrawerOpen) return undefined;
+    function handleKeyDown(event) {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      setIsSidebarOpen(false);
+      menuButtonRef?.current?.focus();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isDrawerOpen, setIsSidebarOpen, menuButtonRef]);
+
   function go(tab) {
     setActiveTab(tab);
     if (isMobile) setIsSidebarOpen(false);
@@ -138,6 +157,8 @@ export default function DashboardSidebar({
         />
       ) : null}
       <aside
+        id={NAV_DRAWER_ID}
+        inert={isMobile && !isSidebarOpen}
         aria-label="Dashboard navigation"
         className={[
           "z-50 flex flex-shrink-0 flex-col gap-2",

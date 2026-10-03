@@ -1,9 +1,10 @@
+import { createRef } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AccountMenu from "../app/components/trip-dashboard/layout/AccountMenu.jsx";
 import DashboardHeader from "../app/components/trip-dashboard/layout/DashboardHeader.jsx";
-import DashboardSidebar from "../app/components/trip-dashboard/layout/DashboardSidebar.jsx";
+import DashboardSidebar, { NAV_DRAWER_ID } from "../app/components/trip-dashboard/layout/DashboardSidebar.jsx";
 import RailButton from "../app/components/trip-dashboard/layout/RailButton.jsx";
 
 function renderMenu(props = {}) {
@@ -226,5 +227,94 @@ describe("DashboardHeader", () => {
   it("sets no z-index, so modals and slide-overs paint above it", () => {
     render(<DashboardHeader variant="compact" isSidebarOpen={false} setIsSidebarOpen={() => {}} />);
     expect(screen.getByRole("banner").className).not.toMatch(/(^|\s)z-/);
+  });
+
+  it.each([false, true])("exposes the drawer state on the menu button (open: %s)", (isSidebarOpen) => {
+    render(<DashboardHeader variant="compact" isSidebarOpen={isSidebarOpen} setIsSidebarOpen={() => {}} />);
+    const toggle = screen.getByRole("button", { name: "Toggle menu" });
+    expect(toggle).toHaveAttribute("aria-expanded", String(isSidebarOpen));
+    expect(toggle).toHaveAttribute("aria-controls", NAV_DRAWER_ID);
+  });
+});
+
+describe("phone drawer", () => {
+  const originalMatchMedia = window.matchMedia;
+
+  function setViewport(isPhone) {
+    window.matchMedia = (query) => ({
+      matches: isPhone,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+  }
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  function renderDrawer({ isSidebarOpen }) {
+    const menuButtonRef = createRef();
+    const setIsSidebarOpen = vi.fn();
+    const utils = render(
+      <>
+        <button ref={menuButtonRef} type="button">
+          Menu
+        </button>
+        <DashboardSidebar
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          menuButtonRef={menuButtonRef}
+          setActiveTab={vi.fn()}
+          logout={vi.fn()}
+          activeTab="dashboard"
+          user={agencyOwner}
+          agencyId="agency-1"
+          pendingCount={0}
+        />
+      </>,
+    );
+    return { ...utils, menuButtonRef, setIsSidebarOpen, drawer: utils.container.querySelector("aside") };
+  }
+
+  it("is the element the menu button controls", () => {
+    setViewport(true);
+    expect(renderDrawer({ isSidebarOpen: false }).drawer).toHaveAttribute("id", NAV_DRAWER_ID);
+  });
+
+  it("is inert while closed, so its buttons leave the tab order", () => {
+    setViewport(true);
+    expect(renderDrawer({ isSidebarOpen: false }).drawer).toHaveAttribute("inert");
+  });
+
+  it("is interactive while open", () => {
+    setViewport(true);
+    expect(renderDrawer({ isSidebarOpen: true }).drawer).not.toHaveAttribute("inert");
+  });
+
+  it("is never inert on desktop, where the rail is always visible", () => {
+    setViewport(false);
+    expect(renderDrawer({ isSidebarOpen: false }).drawer).not.toHaveAttribute("inert");
+  });
+
+  it("closes on Escape and returns focus to the menu button", () => {
+    setViewport(true);
+    const { setIsSidebarOpen, menuButtonRef } = renderDrawer({ isSidebarOpen: true });
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(setIsSidebarOpen).toHaveBeenCalledWith(false);
+    expect(menuButtonRef.current).toHaveFocus();
+  });
+
+  it("ignores Escape while closed or on desktop", () => {
+    setViewport(true);
+    const closed = renderDrawer({ isSidebarOpen: false });
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(closed.setIsSidebarOpen).not.toHaveBeenCalled();
+    closed.unmount();
+
+    setViewport(false);
+    const desktop = renderDrawer({ isSidebarOpen: true });
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(desktop.setIsSidebarOpen).not.toHaveBeenCalled();
   });
 });

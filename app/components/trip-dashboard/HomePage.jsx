@@ -145,6 +145,7 @@ export default function HomePage({
   const [isApprovingDraft, setIsApprovingDraft] = useState(false);
   const [approvalError, setApprovalError] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const menuButtonRef = useRef(null);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [settingsFocus, setSettingsFocus] = useState(initialSettingsSection);
   const clearSettingsFocus = useCallback(() => setSettingsFocus(null), []);
@@ -663,6 +664,7 @@ export default function HomePage({
           <DashboardSidebar
             isSidebarOpen={isSidebarOpen}
             setIsSidebarOpen={setIsSidebarOpen}
+            menuButtonRef={menuButtonRef}
             activeTab={currentTab}
             setActiveTab={setActiveTab}
             logout={logout}
@@ -676,6 +678,7 @@ export default function HomePage({
               variant={currentTab === "dashboard" ? "compact" : "full"}
               isSidebarOpen={isSidebarOpen}
               setIsSidebarOpen={setIsSidebarOpen}
+              menuButtonRef={menuButtonRef}
               liveStatus={liveStatus}
               scopedStreamError={isVisible ? streamError : null}
               scopedIsStreaming={isVisible ? isStreaming : false}
