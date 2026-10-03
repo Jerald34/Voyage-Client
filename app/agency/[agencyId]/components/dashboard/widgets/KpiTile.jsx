@@ -2,6 +2,7 @@
 import { useId } from "react";
 
 const UNIT_SHORT = { days: "d", h: "h" };
+const MIN_VISIBLE_DELTA = 0.05;
 
 /**
  * Compact KPI tile for the Insights column: label, value, and the change vs
@@ -27,18 +28,34 @@ export default function KpiTile({
   const hasValue = value != null;
   const hasDelta = hasValue && deltaVsPrior != null;
   const formatted = hasValue ? formatValue(value) : "—";
-  const isUp = hasDelta && deltaVsPrior > 0;
-  const isDown = hasDelta && deltaVsPrior < 0;
+  // A change under 0.05 would print as "0.0" (or a bare sign), so it reads as none.
+  const hasChange = hasDelta && Math.abs(deltaVsPrior) >= MIN_VISIBLE_DELTA;
+  const isUp = hasChange && deltaVsPrior > 0;
+  const isDown = hasChange && deltaVsPrior < 0;
   const isImprovement = lowerIsBetter ? isDown : isUp;
   const isRegression = lowerIsBetter ? isUp : isDown;
   const magnitude = hasDelta ? Math.abs(deltaVsPrior).toFixed(1) : null;
+  const pts = unit === "%" ? " pts" : "";
 
+  // The visible change and what a screen reader hears use the same words.
   let deltaText;
-  if (!hasValue) deltaText = "No data yet";
-  else if (!hasDelta) deltaText = "No prior data";
-  else if (!isUp && !isDown) deltaText = "No change";
-  else if (lowerIsBetter) deltaText = `${magnitude}${UNIT_SHORT[unit] ?? ""} ${isUp ? "slower" : "faster"}`;
-  else deltaText = `${isUp ? "+" : "−"}${magnitude}${unit === "%" ? " pts" : ""}`;
+  let spokenDelta;
+  if (!hasValue) {
+    deltaText = "No data yet";
+    spokenDelta = "no data yet";
+  } else if (!hasDelta) {
+    deltaText = "No prior data";
+    spokenDelta = "no prior period data";
+  } else if (!hasChange) {
+    deltaText = "No change";
+    spokenDelta = "no change from the prior period";
+  } else if (lowerIsBetter) {
+    deltaText = `${magnitude}${UNIT_SHORT[unit] ?? ""} ${isUp ? "slower" : "faster"}`;
+    spokenDelta = `${deltaText} than the prior period`;
+  } else {
+    deltaText = `${isUp ? "+" : "−"}${magnitude}${pts}`;
+    spokenDelta = `${isUp ? "up" : "down"} ${magnitude}${pts} from the prior period`;
+  }
 
   const deltaColor = isImprovement
     ? "text-[color:var(--success)]"
@@ -46,13 +63,7 @@ export default function KpiTile({
       ? "text-[color:var(--danger)]"
       : "text-text-muted";
 
-  const a11yLabel = !hasValue
-    ? `${label}: no data yet`
-    : `${label}: ${formatted}${unit ?? ""}, ${
-        hasDelta
-          ? `${isUp ? "up" : isDown ? "down" : "unchanged"} ${magnitude}${unit === "%" ? " pts" : ""} vs prior period`
-          : "no prior period data"
-      }`;
+  const a11yLabel = hasValue ? `${label}: ${formatted}${unit ?? ""}, ${spokenDelta}` : `${label}: ${spokenDelta}`;
 
   return (
     <div

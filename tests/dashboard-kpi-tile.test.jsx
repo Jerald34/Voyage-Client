@@ -41,10 +41,39 @@ describe("KpiTile", () => {
 
   it("names the value and direction for screen readers", () => {
     render(<KpiTile label="Win rate" value={42.1} unit="%" deltaVsPrior={3.2} />);
-    const label = screen.getByRole("group").getAttribute("aria-label");
-    expect(label).toMatch(/Win rate/);
-    expect(label).toMatch(/42\.1/);
-    expect(label).toMatch(/up/i);
+    expect(screen.getByRole("group")).toHaveAccessibleName("Win rate: 42.1%, up 3.2 pts from the prior period");
+  });
+
+  it("describes a fall in the same words", () => {
+    render(<KpiTile label="Win rate" value={42} unit="%" deltaVsPrior={-2} />);
+    expect(screen.getByRole("group")).toHaveAccessibleName("Win rate: 42%, down 2.0 pts from the prior period");
+  });
+
+  it("describes times as slower or faster, matching the visible change", () => {
+    const { unmount } = render(<KpiTile label="Time to reply" value={2.5} unit="h" deltaVsPrior={1.2} lowerIsBetter />);
+    expect(screen.getByRole("group")).toHaveAccessibleName("Time to reply: 2.5h, 1.2h slower than the prior period");
+    unmount();
+    render(<KpiTile label="Time to share" value={1.7} unit="days" deltaVsPrior={-0.4} lowerIsBetter />);
+    expect(screen.getByRole("group")).toHaveAccessibleName("Time to share: 1.7days, 0.4d faster than the prior period");
+  });
+
+  it("treats a change too small to show as no change", () => {
+    const { unmount } = render(<KpiTile label="Win rate" value={42} unit="%" deltaVsPrior={0.04} />);
+    const quiet = screen.getByText("No change");
+    expect(quiet.className).toContain("text-text-muted");
+    expect(quiet.className).not.toContain("--success");
+    expect(screen.getByRole("group").getAttribute("aria-label")).toMatch(/no change/i);
+    unmount();
+
+    render(<KpiTile label="Time to reply" value={2.5} unit="h" deltaVsPrior={-0.04} lowerIsBetter />);
+    const quietTime = screen.getByText("No change");
+    expect(quietTime.className).not.toContain("--success");
+    expect(quietTime.className).not.toContain("--danger");
+  });
+
+  it("shows the smallest change that rounds to a visible step", () => {
+    render(<KpiTile label="Win rate" value={42} unit="%" deltaVsPrior={0.05} />);
+    expect(screen.getByText("+0.1 pts")).toBeInTheDocument();
   });
 
   it("respects a custom formatValue", () => {
