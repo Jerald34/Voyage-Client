@@ -46,7 +46,7 @@ export default function RatingsPanel({ reviews = [], onToggleTestimonial }) {
 
       {all.length === 0 ? (
         <div className="mt-1">
-          <EmptyState variant="ratings" />
+          <EmptyState variant="ratings" compact />
         </div>
       ) : (
         <div className="mt-2 space-y-2">

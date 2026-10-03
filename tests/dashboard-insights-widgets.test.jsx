@@ -81,4 +81,11 @@ describe("RatingsPanel", () => {
     render(<RatingsPanel reviews={[]} />);
     expect(screen.getByText("Reviews appear after trips complete.")).toBeInTheDocument();
   });
+
+  it("uses the compact empty state in the narrow Insights column", () => {
+    render(<RatingsPanel reviews={[]} />);
+    const heading = screen.getByText("Reviews appear after trips complete.");
+    expect(heading.className).toContain("font-sans");
+    expect(heading.className).not.toContain("font-extrabold");
+  });
 });
