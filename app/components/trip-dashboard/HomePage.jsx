@@ -866,6 +866,7 @@ export default function HomePage({
                 <OwnerOverview
                   agencyId={agencyId}
                   initialData={null}
+                  viewerName={user?.displayName}
                   onOpenTrip={(tripId) => {
                     explicitContextRef.current = true;
                     setActiveTab("command-center");

@@ -102,7 +102,9 @@ describe("HomePage Dashboard tab", () => {
 
     const scroller = screen.getByTestId("dashboard-scroll");
     expect(scroller).toHaveClass("min-h-0", "overflow-y-auto");
-    expect(within(scroller).getByRole("heading", { name: "How your agency is doing" })).toBeInTheDocument();
+    expect(
+      within(scroller).getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), Mara$/ }),
+    ).toBeInTheDocument();
   });
 
   it("shows no Command Center header content on the Dashboard", () => {
@@ -150,7 +152,7 @@ describe("HomePage Dashboard tab", () => {
     // Above the first dashboard section, not buried in the Team section at the bottom.
     const notice = screen.getByText(JOINED_NOTICE);
     const firstSection = screen.getByRole("heading", {
-      name: role === "STAFF" ? "Clients waiting on you" : "Needs your eyes today",
+      name: role === "STAFF" ? "Clients waiting on you" : "Needs you today",
     });
     expect(notice.compareDocumentPosition(firstSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
