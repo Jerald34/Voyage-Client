@@ -284,6 +284,8 @@ function LoadAlert({ message, onRetry }) {
  * `returnFocusRef` (optional) names where focus goes on close when the element
  * that opened the panel has left the page, e.g. a poll dropped its row while
  * the panel was open. Without it, focus is only returned to a surviving opener.
+ * `onReplied(commentId)` (optional) runs once a reply is saved, so the
+ * dashboard can reload what still needs the agent.
  */
 export default function TripSlideOver({
   isOpen,
@@ -294,6 +296,7 @@ export default function TripSlideOver({
   subtitle = null,
   onOpenFull,
   returnFocusRef = undefined,
+  onReplied = undefined,
 }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -445,20 +448,24 @@ export default function TripSlideOver({
   }, [isOpen, onClose]);
 
   // Optimistic reply update — avoids a full refetch on send
-  const handleReplySent = useCallback((commentId, content) => {
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId
-          ? {
-              ...c,
-              agencyReply: content,
-              agencyRepliedAt: new Date().toISOString(),
-              status: "ADDRESSED",
-            }
-          : c,
-      ),
-    );
-  }, []);
+  const handleReplySent = useCallback(
+    (commentId, content) => {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? {
+                ...c,
+                agencyReply: content,
+                agencyRepliedAt: new Date().toISOString(),
+                status: "ADDRESSED",
+              }
+            : c,
+        ),
+      );
+      onReplied?.(commentId);
+    },
+    [onReplied],
+  );
 
   // ── Two-level grouping: Day → Activity ──
   const grouped = useMemo(() => {

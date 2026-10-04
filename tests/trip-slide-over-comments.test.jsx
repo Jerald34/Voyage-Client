@@ -237,3 +237,42 @@ describe("TripSlideOver focus when Retry is pressed", () => {
     expect(home).toHaveFocus();
   });
 });
+
+describe("TripSlideOver replies", () => {
+  async function sendReply(card, text) {
+    fireEvent.click(within(card).getByRole("button", { name: "Reply" }));
+    fireEvent.change(within(card).getByPlaceholderText("Write a reply…"), { target: { value: text } });
+    fireEvent.click(within(card).getByRole("button", { name: "Send Reply" }));
+  }
+
+  it("tells the dashboard once a reply is saved, so it can refresh", async () => {
+    serve();
+    const onReplied = vi.fn();
+    render(<Panel onReplied={onReplied} />);
+
+    const card = (await screen.findByText("Comment on s-1")).closest(".dashboard-card");
+    await sendReply(card, "Yes, we can swap it.");
+
+    await waitFor(() => expect(onReplied).toHaveBeenCalledWith("c-s-1"));
+    expect(mocks.fetchApi).toHaveBeenCalledWith(
+      "/agencies/agency-1/shares/comments/c-s-1/reply",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("says nothing when the reply fails", async () => {
+    serve();
+    const serveRest = mocks.fetchApi.getMockImplementation();
+    mocks.fetchApi.mockImplementation((path, options) =>
+      String(path).endsWith("/reply") ? Promise.reject(new Error("offline")) : serveRest(path, options),
+    );
+    const onReplied = vi.fn();
+    render(<Panel onReplied={onReplied} />);
+
+    const card = (await screen.findByText("Comment on s-1")).closest(".dashboard-card");
+    await sendReply(card, "Yes");
+
+    expect(await within(card).findByText("Failed to send reply. Please try again.")).toBeInTheDocument();
+    expect(onReplied).not.toHaveBeenCalled();
+  });
+});
