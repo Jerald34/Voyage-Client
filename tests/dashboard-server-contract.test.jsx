@@ -291,7 +291,7 @@ describe("Staff dashboard with real server payloads", () => {
     expect(within(counts).getByRole("button", { name: /Traveling now/ })).toBeInTheDocument();
   });
 
-  it("shows recently viewed itineraries from the staff member's own trips only", () => {
+  it("shows the recently viewed itineraries the server sends for staff", () => {
     renderStaff();
 
     const viewed = screen.getByRole("region", { name: "Recently viewed" });
