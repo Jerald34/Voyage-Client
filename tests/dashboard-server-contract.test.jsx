@@ -178,7 +178,9 @@ describe("Owner dashboard in plain words", () => {
     renderOwner(fixtures.ownerEmpty);
 
     expect(screen.getByText("All caught up.")).toBeInTheDocument();
-    expect(screen.getByText("Nothing needs your attention right now.")).toBeInTheDocument();
+    // Said once, in the greeting; the collapsed card doesn't repeat it.
+    expect(screen.getByText("Nothing needs you right now")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing needs your attention right now.")).not.toBeInTheDocument();
     expect(screen.queryByText(/N active shares/)).not.toBeInTheDocument();
   });
 
