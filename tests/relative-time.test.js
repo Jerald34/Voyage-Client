@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { timeAgo, timeAgoSpoken } from "../app/lib/relativeTime.js";
 
 const NOW = Date.parse("2026-10-04T12:00:00.000Z");
 const ago = (ms) => new Date(NOW - ms).toISOString();
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("timeAgo", () => {
   it.each([
@@ -22,6 +26,12 @@ describe("timeAgo", () => {
     expect(timeAgo(null, NOW)).toBe("");
     expect(timeAgo("not a date", NOW)).toBe("not a date");
   });
+
+  it("reads the current time when no `now` is given", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    expect(timeAgo(ago(5 * 60_000))).toBe("5m ago");
+  });
 });
 
 describe("timeAgoSpoken", () => {
@@ -35,5 +45,11 @@ describe("timeAgoSpoken", () => {
     [3 * 86_400_000, "3 days ago"],
   ])("%i ms ago reads %s", (ms, text) => {
     expect(timeAgoSpoken(ago(ms), NOW)).toBe(text);
+  });
+
+  it("reads the current time when no `now` is given", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    expect(timeAgoSpoken(ago(5 * 60_000))).toBe("5 minutes ago");
   });
 });

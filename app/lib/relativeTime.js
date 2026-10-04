@@ -1,7 +1,8 @@
 /**
  * How long ago something happened, for dashboard rows. `now` is a timestamp in
- * ms: pass the browser's clock (useNowMinute) when the page is server-rendered,
- * so the server's HTML and the browser's first render agree.
+ * ms and defaults to the current time. On a server-rendered page, pass the
+ * browser's clock (useNowMinute) instead, so the server's HTML and the
+ * browser's first render agree.
  */
 
 const MINUTE = 60_000;
@@ -16,7 +17,7 @@ function elapsed(isoString, now) {
 }
 
 /** "Just now", "5m ago", "2h ago", "3d ago"; "" for no date, the raw string if it can't be read. */
-export function timeAgo(isoString, now) {
+export function timeAgo(isoString, now = Date.now()) {
   if (!isoString) return "";
   const span = elapsed(isoString, now);
   if (!span) return isoString;
@@ -29,7 +30,7 @@ export function timeAgo(isoString, now) {
 const unitsAgo = (count, unit) => `${count} ${unit}${count === 1 ? "" : "s"} ago`;
 
 /** The same in words, for screen readers: "just now", "5 minutes ago", "1 hour ago", "3 days ago". */
-export function timeAgoSpoken(isoString, now) {
+export function timeAgoSpoken(isoString, now = Date.now()) {
   if (!isoString) return "";
   const span = elapsed(isoString, now);
   if (!span) return isoString;
