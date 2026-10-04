@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import fixtures from "./fixtures/dashboard-payloads.json";
 
-const mocks = vi.hoisted(() => ({ fetchApi: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fetchApi: vi.fn(), push: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: mocks.push, replace: vi.fn() }),
 }));
 
 vi.mock("../app/components/icons/index.js", () => ({
@@ -65,6 +65,7 @@ const DASHBOARDS = [
 
 beforeEach(() => {
   mocks.fetchApi.mockReset();
+  mocks.push.mockReset();
   resetCalendarCacheForTests();
 });
 
@@ -90,5 +91,46 @@ describe.each(DASHBOARDS)("$name dashboard after a reply from the trip panel", (
 
     await waitFor(() => expect(dashboardCalls().length).toBe(dashboardBefore + 1));
     await waitFor(() => expect(calendarCalls().length).toBe(calendarBefore + 1));
+  });
+});
+
+describe.each(DASHBOARDS)("$name dashboard Recently viewed rows", ({ ui, payload }) => {
+  it("open the trip panel with the client's name, not the Command Center", async () => {
+    serve(payload);
+    render(ui({ initialData: payload }));
+
+    const viewed = screen.getByRole("region", { name: "Recently viewed" });
+    fireEvent.click(within(viewed).getByRole("button", { name: /^Kyoto Autumn Escape, Maria Santos/ }));
+
+    const panel = await screen.findByRole("dialog", { name: /^Trip comments: Kyoto Autumn Escape/ });
+    expect(within(panel).getByText("Maria Santos")).toBeVisible();
+    // Let the panel finish loading, so nothing updates after the test ends.
+    expect(await within(panel).findByText(PENDING_COMMENT.content)).toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("StaffMyWork recently viewed", () => {
+  const renderStaff = (payload) => {
+    serve(payload);
+    render(<StaffMyWork agencyId="agency-1" initialData={payload} />);
+  };
+
+  it("lists recently viewed itineraries above the recent trips", () => {
+    renderStaff(fixtures.staff);
+
+    const viewed = screen.getByRole("region", { name: "Recently viewed" });
+    const recentTrips = screen.getByRole("heading", { name: "Recent trips" });
+    expect(viewed.compareDocumentPosition(recentTrips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("leaves the card out for a server that doesn't send recent views", () => {
+    const older = { ...fixtures.staff };
+    delete older.recentViews;
+    renderStaff(older);
+
+    expect(screen.queryByRole("region", { name: "Recently viewed" })).not.toBeInTheDocument();
+    // The rest of the column is unaffected.
+    expect(screen.getByRole("heading", { name: "Recent trips" })).toBeInTheDocument();
   });
 });
