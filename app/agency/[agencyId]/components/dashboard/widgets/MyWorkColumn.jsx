@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { useRouter } from "next/navigation";
+import { timeAgo } from "@/app/lib/relativeTime";
 import HeroContinueCard from "./HeroContinueCard";
 
 /** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
@@ -59,20 +60,6 @@ function StatusChip({ status }) {
   );
 }
 
-/** "Just now", "5m ago", "2h ago", "3d ago"; the raw string if it can't be read. */
-function relativeTime(isoString) {
-  if (!isoString) return "";
-  const diff = Date.now() - new Date(isoString).getTime();
-  if (Number.isNaN(diff)) return isoString;
-  // A clock a little ahead of the server's makes the difference negative.
-  const minutes = Math.max(0, Math.floor(diff / 60_000));
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
 function RecentTripButton({ trip, onClick }) {
   return (
     <button
@@ -86,7 +73,7 @@ function RecentTripButton({ trip, onClick }) {
       </span>
       <span className="flex items-end justify-between gap-2">
         <span className="truncate text-[12px] text-text-muted">{trip.clientName}</span>
-        <span className="shrink-0 text-[12px] tabular-nums text-text-muted">{relativeTime(trip.updatedAt)}</span>
+        <span className="shrink-0 text-[12px] tabular-nums text-text-muted">{timeAgo(trip.updatedAt, Date.now())}</span>
       </span>
     </button>
   );
