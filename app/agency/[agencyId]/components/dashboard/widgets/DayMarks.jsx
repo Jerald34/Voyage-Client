@@ -25,12 +25,18 @@ function ActionMark({ action, className, countClassName }) {
 /**
  * The marks in a day tile's corner. The tile is a CSS container, so what
  * shows follows the tile's own width:
- * - under 60px: the most urgent icon only;
- * - 60–83px: that icon with its count, then +N for the day's other action items;
- * - 84px and up: two icons with counts, +N for further kinds, and ·N for
- *   quiet activity when at most one kind of action is drawn.
+ * - narrow: the most urgent icon only;
+ * - medium: that icon with its count, then +N counting the items of the other kinds;
+ * - wide: two icons with counts, +N counting the items of any further
+ *   kinds, and ·N for quiet activity when only one kind of action is drawn.
  * A day with no action shows only ·N. The marks are aria-hidden: the tile's
  * label says the same in words.
+ *
+ * The thresholds are written for the container's CONTENT box (@min-[46px] and
+ * @min-[70px]), which is the tile's outer width less the 14px of padding and
+ * border DayTile adds (p-1.5 = 12px, plus a 1px border each side). By outer
+ * tile width that is: narrow under 60px, medium 60–83px, wide 84px and up.
+ * Keep the class strings literal so Tailwind can see them.
  */
 export function DayMarks({ summary }) {
   const { actions, actionCount, quietCount } = summary;
@@ -47,20 +53,20 @@ export function DayMarks({ summary }) {
   const afterTwo = afterFirst - (second?.count ?? 0);
   return (
     <span aria-hidden="true" data-day-marks="" className="flex items-center gap-1 leading-none">
-      <ActionMark action={first} className="inline-flex" countClassName="hidden @min-[60px]:inline" />
-      {second ? <ActionMark action={second} className="hidden @min-[84px]:inline-flex" countClassName="inline" /> : null}
+      <ActionMark action={first} className="inline-flex" countClassName="hidden @min-[46px]:inline" />
+      {second ? <ActionMark action={second} className="hidden @min-[70px]:inline-flex" countClassName="inline" /> : null}
       {afterFirst > 0 ? (
-        <span data-more="" className={`hidden @min-[60px]:inline @min-[84px]:hidden ${COUNT} text-text-primary`}>
+        <span data-more="" className={`hidden @min-[46px]:inline @min-[70px]:hidden ${COUNT} text-text-primary`}>
           +{afterFirst}
         </span>
       ) : null}
       {afterTwo > 0 ? (
-        <span data-more="" className={`hidden @min-[84px]:inline ${COUNT} text-text-primary`}>
+        <span data-more="" className={`hidden @min-[70px]:inline ${COUNT} text-text-primary`}>
           +{afterTwo}
         </span>
       ) : null}
       {actions.length === 1 && quietCount > 0 ? (
-        <span data-quiet="" className="hidden @min-[84px]:inline text-[11px] leading-none tabular-nums text-text-muted">
+        <span data-quiet="" className="hidden @min-[70px]:inline text-[11px] leading-none tabular-nums text-text-muted">
           ·{quietCount}
         </span>
       ) : null}

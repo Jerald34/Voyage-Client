@@ -366,7 +366,7 @@ describe("AgencyCalendar action marks", () => {
     expect(marks("Monday, October 5")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("always shows the most urgent icon, its count from 60px, and a second icon from 84px", () => {
+  it("always shows the most urgent icon, its count from a 60px tile, and a second icon from 84px", () => {
     render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
 
     const [first, second] = marks("Monday, October 5").querySelectorAll("[data-action]");
@@ -374,19 +374,19 @@ describe("AgencyCalendar action marks", () => {
     expect(first.className).toContain("inline-flex");
     expect(first.className).not.toContain("hidden");
     expect(first.className).toContain("text-status-danger");
-    expect(within(first).getByText("2").className).toContain("hidden @min-[60px]:inline");
+    expect(within(first).getByText("2").className).toContain("hidden @min-[46px]:inline");
     expect(second.dataset.action).toBe("lowRating");
-    expect(second.className).toContain("hidden @min-[84px]:inline-flex");
+    expect(second.className).toContain("hidden @min-[70px]:inline-flex");
   });
 
-  it("counts the rest as +N: after the first icon at 60px, after the first two kinds at 84px", () => {
+  it("counts the rest as +N: after the first icon from a 60px tile, after the first two kinds from 84px", () => {
     render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
 
     const [medium, wide] = marks("Monday, October 5").querySelectorAll("[data-more]");
     expect(medium).toHaveTextContent("+2"); // the rating and the link, after the replies
-    expect(medium.className).toContain("hidden @min-[60px]:inline @min-[84px]:hidden");
+    expect(medium.className).toContain("hidden @min-[46px]:inline @min-[70px]:hidden");
     expect(wide).toHaveTextContent("+1"); // the link, after the replies and the rating
-    expect(wide.className).toContain("hidden @min-[84px]:inline");
+    expect(wide.className).toContain("hidden @min-[70px]:inline");
   });
 
   it("adds the quiet count beside a single kind of action, on wide tiles only", () => {
@@ -398,7 +398,7 @@ describe("AgencyCalendar action marks", () => {
     expect(icon.className).toContain("text-status-warning");
     const quiet = tuesday.querySelector("[data-quiet]");
     expect(quiet).toHaveTextContent("·1");
-    expect(quiet.className).toContain("hidden @min-[84px]:inline");
+    expect(quiet.className).toContain("hidden @min-[70px]:inline");
     // With two kinds of action there is no room for it.
     expect(marks("Monday, October 5").querySelector("[data-quiet]")).toBeNull();
   });
