@@ -53,6 +53,20 @@ describe("RecentlyViewedPanel", () => {
     expect(within(panel()).queryByRole("button", { name: /^Cebu Island Hop,/ })).not.toBeInTheDocument();
   });
 
+  it("shows at most five views even when sent more", () => {
+    const six = [
+      ...VIEWS,
+      { tripId: "t5", tripTitle: "Siargao Surf Week", clientName: "Reyes", viewCount: 1, lastViewedAt: hoursAgo(300) },
+      { tripId: "t6", tripTitle: "Bohol Weekend", clientName: "Cruz", viewCount: 1, lastViewedAt: hoursAgo(320) },
+    ];
+    render(<RecentlyViewedPanel views={six} onOpenTrip={vi.fn()} />);
+
+    fireEvent.click(within(panel()).getByRole("button", { name: "Show all (5)" }));
+    expect(rows()).toHaveLength(5);
+    expect(within(panel()).getByRole("button", { name: /^Siargao Surf Week,/ })).toBeInTheDocument();
+    expect(within(panel()).queryByRole("button", { name: /^Bohol Weekend,/ })).not.toBeInTheDocument();
+  });
+
   it("opens the trip a row names", () => {
     const onOpenTrip = vi.fn();
     render(<RecentlyViewedPanel views={VIEWS} onOpenTrip={onOpenTrip} />);

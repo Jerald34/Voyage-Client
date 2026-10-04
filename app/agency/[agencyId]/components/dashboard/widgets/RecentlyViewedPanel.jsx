@@ -8,14 +8,16 @@ import KindIcon from "./KindIcon";
 
 /** Rows shown before "Show all". */
 const VISIBLE = 3;
+/** The most rows the card ever lists, whatever the server sends. */
+const MAX_ROWS = 5;
 /** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
 const PRESS = "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]";
 
 const viewsText = (count) => (count === 1 ? "1 view" : `${count} views`);
 
 /**
- * Itineraries clients opened in the last 30 days, newest view first (the
- * server sends at most five). Each row opens its trip with
+ * Itineraries clients opened in the last 30 days, newest view first, at most
+ * five. Each row opens its trip with
  * `onOpenTrip(tripId, tripTitle, clientName)`. Times wait for the browser's
  * clock, so server-rendered HTML matches the browser's first render. The
  * dashboard's period switcher doesn't apply here.
@@ -24,7 +26,8 @@ export default function RecentlyViewedPanel({ views = [], onOpenTrip }) {
   const headingId = useId();
   const [expanded, setExpanded] = useState(false);
   const now = useNowMinute();
-  const shown = expanded ? views : views.slice(0, VISIBLE);
+  const listed = views.slice(0, MAX_ROWS);
+  const shown = expanded ? listed : listed.slice(0, VISIBLE);
 
   return (
     <section aria-labelledby={headingId}>
@@ -74,14 +77,14 @@ export default function RecentlyViewedPanel({ views = [], onOpenTrip }) {
               </button>
             );
           })}
-          {views.length > VISIBLE ? (
+          {listed.length > VISIBLE ? (
             <button
               type="button"
               aria-expanded={expanded}
               onClick={() => setExpanded((value) => !value)}
               className="min-h-[44px] self-start rounded-lg px-1 text-[13px] font-semibold text-secondary-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
             >
-              {expanded ? "Show fewer" : `Show all (${views.length})`}
+              {expanded ? "Show fewer" : `Show all (${listed.length})`}
             </button>
           ) : null}
         </div>
