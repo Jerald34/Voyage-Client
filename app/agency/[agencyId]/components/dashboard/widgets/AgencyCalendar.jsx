@@ -15,7 +15,9 @@ import {
   startOfMonth,
   toDateKey,
 } from "@/app/lib/calendarDays";
+import { daySummaryText, summarizeDay } from "@/app/lib/calendarActions";
 import CalendarDayPopover from "./CalendarDayPopover";
+import { CalendarLegend, DayMarks } from "./DayMarks";
 
 const NARROW_QUERY = "(max-width: 600px)";
 const KEY_STEPS = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
@@ -40,9 +42,10 @@ function sameMonth(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 
-function dayLabel(cell) {
-  const count = cell.spans.length + cell.events.length;
-  return `${fullDayLabel(cell.date)}${cell.isToday ? ", today" : ""}${count ? `, ${count} item${count === 1 ? "" : "s"}` : ""}`;
+/** "Saturday, October 3, today: 1 comment needs a reply, 2 other updates". */
+function dayLabel(cell, summary) {
+  const contents = daySummaryText(summary);
+  return `${fullDayLabel(cell.date)}${cell.isToday ? ", today" : ""}${contents ? `: ${contents}` : ""}`;
 }
 
 function ChevronIcon({ direction }) {
@@ -53,50 +56,36 @@ function ChevronIcon({ direction }) {
   );
 }
 
-function DayDots({ events }) {
-  if (events.length === 0) return null;
-  return (
-    <span className="flex items-center gap-0.5" aria-hidden="true">
-      {events.slice(0, 3).map((event) => (
-        <span
-          key={event.id}
-          className={`h-1.5 w-1.5 rounded-full ${event.kind === "share_expires" ? "bg-status-warning" : "bg-text-muted"}`}
-        />
-      ))}
-      {events.length > 3 ? (
-        <span className="text-[11px] font-semibold leading-none text-text-muted">+{events.length - 3}</span>
-      ) : null}
-    </span>
-  );
-}
-
 function DayTile({ cell, isOpen, tabbable, loading, buttonRef, onClick, onFocus, onKeyDown }) {
   const label = cell.spans.find((span) => span.showLabel) ?? null;
   const allPast = cell.spans.length > 0 && cell.spans.every((span) => span.isPast);
+  const summary = summarizeDay(cell);
   return (
     <button
       ref={buttonRef}
       type="button"
       data-calendar-day=""
       tabIndex={tabbable ? 0 : -1}
-      aria-label={dayLabel(cell)}
+      aria-label={dayLabel(cell, summary)}
       aria-haspopup="dialog"
       aria-expanded={isOpen}
       onClick={onClick}
       onFocus={onFocus}
       onKeyDown={onKeyDown}
       className={[
-        "relative flex h-full min-h-[56px] w-full flex-col overflow-hidden rounded-[10px] p-1.5 text-left transition-colors",
+        // A size container: DayMarks shows more as the tile gets wider.
+        "@container relative flex h-full min-h-[56px] w-full flex-col overflow-hidden rounded-[10px] p-1.5 text-left transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-strong",
         isOpen ? "border border-secondary bg-secondary/15" : "frame-tile hover:bg-text-primary/5",
         cell.isToday ? "outline-dashed outline-[1.5px] outline-offset-[-3px] outline-secondary-strong" : "",
       ].join(" ")}
     >
-      <span className="flex items-center justify-between gap-1">
+      {/* The marks wrap under the day number when the tile is too narrow for both. */}
+      <span className="flex flex-wrap items-center justify-between gap-x-1 gap-y-0.5">
         <span className={`text-[11px] font-semibold tabular-nums ${cell.inMonth ? "text-text-primary" : "text-text-muted"}`}>
           {cell.dayOfMonth}
         </span>
-        <DayDots events={cell.events} />
+        <DayMarks summary={summary} />
       </span>
       {loading && cell.inMonth ? (
         <span
@@ -139,7 +128,8 @@ function CalendarShell() {
 }
 
 /**
- * Month calendar of trips (bars) and client activity (dots). Clicking a day
+ * Month calendar of trips (bars) and client activity. Each tile shows what
+ * needs the agent as coloured icons (DayMarks) and the rest as ·N. Clicking a day
  * opens its details; their actions call `onOpenTrip(tripId, tripTitle, clientName)`.
  * Keyboard: arrows move by day/week, Home/End jump to the week's edges,
  * PageUp/PageDown change month, Enter/Space opens a day, Escape closes it.
@@ -302,20 +292,7 @@ function CalendarBody({ agencyId, onOpenTrip, todayKey }) {
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="h-[3px] w-3 rounded-full bg-secondary" />
-          Trip
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-status-warning" />
-          Link expiry
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-text-muted" />
-          Client activity
-        </span>
-      </div>
+      <CalendarLegend />
 
       {undated > 0 ? (
         <p className="mt-1 text-[12px] text-text-muted">

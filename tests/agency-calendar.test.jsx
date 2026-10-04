@@ -44,9 +44,11 @@ function hookResult(overrides = {}) {
   return { data: PAYLOAD, error: null, isLoading: false, refetch: vi.fn(), from: "2026-09-27", to: "2026-11-07", ...overrides };
 }
 
-/** A day button by its date ("Saturday, October 3"), ignoring the count suffix. */
+/** A day button by its date ("Saturday, October 3"), ignoring ", today" and what is on the day. */
 const day = (label) =>
-  screen.getByRole("button", { name: (name) => name === label || name.startsWith(`${label},`) });
+  screen.getByRole("button", {
+    name: (name) => name === label || name.startsWith(`${label},`) || name.startsWith(`${label}:`),
+  });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -69,11 +71,13 @@ describe("AgencyCalendar", () => {
     expect(day("Friday, October 9")).toHaveAttribute("tabindex", "-1");
   });
 
-  it("counts what is on each day and labels a trip on its first day", () => {
+  it("says what is on each day and labels a trip on its first day", () => {
     render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
 
-    expect(day("Thursday, October 8")).toHaveAccessibleName("Thursday, October 8, 1 item");
-    expect(day("Friday, October 2")).toHaveAccessibleName("Friday, October 2, 1 item");
+    // Kyoto starts in five days; the comment carries no needsReply, so it is quiet.
+    expect(day("Thursday, October 8")).toHaveAccessibleName("Thursday, October 8: 1 trip departing soon");
+    expect(day("Friday, October 9")).toHaveAccessibleName("Friday, October 9: 1 trip");
+    expect(day("Friday, October 2")).toHaveAccessibleName("Friday, October 2: 1 other update");
     expect(within(day("Thursday, October 8")).getByText("Kyoto")).toBeInTheDocument();
   });
 
@@ -303,5 +307,128 @@ describe("AgencyCalendar loading", () => {
     const { container } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
 
     expect(skeletons(container)).toHaveLength(0);
+  });
+});
+
+/** A calendar event at 09:00 local on October `dayOfMonth`. */
+function ev(id, kind, dayOfMonth, detail = {}) {
+  return {
+    id,
+    kind,
+    tripId: "t-lisbon",
+    tripTitle: "Lisbon Getaway",
+    clientName: "Tanaka",
+    occurredAt: new Date(2026, 9, dayOfMonth, 9).toISOString(),
+    detail,
+  };
+}
+
+const ACTION_PAYLOAD = {
+  ...PAYLOAD,
+  trips: [],
+  events: [
+    // Monday, October 5: two replies needed, a 2★ rating, a link expiring, a view and a sent link.
+    ev("client_commented:a", "client_commented", 5, { excerpt: "One", needsReply: true }),
+    ev("client_commented:b", "client_commented", 5, { excerpt: "Two", needsReply: true }),
+    ev("proposal_rated:s1", "proposal_rated", 5, { rating: 2 }),
+    ev("share_expires:s1", "share_expires", 5),
+    ev("client_viewed:s1", "client_viewed", 5, { viewCount: 3 }),
+    ev("share_sent:s1", "share_sent", 5),
+    // Tuesday, October 6: a link expiring and a view.
+    ev("share_expires:s2", "share_expires", 6),
+    ev("client_viewed:s2", "client_viewed", 6, { viewCount: 1 }),
+    // Wednesday, October 7: quiet activity only.
+    ev("client_viewed:s3", "client_viewed", 7, { viewCount: 1 }),
+    ev("share_sent:s3", "share_sent", 7),
+  ],
+};
+
+describe("AgencyCalendar action marks", () => {
+  beforeEach(() => {
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ data: ACTION_PAYLOAD }));
+  });
+
+  const marks = (label) => day(label).querySelector("[data-day-marks]");
+
+  it("says what needs you on a day, most urgent first", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    expect(day("Monday, October 5")).toHaveAccessibleName(
+      "Monday, October 5: 2 comments need a reply, 1 low rating, 1 link expiring, 2 other updates",
+    );
+  });
+
+  it("makes each tile a size container whose marks wrap under the day number when narrow", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    expect(day("Monday, October 5").className).toContain("@container");
+    expect(marks("Monday, October 5").parentElement.className).toContain("flex-wrap");
+    expect(marks("Monday, October 5")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("always shows the most urgent icon, its count from 60px, and a second icon from 84px", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    const [first, second] = marks("Monday, October 5").querySelectorAll("[data-action]");
+    expect(first.dataset.action).toBe("reply");
+    expect(first.className).toContain("inline-flex");
+    expect(first.className).not.toContain("hidden");
+    expect(first.className).toContain("text-status-danger");
+    expect(within(first).getByText("2").className).toContain("hidden @min-[60px]:inline");
+    expect(second.dataset.action).toBe("lowRating");
+    expect(second.className).toContain("hidden @min-[84px]:inline-flex");
+  });
+
+  it("counts the rest as +N: after the first icon at 60px, after the first two kinds at 84px", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    const [medium, wide] = marks("Monday, October 5").querySelectorAll("[data-more]");
+    expect(medium).toHaveTextContent("+2"); // the rating and the link, after the replies
+    expect(medium.className).toContain("hidden @min-[60px]:inline @min-[84px]:hidden");
+    expect(wide).toHaveTextContent("+1"); // the link, after the replies and the rating
+    expect(wide.className).toContain("hidden @min-[84px]:inline");
+  });
+
+  it("adds the quiet count beside a single kind of action, on wide tiles only", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    const tuesday = marks("Tuesday, October 6");
+    const icon = tuesday.querySelector("[data-action]");
+    expect(icon.dataset.action).toBe("expiring");
+    expect(icon.className).toContain("text-status-warning");
+    const quiet = tuesday.querySelector("[data-quiet]");
+    expect(quiet).toHaveTextContent("·1");
+    expect(quiet.className).toContain("hidden @min-[84px]:inline");
+    // With two kinds of action there is no room for it.
+    expect(marks("Monday, October 5").querySelector("[data-quiet]")).toBeNull();
+  });
+
+  it("shows only the quiet count on a day with nothing to act on", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    const wednesday = marks("Wednesday, October 7");
+    expect(wednesday).toHaveTextContent("·2");
+    expect(wednesday.className).not.toContain("hidden");
+    expect(wednesday.querySelector("[data-action]")).toBeNull();
+    expect(day("Wednesday, October 7")).toHaveAccessibleName("Wednesday, October 7: 2 other updates");
+  });
+
+  it("marks a trip that departs within the week in green", () => {
+    mocks.useCalendarEvents.mockReturnValue(hookResult());
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    const icon = marks("Thursday, October 8").querySelector("[data-action]");
+    expect(icon.dataset.action).toBe("departing");
+    expect(icon.className).toContain("text-status-success");
+  });
+
+  it("explains every mark in the legend", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    for (const label of ["Trip", "Needs reply", "Low rating", "Link expires", "Departs soon", "Other activity"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+    expect(screen.queryByText("Client activity")).not.toBeInTheDocument();
+    expect(screen.queryByText("Link expiry")).not.toBeInTheDocument();
   });
 });
