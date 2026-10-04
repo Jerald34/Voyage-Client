@@ -6,6 +6,7 @@ import {
   gridRange,
   relativeDayLabel,
   toDateKey,
+  EVENT_COPY,
 } from "../app/lib/calendarDays.js";
 import { KNOWN_EVENT_KINDS } from "../app/lib/calendarActions.js";
 
@@ -193,6 +194,10 @@ describe("describeDayItems", () => {
 describe("describeDayItems and the known event kinds", () => {
   const at = new Date(2026, 9, 8, 9).toISOString();
   const eventOf = (kind) => ({ id: `${kind}:1`, kind, tripId: "t1", tripTitle: "Lisbon Getaway", clientName: "Tanaka", occurredAt: at, detail: {} });
+
+  it("guards against event-kind drift: EVENT_COPY keys must match KNOWN_EVENT_KINDS", () => {
+    expect(Object.keys(EVENT_COPY).sort()).toEqual([...KNOWN_EVENT_KINDS].sort());
+  });
 
   it("lists an event of every kind the day tile counts, so the popover and tile agree", () => {
     for (const kind of KNOWN_EVENT_KINDS) {

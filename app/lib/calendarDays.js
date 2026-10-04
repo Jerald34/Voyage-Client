@@ -147,7 +147,7 @@ function spanCopy(span) {
   };
 }
 
-const EVENT_COPY = {
+export const EVENT_COPY = {
   share_sent: (e) => ({
     title: `Sent ${e.tripTitle}${e.clientName ? ` to ${e.clientName}` : ""}`,
     detail: "Itinerary link shared",
