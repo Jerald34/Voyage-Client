@@ -2,12 +2,18 @@
 
 import KindIcon from "./KindIcon";
 
-/** How each action looks on a tile and in the legend: an existing KindIcon and a status colour. */
+/**
+ * How each action looks, wherever it appears: an existing KindIcon and a
+ * status colour for the tile (`icon`, `tone`), the same colour as a tinted
+ * badge for the day popover (`badge`), and its name (`legend`), which the
+ * legend shows and the popover says to screen readers. Class strings are
+ * literal so Tailwind can see them.
+ */
 export const ACTION_STYLE = {
-  reply: { icon: "client_commented", tone: "text-status-danger", legend: "Needs reply" },
-  lowRating: { icon: "proposal_rated", tone: "text-status-danger", legend: "Low rating" },
-  expiring: { icon: "share_expires", tone: "text-status-warning", legend: "Link expires" },
-  departing: { icon: "startingSoon", tone: "text-status-success", legend: "Departs soon" },
+  reply: { icon: "client_commented", tone: "text-status-danger", badge: "bg-status-danger/15 text-status-danger", legend: "Needs reply" },
+  lowRating: { icon: "proposal_rated", tone: "text-status-danger", badge: "bg-status-danger/15 text-status-danger", legend: "Low rating" },
+  expiring: { icon: "share_expires", tone: "text-status-warning", badge: "bg-status-warning/15 text-status-warning", legend: "Link expires" },
+  departing: { icon: "startingSoon", tone: "text-status-success", badge: "bg-status-success/15 text-status-success", legend: "Departs soon" },
 };
 
 const COUNT = "text-[11px] font-semibold leading-none tabular-nums";

@@ -5,20 +5,15 @@ import { ACTION_STYLE } from "./DayMarks";
 import KindIcon from "./KindIcon";
 import { describeDayItems, fullDayLabel, relativeDayLabel } from "@/app/lib/calendarDays";
 
-/** An item that needs the agent takes its tile icon's colour; trips keep terracotta; the rest are grey. */
-const ACTION_BADGE = {
-  reply: "bg-status-danger/15 text-status-danger",
-  lowRating: "bg-status-danger/15 text-status-danger",
-  expiring: "bg-status-warning/15 text-status-warning",
-  departing: "bg-status-success/15 text-status-success",
-};
+/** An item that needs the agent takes its tile icon's colour (ACTION_STYLE); trips keep terracotta; the rest are grey. */
 const TRIP_BADGE = "bg-secondary/15 text-secondary-strong";
 const DEFAULT_BADGE = "bg-text-muted/15 text-text-muted";
 
 function badgeClass(item) {
-  if (item.actionKind) return ACTION_BADGE[item.actionKind];
+  if (item.actionKind) return ACTION_STYLE[item.actionKind].badge;
   return item.kind === "trip" ? TRIP_BADGE : DEFAULT_BADGE;
 }
+
 /** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
 const PRESS = "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]";
 

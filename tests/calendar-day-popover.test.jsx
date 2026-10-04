@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CalendarDayPopover from "../app/agency/[agencyId]/components/dashboard/widgets/CalendarDayPopover.jsx";
+import { ACTION_STYLE } from "../app/agency/[agencyId]/components/dashboard/widgets/DayMarks.jsx";
 import { buildCalendarDays } from "../app/lib/calendarDays.js";
 
 const TODAY = new Date(2026, 9, 3, 10, 0);
@@ -159,6 +160,13 @@ describe("CalendarDayPopover", () => {
     expect(badges[2]).toContain("bg-status-success/15"); // Kyoto departs in 5 days
     expect(badges[3]).toContain("bg-secondary/15"); // Osaka, mid-trip
     expect(badges[4]).toContain("bg-text-muted/15"); // a view
+  });
+
+  it("takes each action's badge from the same style as its tile icon", () => {
+    for (const [kind, { tone, badge }] of Object.entries(ACTION_STYLE)) {
+      // text-status-danger -> bg-status-danger/15 text-status-danger
+      expect(badge, kind).toBe(`${tone.replace("text-", "bg-")}/15 ${tone}`);
+    }
   });
 
   it("says in words what an item needs, so colour is not the only cue", () => {
