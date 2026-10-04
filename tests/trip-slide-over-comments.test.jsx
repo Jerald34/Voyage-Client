@@ -275,4 +275,26 @@ describe("TripSlideOver replies", () => {
     expect(await within(card).findByText("Failed to send reply. Please try again.")).toBeInTheDocument();
     expect(onReplied).not.toHaveBeenCalled();
   });
+
+  it("does not call a saved reply failed when the dashboard's handler throws", async () => {
+    serve();
+    const broken = new Error("dashboard handler broke");
+    const onReplied = vi.fn(() => {
+      throw broken;
+    });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<Panel onReplied={onReplied} />);
+
+    const card = (await screen.findByText("Comment on s-1")).closest(".dashboard-card");
+    await sendReply(card, "Yes, we can swap it.");
+
+    await waitFor(() => expect(onReplied).toHaveBeenCalledWith("c-s-1"));
+    // The reply is saved and shown as saved.
+    expect(await screen.findByText("Your reply")).toBeInTheDocument();
+    expect(screen.getByText("Yes, we can swap it.")).toBeInTheDocument();
+    expect(screen.queryByText("Failed to send reply. Please try again.")).not.toBeInTheDocument();
+    // The handler's bug is reported, not swallowed as if the send had failed.
+    expect(logged).toHaveBeenCalledWith(expect.any(String), broken);
+    logged.mockRestore();
+  });
 });

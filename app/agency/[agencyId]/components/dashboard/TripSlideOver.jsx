@@ -462,7 +462,14 @@ export default function TripSlideOver({
             : c,
         ),
       );
-      onReplied?.(commentId);
+      // This runs inside CommentCard's try around the send. The reply is
+      // already saved, so a throwing dashboard handler must not reach the catch
+      // that reports "Failed to send reply"; log it instead.
+      try {
+        onReplied?.(commentId);
+      } catch (error) {
+        console.error("TripSlideOver: onReplied threw after a saved reply", error);
+      }
     },
     [onReplied],
   );
