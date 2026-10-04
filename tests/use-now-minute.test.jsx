@@ -34,4 +34,19 @@ describe("useNowMinute", () => {
     });
     expect(screen.getByText("2026-10-04T12:01:00.000Z")).toBeInTheDocument();
   });
+
+  it("stops its timer and its visibility listener when the page unmounts it", () => {
+    const added = vi.spyOn(document, "addEventListener");
+    const removed = vi.spyOn(document, "removeEventListener");
+    const { unmount } = render(<Clock />);
+    expect(vi.getTimerCount()).toBe(1);
+    const [, handler] = added.mock.calls.find(([type]) => type === "visibilitychange");
+
+    unmount();
+
+    expect(vi.getTimerCount()).toBe(0);
+    expect(removed).toHaveBeenCalledWith("visibilitychange", handler);
+    added.mockRestore();
+    removed.mockRestore();
+  });
 });
