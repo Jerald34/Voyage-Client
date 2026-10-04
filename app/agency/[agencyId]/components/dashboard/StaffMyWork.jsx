@@ -16,8 +16,11 @@ import { STAFF_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
 /**
  * Staff dashboard: greeting, "Needs you today" and the calendar (scoped by
  * the server to trips this person created or organizes) on the left, their
- * own work on the right. Nothing here depends on a period, so there is no
- * period switcher.
+ * own work on the right (continue, trips by status, recently viewed
+ * itineraries, recent trips). Comment rows, calendar actions and Recently
+ * viewed rows open the trip slide-over; other to-do rows open the trip in the
+ * Command Center. Nothing here depends on a period, so there is no period
+ * switcher.
  * The calendar loads on its own, so it is always mounted: only the parts that
  * need the dashboard payload wait for it, or say it failed.
  */
@@ -45,7 +48,8 @@ export default function StaffMyWork({
   const [slideTrip, setSlideTrip] = useState(null); // { tripId, tripTitle, subtitle }
   // Bumped after a reply so the calendar reloads at once, not at its next poll.
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
-  // Where the slide-over returns focus if the row that opened it was removed by a poll.
+  // Where the slide-over returns focus if the row that opened it was removed by
+  // a poll. Also the fallback for slide-overs opened from the Recently viewed card.
   const needsYouRef = useRef(null);
   const needsYou = buildNeedsYouItems(data?.worklist, STAFF_NEEDS_YOU_ORDER);
 
