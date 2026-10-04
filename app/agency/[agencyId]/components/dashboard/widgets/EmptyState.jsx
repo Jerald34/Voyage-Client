@@ -1,7 +1,7 @@
 /**
  * EmptyState.jsx
  * Unified empty state component for dashboard widgets (§8.2)
- * Variants: worklist, kpi, funnel, ratings, staff-hero, activity
+ * Variants: worklist, kpi, funnel, ratings, views, staff-hero, activity
  */
 
 'use client';
@@ -25,6 +25,11 @@ const EMPTY_STATE_CONTENT = {
   ratings: {
     heading: 'Reviews appear after trips complete.',
     body: 'First post-trip emails fire 2 days after the trip ends.',
+    cta: null,
+  },
+  views: {
+    heading: 'No client views in the last 30 days',
+    body: 'Views show up here when a client opens a shared itinerary link.',
     cta: null,
   },
   'staff-hero': {
