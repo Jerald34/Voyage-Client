@@ -73,6 +73,13 @@ describe("RecentlyViewedPanel", () => {
     expect(within(rows()[0]).getByText("Kyoto Autumn Escape")).toHaveAttribute("title", "Kyoto Autumn Escape");
   });
 
+  it("offers no Show all when every view already fits", () => {
+    render(<RecentlyViewedPanel views={VIEWS.slice(0, 3)} onOpenTrip={vi.fn()} />);
+
+    expect(rows()).toHaveLength(3);
+    expect(within(panel()).queryByRole("button", { name: /^Show / })).not.toBeInTheDocument();
+  });
+
   it("opens the trip a row names", () => {
     const onOpenTrip = vi.fn();
     render(<RecentlyViewedPanel views={VIEWS} onOpenTrip={onOpenTrip} />);
@@ -116,14 +123,23 @@ describe("RecentlyViewedPanel", () => {
     container.innerHTML = html;
     document.body.appendChild(container);
     vi.setSystemTime(NOW);
+    const previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
     globalThis.IS_REACT_ACT_ENVIRONMENT = true;
     const problems = [];
     vi.spyOn(console, "error").mockImplementation((...args) => problems.push(args.map(String).join(" ")));
-    await act(async () => {
-      hydrateRoot(container, element, { onRecoverableError: (error) => problems.push(String(error?.message ?? error)) });
-    });
+    let root;
+    try {
+      await act(async () => {
+        root = hydrateRoot(container, element, {
+          onRecoverableError: (error) => problems.push(String(error?.message ?? error)),
+        });
+      });
 
-    expect(problems).toEqual([]);
-    expect(container).toHaveTextContent("5h ago");
+      expect(problems).toEqual([]);
+      expect(container).toHaveTextContent("5h ago");
+    } finally {
+      if (root) act(() => root.unmount());
+      globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+    }
   });
 });
