@@ -1,3 +1,5 @@
+import { ACTION_ORDER, eventAction, spanAction } from "./calendarActions";
+
 /**
  * Pure helpers for the dashboard month calendar. Trip dates are calendar
  * dates ("YYYY-MM-DD") and are compared as strings; event times are instants
@@ -163,14 +165,23 @@ const EVENT_COPY = {
   }),
 };
 
+/** Sort rank: items that need the agent by urgency, then trips, then quiet activity. */
+function itemRank(item) {
+  if (item.actionKind) return ACTION_ORDER.indexOf(item.actionKind);
+  return item.kind === "trip" ? ACTION_ORDER.length : ACTION_ORDER.length + 1;
+}
+
 /**
- * What a day's details list: its trips first, then its events. Every item
- * opens its trip; comments say "Reply".
+ * What a day's details list: the items that need the agent first (most urgent
+ * first), then its trips, then quiet activity in time order. `actionKind`
+ * ("reply", "lowRating", "expiring", "departing" or null) matches the icon on
+ * the day's tile. Every item opens its trip; comments say "Reply".
  */
 export function describeDayItems(cell) {
   const items = cell.spans.map((span) => ({
     key: `trip:${span.tripId}`,
     kind: "trip",
+    actionKind: spanAction(span, cell),
     tripId: span.tripId,
     tripTitle: span.tripTitle,
     clientName: span.clientName,
@@ -183,6 +194,7 @@ export function describeDayItems(cell) {
     items.push({
       key: event.id,
       kind: event.kind,
+      actionKind: eventAction(event, cell),
       tripId: event.tripId,
       tripTitle: event.tripTitle,
       clientName: event.clientName,
@@ -190,5 +202,6 @@ export function describeDayItems(cell) {
       ...copy(event, cell),
     });
   }
-  return items;
+  // Array.prototype.sort is stable: equal ranks keep the server's time order.
+  return items.sort((a, b) => itemRank(a) - itemRank(b));
 }

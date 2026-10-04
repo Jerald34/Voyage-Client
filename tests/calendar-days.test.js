@@ -156,12 +156,35 @@ describe("describeDayItems", () => {
     expect(
       describeDayItems(cellFor(cells, "2026-10-05")).map(({ title, detail, actionLabel }) => [title, detail, actionLabel]),
     ).toEqual([
-      ["Sent Lisbon Getaway to Tanaka", "Itinerary link shared", "Open trip"],
+      // October 5 is after today, so the expiring link needs you and comes first.
       ["Lisbon Getaway link expires", "Shared with Tanaka", "Open trip"],
+      ["Sent Lisbon Getaway to Tanaka", "Itinerary link shared", "Open trip"],
       ["Tanaka viewed Lisbon Getaway", "4 views in total", "Open trip"],
       ["Tanaka commented", "“Can we swap lunch?”", "Reply"],
       ["Tanaka rated the proposal", "5 out of 5", "Open trip"],
       ["Tanaka reviewed Lisbon Getaway", "4 out of 5 · “Lovely”", "Open trip"],
+    ]);
+  });
+
+  it("lists what needs you first, most urgent first, then trips, then the rest", () => {
+    const at = new Date(2026, 9, 8, 9).toISOString();
+    const base = { tripId: "t1", tripTitle: "Lisbon Getaway", clientName: "Tanaka", occurredAt: at };
+    const events = [
+      { ...base, id: "client_viewed:s1", kind: "client_viewed", detail: { viewCount: 2 } },
+      { ...base, id: "share_expires:s1", kind: "share_expires", detail: {} },
+      { ...base, id: "proposal_rated:s1", kind: "proposal_rated", detail: { rating: 2 } },
+      { ...base, id: "client_commented:c1", kind: "client_commented", detail: { excerpt: "Hi", needsReply: true } },
+    ];
+    const longTrip = { ...kyoto, tripId: "t-long", startDate: "2026-10-01", endDate: "2026-10-20" };
+    const cells = buildCalendarDays(payload({ trips: [kyoto, longTrip], events }), OCT, TODAY);
+
+    expect(describeDayItems(cellFor(cells, "2026-10-08")).map((item) => [item.key, item.actionKind])).toEqual([
+      ["client_commented:c1", "reply"],
+      ["proposal_rated:s1", "lowRating"],
+      ["share_expires:s1", "expiring"],
+      ["trip:t-kyoto", "departing"], // starts in 5 days
+      ["trip:t-long", null], // mid-trip
+      ["client_viewed:s1", null],
     ]);
   });
 });

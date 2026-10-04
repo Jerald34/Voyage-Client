@@ -4,11 +4,20 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import KindIcon from "./KindIcon";
 import { describeDayItems, fullDayLabel, relativeDayLabel } from "@/app/lib/calendarDays";
 
-const KIND_BADGE = {
-  trip: "bg-secondary/15 text-secondary-strong",
-  share_expires: "bg-status-warning/15 text-status-warning",
+/** An item that needs the agent takes its tile icon's colour; trips keep terracotta; the rest are grey. */
+const ACTION_BADGE = {
+  reply: "bg-status-danger/15 text-status-danger",
+  lowRating: "bg-status-danger/15 text-status-danger",
+  expiring: "bg-status-warning/15 text-status-warning",
+  departing: "bg-status-success/15 text-status-success",
 };
+const TRIP_BADGE = "bg-secondary/15 text-secondary-strong";
 const DEFAULT_BADGE = "bg-text-muted/15 text-text-muted";
+
+function badgeClass(item) {
+  if (item.actionKind) return ACTION_BADGE[item.actionKind];
+  return item.kind === "trip" ? TRIP_BADGE : DEFAULT_BADGE;
+}
 /** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
 const PRESS = "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]";
 
@@ -130,7 +139,7 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
             <li key={item.key} className="flex gap-2 py-2">
               <span
                 aria-hidden="true"
-                className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full ${KIND_BADGE[item.kind] ?? DEFAULT_BADGE}`}
+                className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full ${badgeClass(item)}`}
               >
                 <KindIcon kind={item.kind} className="h-3.5 w-3.5" />
               </span>

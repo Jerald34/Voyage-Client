@@ -134,6 +134,57 @@ describe("CalendarDayPopover", () => {
 
     expect(screen.getByRole("dialog").className).not.toContain("max-h-");
   });
+
+  it("tints each badge by what the item needs: danger, warning, success, the trip colour or grey", () => {
+    const at = new Date(2026, 9, 8, 9).toISOString();
+    const base = { tripId: "t1", tripTitle: "Lisbon Getaway", clientName: "Tanaka", occurredAt: at };
+    const payload = {
+      from: "2026-09-27",
+      to: "2026-11-07",
+      generatedAt: "",
+      tripsWithoutDates: 0,
+      trips: [kyoto, { ...osaka, startDate: "2026-10-01", endDate: "2026-10-20" }],
+      events: [
+        { ...base, id: "client_commented:c1", kind: "client_commented", detail: { excerpt: "Hi", needsReply: true } },
+        { ...base, id: "share_expires:s1", kind: "share_expires", detail: {} },
+        { ...base, id: "client_viewed:s1", kind: "client_viewed", detail: { viewCount: 2 } },
+      ],
+    };
+    const cell = buildCalendarDays(payload, OCT, TODAY).find((day) => day.key === "2026-10-08");
+    render(<CalendarDayPopover cell={cell} todayKey="2026-10-03" anchorEl={null} containerEl={null} inline onClose={vi.fn()} onAction={vi.fn()} />);
+
+    const badges = screen.getAllByRole("listitem").map((item) => item.querySelector("[aria-hidden='true']").className);
+    expect(badges[0]).toContain("bg-status-danger/15"); // the comment needs a reply
+    expect(badges[1]).toContain("bg-status-warning/15"); // the link expires
+    expect(badges[2]).toContain("bg-status-success/15"); // Kyoto departs in 5 days
+    expect(badges[3]).toContain("bg-secondary/15"); // Osaka, mid-trip
+    expect(badges[4]).toContain("bg-text-muted/15"); // a view
+  });
+
+  it("greys a link that already expired", () => {
+    const payload = {
+      from: "2026-09-27",
+      to: "2026-11-07",
+      generatedAt: "",
+      tripsWithoutDates: 0,
+      trips: [],
+      events: [
+        {
+          id: "share_expires:s1",
+          kind: "share_expires",
+          tripId: "t1",
+          tripTitle: "Lisbon Getaway",
+          clientName: "Tanaka",
+          occurredAt: new Date(2026, 9, 1, 9).toISOString(),
+          detail: {},
+        },
+      ],
+    };
+    const cell = buildCalendarDays(payload, OCT, TODAY).find((day) => day.key === "2026-10-01");
+    render(<CalendarDayPopover cell={cell} todayKey="2026-10-03" anchorEl={null} containerEl={null} inline onClose={vi.fn()} onAction={vi.fn()} />);
+
+    expect(screen.getByRole("listitem").querySelector("[aria-hidden='true']").className).toContain("bg-text-muted/15");
+  });
 });
 
 describe("CalendarDayPopover position", () => {
