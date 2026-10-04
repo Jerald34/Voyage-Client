@@ -113,6 +113,16 @@ describe("RecentlyViewedPanel", () => {
     expect(row.lastElementChild.firstElementChild.textContent).toBe("\u00a0");
   });
 
+  it("keeps a row's second line in the server HTML when the client name is an empty string", () => {
+    const emptyNameView = { tripId: "t-empty", tripTitle: "Empty Name Trip", clientName: "", viewCount: 1, lastViewedAt: hoursAgo(2) };
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<RecentlyViewedPanel views={[emptyNameView]} onOpenTrip={() => {}} />);
+
+    // Empty string should also render as non-breaking space to prevent collapse after hydration.
+    const row = container.querySelector('button[aria-label^="Empty Name Trip"]');
+    expect(row.lastElementChild.firstElementChild.textContent).toBe("\u00a0");
+  });
+
   it("hydrates without a mismatch, then shows times by the browser's clock", async () => {
     const element = <RecentlyViewedPanel views={VIEWS} onOpenTrip={() => {}} />;
     vi.setSystemTime(new Date(NOW.getTime() - 3 * 3_600_000)); // the server's clock is 3h behind
