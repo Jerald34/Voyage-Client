@@ -131,6 +131,7 @@ function CalendarShell() {
  * Month calendar of trips (bars) and client activity. Each tile shows what
  * needs the agent as coloured icons (DayMarks) and the rest as ·N. Clicking a day
  * opens its details; their actions call `onOpenTrip(tripId, tripTitle, clientName)`.
+ * Changing `refreshKey` (optional) reloads the shown month at once.
  * Keyboard: arrows move by day/week, Home/End jump to the week's edges,
  * PageUp/PageDown change month, Enter/Space opens a day, Escape closes it.
  * It starts on the viewer's current month, so it waits for the browser's
@@ -142,7 +143,7 @@ export default function AgencyCalendar(props) {
   return <CalendarBody {...props} todayKey={todayKey} />;
 }
 
-function CalendarBody({ agencyId, onOpenTrip, todayKey }) {
+function CalendarBody({ agencyId, onOpenTrip, todayKey, refreshKey }) {
   const titleId = useId();
   const sectionRef = useRef(null);
   const buttonRefs = useRef(new Map());
@@ -155,6 +156,14 @@ function CalendarBody({ agencyId, onOpenTrip, todayKey }) {
   const [openKey, setOpenKey] = useState(null);
 
   const { data, error, isLoading, refetch } = useCalendarEvents({ agencyId, month });
+
+  // A new refreshKey (bumped after a reply, say) reloads the month straight away.
+  const refreshKeyRef = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKeyRef.current === refreshKey) return;
+    refreshKeyRef.current = refreshKey;
+    refetch();
+  }, [refreshKey, refetch]);
   const cells = useMemo(() => buildCalendarDays(data, month, today), [data, month, today]);
   const weeks = [0, 1, 2, 3, 4, 5].map((week) => cells.slice(week * 7, week * 7 + 7));
   const isFirstLoad = isLoading && !data;

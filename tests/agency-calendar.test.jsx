@@ -432,3 +432,18 @@ describe("AgencyCalendar action marks", () => {
     expect(screen.queryByText("Link expiry")).not.toBeInTheDocument();
   });
 });
+
+describe("AgencyCalendar refresh", () => {
+  it("reloads the month when refreshKey changes, and not on the first render", () => {
+    const refetch = vi.fn();
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ refetch }));
+    const { rerender } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} refreshKey={0} />);
+    expect(refetch).not.toHaveBeenCalled();
+
+    rerender(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} refreshKey={1} />);
+    expect(refetch).toHaveBeenCalledOnce();
+
+    rerender(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} refreshKey={1} />);
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+});
