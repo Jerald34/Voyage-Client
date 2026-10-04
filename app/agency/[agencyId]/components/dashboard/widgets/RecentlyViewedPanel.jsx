@@ -63,7 +63,8 @@ export default function RecentlyViewedPanel({ views = [], onOpenTrip }) {
                   </span>
                 </span>
                 <span className="flex items-end justify-between gap-2">
-                  <span className="truncate text-[12px] text-text-muted">{view.clientName ?? ""}</span>
+                  {/* A non-breaking space keeps this line's height when there is no client name: the time beside it waits for the browser's clock, so without it the row grows after hydration. */}
+                  <span className="truncate text-[12px] text-text-muted">{view.clientName ?? " "}</span>
                   {ago ? (
                     <time dateTime={view.lastViewedAt} className="shrink-0 text-[12px] tabular-nums text-text-muted">
                       {ago}

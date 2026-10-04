@@ -77,6 +77,15 @@ describe("RecentlyViewedPanel", () => {
     expect(row.className).toContain("focus-visible:ring-2");
   });
 
+  it("keeps a row's second line in the server HTML when the client has no name", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<RecentlyViewedPanel views={VIEWS} onOpenTrip={() => {}} />);
+
+    // The time line waits for the browser's clock, so the name line alone must hold the row's height.
+    const row = container.querySelector('button[aria-label^="Boracay Barkada Weekend"]');
+    expect(row.lastElementChild.firstElementChild.textContent).toBe("\u00a0");
+  });
+
   it("hydrates without a mismatch, then shows times by the browser's clock", async () => {
     const element = <RecentlyViewedPanel views={VIEWS} onOpenTrip={() => {}} />;
     vi.setSystemTime(new Date(NOW.getTime() - 3 * 3_600_000)); // the server's clock is 3h behind
