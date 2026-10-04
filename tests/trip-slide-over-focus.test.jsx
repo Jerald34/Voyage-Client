@@ -199,7 +199,7 @@ describe("Calendar action hands focus to the slide-over and back", () => {
     render(
       <OwnerOverview agencyId="agency-1" initialData={fixtures.ownerBusy} onOpenTrip={vi.fn()} onNewTrip={vi.fn()} />,
     );
-    const tile = await screen.findByRole("button", { name: /^Thursday, October 8,/ });
+    const tile = await screen.findByRole("button", { name: /^Thursday, October 8[,:]/ });
 
     fireEvent.click(tile);
     const popover = screen.getByRole("dialog", { name: "Thursday, October 8" });
@@ -211,7 +211,7 @@ describe("Calendar action hands focus to the slide-over and back", () => {
     expect(screen.getByRole("button", { name: "Close panel" })).toHaveFocus();
 
     fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
-    expect(screen.getByRole("button", { name: /^Thursday, October 8,/ })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /^Thursday, October 8[,:]/ })).toHaveFocus();
     // A hidden element has no accessible name, so find the slide-over by its role alone.
     expect(screen.getByRole("dialog", { hidden: true })).toHaveAttribute("inert");
     await act(async () => {});
