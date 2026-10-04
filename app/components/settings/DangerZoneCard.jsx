@@ -23,9 +23,9 @@ export default function DangerZoneCard({ agencyId, agencyName, members: membersP
   const members = membersProp || fetchedMembers || [];
 
   return (
-    <div className="mt-12 rounded-lg border border-rose-400/20 bg-rose-500/[0.03] p-6">
-      <h2 className="mb-2 text-sm uppercase tracking-wider text-rose-200/70">Danger zone</h2>
-      <p className="mb-4 text-sm text-white/55">
+    <div className="mt-12 rounded-lg border border-status-danger/25 bg-status-danger/[0.04] p-6">
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-status-danger">Danger zone</h2>
+      <p className="mb-4 text-sm text-text-muted">
         These actions affect the entire agency and cannot be undone.
       </p>
 
@@ -33,14 +33,14 @@ export default function DangerZoneCard({ agencyId, agencyName, members: membersP
         <button
           type="button"
           onClick={() => setTransferOpen(true)}
-          className="self-start rounded border border-white/10 px-3 py-1.5 text-sm text-white/75 hover:bg-white/5"
+          className="self-start rounded border border-border/25 px-3 py-1.5 text-sm text-text-primary hover:bg-border/10"
         >
           Transfer ownership&hellip;
         </button>
         <button
           type="button"
           onClick={() => setDeleteOpen(true)}
-          className="self-start rounded border border-rose-400/30 px-3 py-1.5 text-sm text-rose-200/90 hover:bg-rose-500/10"
+          className="self-start rounded border border-status-danger/40 px-3 py-1.5 text-sm text-status-danger hover:bg-status-danger/10"
         >
           Delete agency&hellip;
         </button>

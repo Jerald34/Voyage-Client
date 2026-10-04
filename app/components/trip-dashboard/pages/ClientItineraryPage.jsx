@@ -30,6 +30,11 @@ import CommentsPanel from "./CommentsPanel.jsx";
 import ClientList from "./ClientList.jsx";
 import ItineraryHeader from "./ItineraryHeader.jsx";
 import ItineraryDayView from "./ItineraryDayView.jsx";
+import WeatherChip from "../../weather/WeatherChip.jsx";
+import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
+import WeatherAttribution from "../../weather/WeatherAttribution.jsx";
+import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
+import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import { Spinner, EmptyState } from "../../ui/index.js";
 import {
   SearchIcon,
@@ -111,6 +116,21 @@ export default function ClientItineraryPage({
   const selectedClient = clients.find(c => c.id === selectedClientId) || null;
   const selectedTrip = selectedClient?.trips.find(t => t.id === selectedTripId) || null;
   const selectedItineraryId = getStableItineraryId(selectedTrip);
+  const isTutorialItinerary = String(selectedItineraryId ?? "").startsWith(TUTORIAL_ITINERARY_ID_PREFIX);
+  const itineraryWeather = useItineraryWeather({
+    agencyId,
+    itineraryId: selectedItineraryId,
+    version: fullItinerary?.version ?? null,
+    // Wait for THIS trip's itinerary so the first request already carries its version. After a trip
+    // switch the previous itinerary lingers in state until the new one lands; fetching then would
+    // pair the new id with the old version and refetch once the real version arrives.
+    enabled: Boolean(agencyId && selectedItineraryId && String(fullItinerary?.id ?? "") === selectedItineraryId) && !isTutorialItinerary,
+  });
+  // One credit under the day strip whenever any day's weather is on screen.
+  const hasVisibleWeather = useMemo(
+    () => Array.from(itineraryWeather.byDayId.values()).some((entry) => Boolean(describeDayWeather(entry))),
+    [itineraryWeather.byDayId],
+  );
 
   // Notify parent (HomePage) so the unified tour can filter out steps whose
   // targets are conditionally rendered (e.g. trip-selector when a client only
@@ -346,7 +366,7 @@ export default function ClientItineraryPage({
         summary: tripSummary,
         dateRange,
         travelerCount,
-        days: safeDays,
+        days: attachWeatherToDays(safeDays, itineraryWeather.byDayId),
         agencyName: "Voyage",
       });
       doc.save(titleToFilename(tripTitle));
@@ -564,8 +584,14 @@ export default function ClientItineraryPage({
                             Day {day.dayNumber}
                           </div>
                           <div className="text-[0.65rem] text-text-soft font-semibold truncate max-w-[120px]">{day.title}</div>
+                          <WeatherChip entry={itineraryWeather.byDayId.get(day.id)} className="mt-1" />
                         </button>
                       ))}
+                    </div>
+                  )}
+                  {fullItinerary && safeDays.length > 0 && hasVisibleWeather && (
+                    <div className="px-4 pt-1 flex-shrink-0">
+                      <WeatherAttribution attribution={itineraryWeather.attribution} />
                     </div>
                   )}
 
@@ -584,19 +610,22 @@ export default function ClientItineraryPage({
                         <span className="text-sm">Loading...</span>
                       </div>
                     ) : selectedDay ? (
-                      (selectedDay.items || []).map((item, iIdx) => {
-                        return (
-                          <CompactPlaceCard
-                            key={`${selectedDay.dayNumber}-${iIdx}`}
-                            item={item}
-                            isSelected={activeStopIndex === iIdx}
-                            onSelect={() => {
-                              setActiveStopIndex(iIdx);
-                              setSelectedPlaceId(item.__placeEntityId);
-                            }}
-                          />
-                        );
-                      })
+                      <>
+                        <DayWeatherSummary entry={itineraryWeather.byDayId.get(selectedDay.id) ?? null} />
+                        {(selectedDay.items || []).map((item, iIdx) => {
+                          return (
+                            <CompactPlaceCard
+                              key={`${selectedDay.dayNumber}-${iIdx}`}
+                              item={item}
+                              isSelected={activeStopIndex === iIdx}
+                              onSelect={() => {
+                                setActiveStopIndex(iIdx);
+                                setSelectedPlaceId(item.__placeEntityId);
+                              }}
+                            />
+                          );
+                        })}
+                      </>
                     ) : (
                       <div className="text-center text-text-soft py-10 text-sm">Select a day to view stops.</div>
                     )}
@@ -756,8 +785,14 @@ export default function ClientItineraryPage({
                       <div className="text-[0.73rem] text-text-soft font-semibold">
                         {formatDayCardDate(day, tripStart)}
                       </div>
+                      <WeatherChip entry={itineraryWeather.byDayId.get(day.id)} className="mt-1.5" />
                     </div>
                   ))}
+                </div>
+              )}
+              {fullItinerary && safeDays.length > 0 && hasVisibleWeather && (
+                <div className="px-6 pt-1 flex-shrink-0">
+                  <WeatherAttribution attribution={itineraryWeather.attribution} />
                 </div>
               )}
 
@@ -780,6 +815,7 @@ export default function ClientItineraryPage({
                   showCommentsPanel={showCommentsPanel}
                   setShowCommentsPanel={setShowCommentsPanel}
                   theme={theme}
+                  dayWeather={selectedDay ? itineraryWeather.byDayId.get(selectedDay.id) ?? null : null}
                 />
               </div>
             </div>

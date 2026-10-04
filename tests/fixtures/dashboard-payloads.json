@@ -137,6 +137,36 @@
         "submittedAt": "2026-09-24T04:00:00.000Z"
       }
     ],
+    "recentViews": [
+      {
+        "tripId": "trip-kyoto",
+        "tripTitle": "Kyoto Autumn Escape",
+        "clientName": "Maria Santos",
+        "viewCount": 4,
+        "lastViewedAt": "2026-09-26T23:00:00.000Z"
+      },
+      {
+        "tripId": "trip-palawan",
+        "tripTitle": "Palawan Family Trip",
+        "clientName": "Lim Family",
+        "viewCount": 2,
+        "lastViewedAt": "2026-09-23T04:00:00.000Z"
+      },
+      {
+        "tripId": "trip-boracay",
+        "tripTitle": "Boracay Barkada Weekend",
+        "clientName": "Dela Cruz Barkada",
+        "viewCount": 2,
+        "lastViewedAt": "2026-09-21T04:00:00.000Z"
+      },
+      {
+        "tripId": "trip-cebu",
+        "tripTitle": "Cebu Island Hop",
+        "clientName": "Garcia Family",
+        "viewCount": 1,
+        "lastViewedAt": "2026-09-15T04:00:00.000Z"
+      }
+    ],
     "activityRibbon": [
       {
         "kind": "itinerary_approved",
@@ -307,6 +337,36 @@
         "submittedAt": "2026-09-24T04:00:00.000Z"
       }
     ],
+    "recentViews": [
+      {
+        "tripId": "trip-kyoto",
+        "tripTitle": "Kyoto Autumn Escape",
+        "clientName": "Maria Santos",
+        "viewCount": 4,
+        "lastViewedAt": "2026-09-26T23:00:00.000Z"
+      },
+      {
+        "tripId": "trip-palawan",
+        "tripTitle": "Palawan Family Trip",
+        "clientName": "Lim Family",
+        "viewCount": 2,
+        "lastViewedAt": "2026-09-23T04:00:00.000Z"
+      },
+      {
+        "tripId": "trip-boracay",
+        "tripTitle": "Boracay Barkada Weekend",
+        "clientName": "Dela Cruz Barkada",
+        "viewCount": 2,
+        "lastViewedAt": "2026-09-21T04:00:00.000Z"
+      },
+      {
+        "tripId": "trip-cebu",
+        "tripTitle": "Cebu Island Hop",
+        "clientName": "Garcia Family",
+        "viewCount": 1,
+        "lastViewedAt": "2026-09-15T04:00:00.000Z"
+      }
+    ],
     "activityRibbon": [
       {
         "kind": "itinerary_approved",
@@ -392,6 +452,7 @@
       ]
     },
     "recentReviews": [],
+    "recentViews": [],
     "activityRibbon": []
   },
   "staff": {
@@ -492,6 +553,22 @@
         "startDate": "2026-10-17T04:00:00.000Z",
         "daysToStart": 20,
         "travelerCount": 4
+      }
+    ],
+    "recentViews": [
+      {
+        "tripId": "trip-kyoto",
+        "tripTitle": "Kyoto Autumn Escape",
+        "clientName": "Maria Santos",
+        "viewCount": 4,
+        "lastViewedAt": "2026-09-26T23:00:00.000Z"
+      },
+      {
+        "tripId": "trip-palawan",
+        "tripTitle": "Palawan Family Trip",
+        "clientName": "Lim Family",
+        "viewCount": 2,
+        "lastViewedAt": "2026-09-23T04:00:00.000Z"
       }
     ]
   }

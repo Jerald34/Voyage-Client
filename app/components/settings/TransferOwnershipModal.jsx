@@ -26,17 +26,17 @@ export default function TransferOwnershipModal({ agencyId, members, onClose }) {
   return (
     <Modal open onClose={onClose} title="Transfer ownership" size="sm">
       {admins.length === 0 ? (
-        <p className="text-sm text-white/60">
+        <p className="text-sm text-text-muted">
           There are no admins to transfer ownership to. Promote a member to Admin first.
         </p>
       ) : (
         <>
-          <p className="mb-4 text-sm text-white/60">
+          <p className="mb-4 text-sm text-text-muted">
             Select the admin who will become the new owner. You will become an Admin after transfer.
           </p>
           <div className="grid gap-2">
             {admins.map((m) => (
-              <label key={m.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/8 px-3 py-2.5 hover:bg-white/5">
+              <label key={m.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/15 px-3 py-2.5 hover:bg-border/10">
                 <input
                   type="radio"
                   name="transfer-target"
@@ -46,15 +46,15 @@ export default function TransferOwnershipModal({ agencyId, members, onClose }) {
                   className="accent-secondary"
                 />
                 <div>
-                  <div className="text-sm text-white">{m.user.displayName}</div>
-                  <div className="text-xs text-white/50">{m.user.email}</div>
+                  <div className="text-sm text-text-primary">{m.user.displayName}</div>
+                  <div className="text-xs text-text-muted">{m.user.email}</div>
                 </div>
               </label>
             ))}
           </div>
 
           {error && (
-            <p className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300" role="alert">
+            <p className="mt-3 rounded-lg bg-status-danger/10 px-3 py-2 text-sm text-status-danger" role="alert">
               {error}
             </p>
           )}
@@ -65,7 +65,7 @@ export default function TransferOwnershipModal({ agencyId, members, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/5"
+          className="rounded-lg border border-border/20 px-4 py-2 text-sm text-text-muted hover:bg-border/10"
           disabled={saving}
         >
           Cancel
@@ -75,7 +75,7 @@ export default function TransferOwnershipModal({ agencyId, members, onClose }) {
             type="button"
             onClick={handleConfirm}
             disabled={saving || !selectedId}
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/75 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-border/25 px-4 py-2 text-sm text-text-primary hover:bg-border/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Transferring…" : "Transfer ownership"}
           </button>

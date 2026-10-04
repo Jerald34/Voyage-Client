@@ -8,7 +8,7 @@
  * Each parent comment gets its own inline reply input.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   listTripShares,
   listShareComments,
@@ -237,8 +237,56 @@ function CommentCard({
   );
 }
 
+// ─── Focus containment ───────────────────────────────────────────────────────
+
+const TABBABLE_SELECTOR =
+  'a[href], button, input, select, textarea, summary, [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+
+/** True when Tab can land on the element: enabled, not inert, and actually rendered. */
+function isTabbable(element, root) {
+  if (element.matches(":disabled")) return false;
+  if (element instanceof HTMLInputElement && element.type === "hidden") return false;
+  if (getComputedStyle(element).visibility === "hidden") return false;
+  for (let node = element; node; node = node.parentElement) {
+    if (node.hidden || node.hasAttribute("inert") || getComputedStyle(node).display === "none") return false;
+    if (node === root) break;
+  }
+  return true;
+}
+
+function tabbablesIn(root) {
+  return [...root.querySelectorAll(TABBABLE_SELECTOR)].filter((element) => isTabbable(element, root));
+}
+
+// ─── Load failure notice ─────────────────────────────────────────────────────
+
+function LoadAlert({ message, onRetry }) {
+  return (
+    <div
+      role="alert"
+      className="rounded-[12px] bg-status-danger/10 border border-status-danger/20 px-4 py-3 text-sm text-status-danger flex items-center gap-2"
+    >
+      <span className="flex-1">{message}</span>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded px-1 min-h-6 pointer-coarse:min-h-11 font-bold underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
+/**
+ * `returnFocusRef` (optional) names where focus goes on close when the element
+ * that opened the panel has left the page, e.g. a poll dropped its row while
+ * the panel was open. Without it, focus is only returned to a surviving opener.
+ * `onReplied(commentId)` (optional) runs once a reply is saved, so the
+ * dashboard can reload what still needs the agent.
+ */
 export default function TripSlideOver({
   isOpen,
   onClose,
@@ -247,43 +295,146 @@ export default function TripSlideOver({
   tripTitle = "Trip",
   subtitle = null,
   onOpenFull,
+  returnFocusRef = undefined,
+  onReplied = undefined,
 }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Some shares' comments failed to load; the rest are shown.
+  const [partialError, setPartialError] = useState(false);
+  const closeButtonRef = useRef(null);
+  const panelRef = useRef(null);
+  // Where focus rests while the list's own controls (the Retry button) are swapped out.
+  const listRef = useRef(null);
+  // Stamps each load; a response only counts while its stamp is still the latest.
+  const requestIdRef = useRef(0);
+
+  // Read at close time, so a parent passing a fresh ref object each render cannot re-run the focus effect.
+  const returnFocusRefLatest = useRef(returnFocusRef);
+  useEffect(() => {
+    returnFocusRefLatest.current = returnFocusRef;
+  }, [returnFocusRef]);
+
+  // ── Focus: remember the opener, and send focus back on close ──
+  // Whatever had focus when the panel opened (a calendar day, a to-do row) is
+  // where the person was, so return there if it is still on the page. If it is
+  // not, use the fallback the parent named. Keyed on isOpen alone: switching to
+  // another trip while open keeps the original opener.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const active = document.activeElement;
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null;
+    return () => {
+      if (!opener) return;
+      if (opener.isConnected) {
+        opener.focus();
+        return;
+      }
+      const fallback = returnFocusRefLatest.current?.current;
+      if (fallback?.isConnected) fallback.focus();
+    };
+  }, [isOpen]);
+
+  // ── Focus: into the panel on open, and again when it switches trips ──
+  // Declared after the effect above so the opener is read before focus moves.
+  useEffect(() => {
+    if (isOpen) closeButtonRef.current?.focus();
+  }, [isOpen, tripId]);
+
+  // ── Focus: Tab and Shift+Tab cycle inside the open panel (aria-modal) ──
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleTab = (e) => {
+      if (e.key !== "Tab" || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const tabbables = tabbablesIn(panel);
+      if (tabbables.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = tabbables[0];
+      const last = tabbables[tabbables.length - 1];
+      const active = document.activeElement;
+      if (!active || !panel.contains(active)) {
+        // Focus is outside the panel (or on the page body): bring it in.
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
+      // Wrap only when nothing is left to tab to in this direction.
+      const direction = e.shiftKey ? Node.DOCUMENT_POSITION_PRECEDING : Node.DOCUMENT_POSITION_FOLLOWING;
+      const hasNext = tabbables.some((el) => el !== active && active.compareDocumentPosition(el) & direction);
+      if (!hasNext) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
+    document.addEventListener("keydown", handleTab);
+    return () => document.removeEventListener("keydown", handleTab);
+  }, [isOpen]);
 
   // ── Fetch all comments across shares ──
   const fetchComments = useCallback(async () => {
     if (!agencyId || !tripId) return;
+    // The panel stays mounted between trips, so a slow answer for an earlier
+    // trip can land after a later one has loaded. Drop any answer that is no
+    // longer the latest request.
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestId === requestIdRef.current;
     setLoading(true);
     setError(null);
+    setPartialError(false);
     try {
       const sharesRes = await listTripShares(agencyId, tripId);
+      if (!isCurrent()) return;
       const shares = Array.isArray(sharesRes?.shares) ? sharesRes.shares : [];
 
-      const commentArrays = await Promise.all(
-        shares.map((share) =>
-          listShareComments(agencyId, share.id)
-            .then((r) =>
-              Array.isArray(r?.comments)
-                ? r.comments.map((c) => ({ ...c, shareId: share.id }))
-                : [],
-            )
-            .catch(() => []),
-        ),
+      // allSettled, not a per-request catch: a failed request must not pass
+      // for a share with no comments.
+      const results = await Promise.allSettled(
+        shares.map((share) => listShareComments(agencyId, share.id)),
       );
-      setComments(commentArrays.flat());
-    } catch (err) {
-      setError(err?.message || "Failed to load comments");
+      if (!isCurrent()) return;
+      const loaded = results.flatMap((result, index) =>
+        result.status === "fulfilled" && Array.isArray(result.value?.comments)
+          ? result.value.comments.map((c) => ({ ...c, shareId: shares[index].id }))
+          : [],
+      );
+      const failed = results.filter((result) => result.status === "rejected").length;
+
+      if (failed > 0 && failed === results.length) {
+        setComments([]);
+        setError("Couldn't load comments.");
+      } else {
+        setComments(loaded);
+        setPartialError(failed > 0);
+      }
+    } catch {
+      if (!isCurrent()) return;
+      setComments([]);
+      setError("Couldn't load comments.");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [agencyId, tripId]);
+
+  // Retry swaps its own alert for the spinner, which would drop focus to <body>
+  // inside an aria-modal dialog. Park focus on the list first.
+  const retryComments = useCallback(() => {
+    listRef.current?.focus();
+    fetchComments();
+  }, [fetchComments]);
 
   useEffect(() => {
     if (isOpen && tripId) {
       fetchComments();
     }
+    // Closing, switching trips or unmounting retires whatever is still in flight.
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [isOpen, tripId, fetchComments]);
 
   // Close on Escape
@@ -297,20 +448,31 @@ export default function TripSlideOver({
   }, [isOpen, onClose]);
 
   // Optimistic reply update — avoids a full refetch on send
-  const handleReplySent = useCallback((commentId, content) => {
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId
-          ? {
-              ...c,
-              agencyReply: content,
-              agencyRepliedAt: new Date().toISOString(),
-              status: "ADDRESSED",
-            }
-          : c,
-      ),
-    );
-  }, []);
+  const handleReplySent = useCallback(
+    (commentId, content) => {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? {
+                ...c,
+                agencyReply: content,
+                agencyRepliedAt: new Date().toISOString(),
+                status: "ADDRESSED",
+              }
+            : c,
+        ),
+      );
+      // This runs inside CommentCard's try around the send. The reply is
+      // already saved, so a throwing dashboard handler must not reach the catch
+      // that reports "Failed to send reply"; log it instead.
+      try {
+        onReplied?.(commentId);
+      } catch (error) {
+        console.error("TripSlideOver: onReplied threw after a saved reply", error);
+      }
+    },
+    [onReplied],
+  );
 
   // ── Two-level grouping: Day → Activity ──
   const grouped = useMemo(() => {
@@ -388,10 +550,14 @@ export default function TripSlideOver({
       />
 
       {/* Panel */}
+      {/* While closed the panel only sits off-screen, so `inert` keeps its buttons out of the tab order and `aria-hidden` out of the accessibility tree. */}
       <aside
+        ref={panelRef}
         role="dialog"
         aria-label={`Trip comments: ${tripTitle}`}
         aria-modal="true"
+        aria-hidden={isOpen ? undefined : true}
+        inert={!isOpen}
         className={`fixed top-0 right-0 z-[61] flex h-full w-full max-w-md flex-col border-l border-border/10 bg-background shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -428,6 +594,7 @@ export default function TripSlideOver({
           </div>
 
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             className="shrink-0 mt-0.5 rounded-lg p-1.5 text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
@@ -438,7 +605,14 @@ export default function TripSlideOver({
         </header>
 
         {/* ── Comment list ── */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 min-h-0">
+        {/* Not a tab stop: Retry moves focus here before its alert unmounts, so it stays inside the dialog. */}
+        <div
+          ref={listRef}
+          role="region"
+          aria-label="Comments"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 min-h-0 focus:outline-none"
+        >
           {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
@@ -448,21 +622,15 @@ export default function TripSlideOver({
           )}
 
           {/* Error */}
-          {!loading && error && (
-            <div className="rounded-[12px] bg-status-danger/10 border border-status-danger/20 px-4 py-3 text-sm text-status-danger flex items-center gap-2">
-              <span className="flex-1">{error}</span>
-              <button
-                type="button"
-                onClick={fetchComments}
-                className="font-bold underline hover:no-underline"
-              >
-                Retry
-              </button>
-            </div>
+          {!loading && error && <LoadAlert message={error} onRetry={retryComments} />}
+
+          {/* Some shares' comments failed; what loaded is listed below */}
+          {!loading && !error && partialError && (
+            <LoadAlert message="Some comments couldn't load." onRetry={retryComments} />
           )}
 
           {/* Empty state */}
-          {!loading && !error && grouped.length === 0 && (
+          {!loading && !error && !partialError && grouped.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
               <ChatIcon
                 width={40}

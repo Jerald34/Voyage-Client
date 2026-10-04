@@ -1,4 +1,6 @@
 import jsPDF from "jspdf";
+import { describeDayWeather } from "./weather/weatherDisplay.js";
+import { getAccessibilityBadges, getAccessibilityPdfText } from "./accessibility/placeAccessibility.js";
 
 /**
  * Generates a styled PDF from itinerary data.
@@ -19,6 +21,17 @@ function getProviderClosureLabel(businessStatus) {
   if (businessStatus === "CLOSED_PERMANENTLY") return "Permanently closed";
   if (businessStatus === "CLOSED_TEMPORARILY") return "Temporarily closed";
   return "";
+}
+
+// Same status logic as the on-screen badges: a caution is amber (matching the closure line),
+// an unchecked-in-practice place is neutral grey, confirmed features are green.
+const PDF_ACCESSIBILITY_COLORS = { warning: [146, 64, 14], unverified: [130, 150, 160], positive: [21, 94, 67] };
+
+function getAccessibilityPdfColor(snapshot) {
+  const badges = getAccessibilityBadges(snapshot);
+  if (badges.some((badge) => badge.tone === "warning")) return PDF_ACCESSIBILITY_COLORS.warning;
+  if (badges.length > 0 && badges.every((badge) => badge.key === "unverified")) return PDF_ACCESSIBILITY_COLORS.unverified;
+  return PDF_ACCESSIBILITY_COLORS.positive;
 }
 
 export async function generateItineraryPdf({
@@ -136,7 +149,13 @@ export async function generateItineraryPdf({
 
     // Day header
     const dayLabel = `Day ${day.dayNumber || di + 1}  —  ${day.title || ""}`;
-    checkPageBreak(14);
+    const weatherText = describeDayWeather(day.weatherEntry)?.pdfText ?? "";
+    // splitTextToSize measures at the current font, so set the size it is drawn in first.
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    const weatherLines = weatherText ? doc.splitTextToSize(weatherText, contentWidth) : [];
+    // The weather line is measured BEFORE the break check, like the closure line.
+    checkPageBreak(14 + weatherLines.length * 4.5);
 
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
@@ -152,6 +171,15 @@ export async function generateItineraryPdf({
       doc.setTextColor(130, 150, 160);
       doc.text(formatted, margin, y);
       y += 5;
+    }
+
+    // Day weather (forecast or typical)
+    if (weatherLines.length > 0) {
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(70, 110, 140);
+      doc.text(weatherLines, margin, y);
+      y += weatherLines.length * 4.5;
     }
 
     // Day summary
@@ -189,6 +217,17 @@ export async function generateItineraryPdf({
         ? doc.splitTextToSize(closureText, contentWidth - 8)
         : [];
 
+      // Public provider data only. The traveler's own needs never reach an export.
+      // Measured at the size it is drawn in (8.5pt), like the weather line.
+      const accessibilityText = getAccessibilityPdfText(item.placeSnapshot);
+      if (accessibilityText) {
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+      }
+      const accessibilityLines = accessibilityText
+        ? doc.splitTextToSize(accessibilityText, contentWidth - 8)
+        : [];
+
       const estimatedHeight =
         (timeStr ? 5 : 0) +
         titleLines.length * 5.5 +
@@ -198,6 +237,7 @@ export async function generateItineraryPdf({
         // Counted BEFORE the page-break check: a line drawn but not measured is
         // exactly how an item overflows the bottom of a page.
         closureLines.length * 4 +
+        accessibilityLines.length * 4 +
         8; // padding
 
       checkPageBreak(estimatedHeight);
@@ -258,6 +298,15 @@ export async function generateItineraryPdf({
         y += closureLines.length * 4 + 1;
       }
 
+      // Accessibility (Google wheelchair flags)
+      if (accessibilityLines.length > 0) {
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...getAccessibilityPdfColor(item.placeSnapshot));
+        doc.text(accessibilityLines, margin + 10, y);
+        y += accessibilityLines.length * 4 + 1;
+      }
+
       y += 5; // spacing between items
     }
 
@@ -269,6 +318,17 @@ export async function generateItineraryPdf({
       drawLine([220, 228, 232]);
       y += 8;
     }
+  }
+
+  // Open-Meteo's free API is CC-BY 4.0: credit it when any day shows weather.
+  if (safeDays.some((day) => describeDayWeather(day?.weatherEntry))) {
+    checkPageBreak(8);
+    y += 2;
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(150, 160, 170);
+    doc.text("Weather data by Open-Meteo.com", margin, y);
+    y += 4;
   }
 
   /* ── Final footer ─────────────────────────────────────────── */

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider";
 import { voyageTourHelpBullets, voyageTourSteps } from "../tutorial/tutorialContent.js";
 import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
+import TeamPage from "../../team/TeamPage.jsx";
 import { createProblemReport } from "../../../lib/api/support.js";
 
 function formatReadOnlyValue(value) {
@@ -21,15 +22,17 @@ function formatVerifiedValue(emailVerifiedAt) {
   })}`;
 }
 
+// Theme tokens, so the pills read in light and dark mode. An 8% tint keeps
+// every status colour at 4.5:1 (warning drops below it at 10%).
 function getStatusClass(status) {
   const normalized = String(status ?? "").trim().toUpperCase();
   if (normalized === "ACTIVE" || normalized === "VERIFIED") {
-    return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    return "bg-status-success/8 text-status-success border-status-success/30";
   }
   if (normalized === "PENDING" || normalized === "INVITED") {
-    return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+    return "bg-status-warning/8 text-status-warning border-status-warning/30";
   }
-  return "bg-slate-500/15 text-slate-300 border-white/10";
+  return "bg-text-primary/5 text-text-muted border-border/20";
 }
 
 function getFieldClass(readOnly = false) {
@@ -97,6 +100,8 @@ export default function SettingsPage({
   onUpdateProfile,
   onUpdateAgency,
   onReplayTutorial,
+  focusSection = null,
+  onFocusSectionHandled,
 }) {
   const { theme, setTheme } = useTheme();
   const isPersonal = user?.accountType === "PERSONAL";
@@ -121,6 +126,20 @@ export default function SettingsPage({
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportSent, setReportSent] = useState(false);
+
+  const teamRef = useRef(null);
+
+  // A `tab=team` link opens Settings scrolled to the Team panel, once. Focus
+  // moves there too (without a second scroll) so keyboard and screen reader
+  // users land on it, and the scroll skips the animation for reduced motion.
+  useEffect(() => {
+    const panel = teamRef.current;
+    if (focusSection !== "team" || !panel) return;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    panel.scrollIntoView({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+    panel.focus({ preventScroll: true });
+    onFocusSectionHandled?.();
+  }, [focusSection, onFocusSectionHandled]);
 
   useEffect(() => {
     const nextDisplayName = String(user?.displayName ?? "");
@@ -322,7 +341,7 @@ export default function SettingsPage({
               <span className="text-sm text-text-soft">Account status</span>
             </div>
 
-            {profileError ? <p className="text-sm font-medium text-red-400" role="alert">{profileError}</p> : null}
+            {profileError ? <p className="text-sm font-medium text-status-danger" role="alert">{profileError}</p> : null}
 
             <div className="flex items-center justify-end">
               <button
@@ -374,7 +393,7 @@ export default function SettingsPage({
               <span className="text-sm text-text-soft">Agency status</span>
             </div>
 
-            {workspaceError ? <p className="text-sm font-medium text-red-400" role="alert">{workspaceError}</p> : null}
+            {workspaceError ? <p className="text-sm font-medium text-status-danger" role="alert">{workspaceError}</p> : null}
 
             <div className="flex items-center justify-end">
               <button
@@ -498,7 +517,7 @@ export default function SettingsPage({
         >
           <div className="flex flex-col gap-3">
             {reportSent ? (
-              <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400" role="status">
+              <p className="rounded-2xl border border-status-success/30 bg-status-success/8 px-4 py-3 text-sm text-status-success" role="status">
                 Thanks — your report was sent. We'll take a look.
               </p>
             ) : null}
@@ -511,6 +530,18 @@ export default function SettingsPage({
             </button>
           </div>
         </Panel>
+
+        {!isPersonal && agency?.id ? (
+          <section
+            ref={teamRef}
+            id="settings-team"
+            tabIndex={-1}
+            aria-label="Team"
+            className="scroll-mt-4 rounded-[24px] border border-border bg-surface/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] xl:col-span-2"
+          >
+            <TeamPage agencyId={agency.id} embedded />
+          </section>
+        ) : null}
 
         {!isPersonal && membership?.role === "OWNER" && agency?.id ? (
           <DangerZoneCard

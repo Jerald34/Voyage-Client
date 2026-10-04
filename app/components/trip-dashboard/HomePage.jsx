@@ -41,6 +41,8 @@ import AdminPage from "../admin/AdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatInput from "./command-center/ChatInput.jsx";
+import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
+import { useTravelerNeeds } from "../../hooks/useTravelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
 import {
   TUTORIAL_MOCK_TRIPS,
@@ -81,6 +83,7 @@ export default function HomePage({
   onNewItinerary,
   initialTab = "command-center",
   showJoinedNotice = false,
+  initialSettingsSection = null,
 }) {
   const { theme } = useTheme();
   const { logout } = useAuth();
@@ -136,12 +139,16 @@ export default function HomePage({
   const explicitContextRef = useRef(false);
 
   const [composerInput, setComposerInput] = useState("");
+  const [isTravelerNeedsOpen, setIsTravelerNeedsOpen] = useState(false);
   const [deletingThreadId, setDeletingThreadId] = useState(null);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isApprovingDraft, setIsApprovingDraft] = useState(false);
   const [approvalError, setApprovalError] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const menuButtonRef = useRef(null);
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [settingsFocus, setSettingsFocus] = useState(initialSettingsSection);
+  const clearSettingsFocus = useCallback(() => setSettingsFocus(null), []);
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
   const [isClientMenuOpen, setIsClientMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -156,6 +163,11 @@ export default function HomePage({
   const isMobile = useMobileViewport();
   const clientMenuRef = useRef(null);
   const mobileTextareaRef = useRef(null);
+  // Where the traveler-needs dialog hands focus back if the control that opened it unmounted
+  // (the chips' Edit button disappears when the last need is cleared). One per layout: the
+  // desktop and mobile composers can both be mounted, but only the visible one can take focus.
+  const desktopNeedsToggleRef = useRef(null);
+  const mobileNeedsToggleRef = useRef(null);
 
   // Poll pending count for admin users
   useEffect(() => {
@@ -390,6 +402,19 @@ export default function HomePage({
   const safeTrips = Array.isArray(agencyTrips) ? agencyTrips : [];
   const activeTrip = activeContext?.type === "trip" ? safeTrips.find(t => t?.id === activeContext.id) : null;
   const activeTripState = activeContext?.type === "draft" ? draftThreadStates[activeContext.id] : (activeContext?.type === "trip" && activeContext.id ? tripStates[activeContext.id] : null);
+  // Pending needs are keyed to the unsaved context they were chosen for, so they can never
+  // leak into a different new plan; once a thread exists they live on that thread's state.
+  const { activeTravelerNeeds, saveTravelerNeeds: saveNeeds, clearPendingNeeds, sendWithNeeds } = useTravelerNeeds({
+    activeContext,
+    activeTripState,
+    setDraftThreadStates,
+    setTripStates,
+  });
+
+  const saveTravelerNeeds = (next) => {
+    setIsTravelerNeedsOpen(false);
+    saveNeeds(next);
+  };
 
   const planningOptions = useMemo(
     () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext }),
@@ -452,7 +477,7 @@ export default function HomePage({
   function handleMobileSubmit(event) {
     event.preventDefault();
     if (!composerInput.trim()) return;
-    void dispatchMessage(composerInput, startStream);
+    void sendWithNeeds((needs) => dispatchMessage(composerInput, startStream, [], needs));
     setComposerInput("");
   }
 
@@ -483,7 +508,10 @@ export default function HomePage({
     // setter and erase the seed (same-event setState calls take the last value).
     // Reset to "command-center" tab so user sees the new draft being created
     setActiveTab("command-center");
-    
+
+    // One client's traveler needs must never ride along with another client's new plan.
+    clearPendingNeeds();
+
     // Set a placeholder context to immediately transition the UI to a "creating" state
     // and avoid race conditions where the UI might try to render a null context.
     const placeholderId = `pending-${Date.now()}`;
@@ -597,7 +625,8 @@ export default function HomePage({
   }, [activeContext, setTripStates]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-text-primary font-sans">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-background text-text-primary font-sans">
+      <div className="app-frame-streak" aria-hidden="true" />
       <FirstUseTutorial
         open={isFirstUseTutorialOpen}
         onClose={closeFirstUseTutorial}
@@ -617,55 +646,69 @@ export default function HomePage({
         />
       )}
 
-      <div>
-        <DashboardHeader
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-          liveStatus={liveStatus}
-          scopedStreamError={isVisible ? streamError : null}
-          scopedIsStreaming={isVisible ? isStreaming : false}
-          getInitials={getInitials}
-          displayName={user?.displayName || "Traveler"}
-          agencyId={agencyId}
-          activeTab={currentTab}
-          onNewItinerary={() => {
-            setPendingClientName(null);
-            handleNewItinerary();
-          }}
-          isCreatingDraftThread={isCreatingDraftThread}
-          isClientMenuOpen={isClientMenuOpen}
-          setIsClientMenuOpen={setIsClientMenuOpen}
-          clientMenuRef={clientMenuRef}
-          hasOptions={effectivePlanningOptions.length > 0}
-          activeTripClientName={activeTripClientName}
-          activeTripInitials={activeTripInitials}
-          activeTripOrganizerInitials={activeTripOrganizerInitials}
-          clientMenuEmptyTitle={clientMenuEmptyTitle}
-          clientMenuEmptyBody={clientMenuEmptyBody}
-          safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
-          activeOption={effectiveActiveOption}
-          onPlanningOptionDelete={handleDeleteOption}
-          deletingThreadId={deletingThreadId}
-          onPlanningOptionChange={(ctx) => { setActiveContext(createPlanningContext(ctx?.type, ctx?.id)); setComposerInput(""); }}
-          onRenameThread={renameThread}
-          canApproveDraft={activeContext?.type === "draft" && Boolean(activeTripState?.itinerary?.id)}
-          onApproveDraft={() => { setApprovalError(""); setIsApprovalModalOpen(true); }}
-        />
-      </div>
+      <TravelerNeedsDialog
+        open={isTravelerNeedsOpen}
+        initialNeeds={activeTravelerNeeds}
+        returnFocusRef={isMobile ? mobileNeedsToggleRef : desktopNeedsToggleRef}
+        onCancel={() => setIsTravelerNeedsOpen(false)}
+        onSave={saveTravelerNeeds}
+      />
 
-      <div className="flex flex-1 overflow-hidden relative">
-        <DashboardSidebar
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-          activeTab={currentTab}
-          setActiveTab={setActiveTab}
-          logout={logout}
-          user={user}
-          pendingCount={pendingCount}
-          agencyId={agencyId}
-        />
+      <div className="relative flex min-w-0 flex-1 p-4 max-[900px]:p-0">
+        <div className="relative flex min-w-0 flex-1 overflow-hidden rounded-[24px] shadow-[0_24px_60px_rgba(15,23,42,0.12)] max-[900px]:rounded-none max-[900px]:shadow-none">
+          {/* The glass sits on its own layer: a backdrop-filter on an ancestor
+              would become the containing block for fixed children (slide-overs,
+              the phone drawer) and trap them inside the frame. */}
+          <div className="frame-panel pointer-events-none absolute inset-0 rounded-[inherit] max-[900px]:border-0" aria-hidden="true" />
 
-        <main className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 max-[900px]:p-0 max-[900px]:overflow-hidden">
+          <DashboardSidebar
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            menuButtonRef={menuButtonRef}
+            activeTab={currentTab}
+            setActiveTab={setActiveTab}
+            logout={logout}
+            user={user}
+            pendingCount={pendingCount}
+            agencyId={agencyId}
+          />
+
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            <DashboardHeader
+              variant={currentTab === "dashboard" ? "compact" : "full"}
+              isSidebarOpen={isSidebarOpen}
+              setIsSidebarOpen={setIsSidebarOpen}
+              menuButtonRef={menuButtonRef}
+              liveStatus={liveStatus}
+              scopedStreamError={isVisible ? streamError : null}
+              scopedIsStreaming={isVisible ? isStreaming : false}
+              getInitials={getInitials}
+              activeTab={currentTab}
+              onNewItinerary={() => {
+                setPendingClientName(null);
+                handleNewItinerary();
+              }}
+              isCreatingDraftThread={isCreatingDraftThread}
+              isClientMenuOpen={isClientMenuOpen}
+              setIsClientMenuOpen={setIsClientMenuOpen}
+              clientMenuRef={clientMenuRef}
+              hasOptions={effectivePlanningOptions.length > 0}
+              activeTripClientName={activeTripClientName}
+              activeTripInitials={activeTripInitials}
+              activeTripOrganizerInitials={activeTripOrganizerInitials}
+              clientMenuEmptyTitle={clientMenuEmptyTitle}
+              clientMenuEmptyBody={clientMenuEmptyBody}
+              safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
+              activeOption={effectiveActiveOption}
+              onPlanningOptionDelete={handleDeleteOption}
+              deletingThreadId={deletingThreadId}
+              onPlanningOptionChange={(ctx) => { setActiveContext(createPlanningContext(ctx?.type, ctx?.id)); setComposerInput(""); }}
+              onRenameThread={renameThread}
+              canApproveDraft={activeContext?.type === "draft" && Boolean(activeTripState?.itinerary?.id)}
+              onApproveDraft={() => { setApprovalError(""); setIsApprovalModalOpen(true); }}
+            />
+
+            <main className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2 max-[900px]:overflow-hidden max-[900px]:p-0">
           {currentTab === "command-center" ? (
             <section
               data-tour-target="workspace"
@@ -714,7 +757,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files)}
+                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -733,6 +776,9 @@ export default function HomePage({
                     targetItinerary={effectiveTripState?.itinerary ?? null}
                     onSystemVisibleMessage={handleReuseSystemMessage}
                     onReuseInserted={handleReuseInserted}
+                    travelerNeeds={activeTravelerNeeds}
+                    onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
+                    needsToggleRef={desktopNeedsToggleRef}
                   />
                 </div>
               </div>
@@ -755,6 +801,9 @@ export default function HomePage({
                       agentError={agentError}
                       onStop={isVisible ? stopStream : undefined}
                       containerClassName="px-3 pb-3"
+                      travelerNeeds={activeTravelerNeeds}
+                      onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
+                      needsToggleRef={mobileNeedsToggleRef}
                     />
                   }
                 >
@@ -767,7 +816,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => dispatchMessage(prompt, startStream, files)}
+                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -787,6 +836,8 @@ export default function HomePage({
                     targetItinerary={effectiveTripState?.itinerary ?? null}
                     onSystemVisibleMessage={handleReuseSystemMessage}
                     onReuseInserted={handleReuseInserted}
+                    travelerNeeds={activeTravelerNeeds}
+                    onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                   />
                 </MobileGlassSheet>
               )}
@@ -802,6 +853,7 @@ export default function HomePage({
                 <StaffMyWork
                   agencyId={agencyId}
                   initialData={null}
+                  viewerName={user?.displayName}
                   onOpenTrip={(tripId) => {
                     explicitContextRef.current = true;
                     setActiveTab("command-center");
@@ -815,6 +867,7 @@ export default function HomePage({
                 <OwnerOverview
                   agencyId={agencyId}
                   initialData={null}
+                  viewerName={user?.displayName}
                   onOpenTrip={(tripId) => {
                     explicitContextRef.current = true;
                     setActiveTab("command-center");
@@ -857,13 +910,16 @@ export default function HomePage({
               onUpdateProfile={handleUserProfileUpdate}
               onUpdateAgency={handleAgencySettingsUpdate}
               onReplayTutorial={replayFirstUseTutorial}
+              focusSection={settingsFocus}
+              onFocusSectionHandled={clearSettingsFocus}
             />
           ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
             <AdminPage onPendingCountChange={refreshPendingCount} />
           ) : null}
-        </main>
+            </main>
+          </div>
+        </div>
       </div>
-
     </div>
   );
 }

@@ -17,7 +17,7 @@ export default function AgentReviewBar({ onRevise, onEdit, onApprove }) {
           Edit Draft
         </button>
         <button
-          className="px-4 py-2 rounded-sm text-xs font-bold cursor-pointer transition-all border border-transparent bg-primary text-white hover:-translate-y-px"
+          className="px-4 py-2 rounded-sm text-xs font-bold cursor-pointer transition-all border border-transparent bg-primary text-on-primary hover:-translate-y-px"
           onClick={onApprove}
         >
           Mark Internally Reviewed

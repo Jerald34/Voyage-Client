@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Real payloads produced by the server's dashboard service — regenerate with
@@ -30,12 +30,15 @@ import OwnerOverview from "../app/agency/[agencyId]/components/dashboard/OwnerOv
 import StaffMyWork from "../app/agency/[agencyId]/components/dashboard/StaffMyWork.jsx";
 
 function kpiTile(label) {
-  return screen.getByRole("button", { name: new RegExp(`^${label}:`) });
+  return screen.getByRole("group", { name: new RegExp(`^${label}:`) });
 }
 
-/** The owner's to-do group headed e.g. "Client comments to answer (2)". */
-function worklistGroup(heading) {
-  return screen.getByText(new RegExp(`^${heading} \\(\\d+\\)$`)).parentElement;
+/** The "Needs you today" list, expanded so every row is on screen. */
+function needsYouList() {
+  const list = screen.getByRole("region", { name: "Needs you today" });
+  const showAll = within(list).queryByRole("button", { name: /^Show all/ });
+  if (showAll) fireEvent.click(showAll);
+  return list;
 }
 
 function renderOwner(payload) {
@@ -108,10 +111,22 @@ describe("Owner dashboard with real server payloads", () => {
   it("treats slower share and response times as regressions", () => {
     renderOwner(fixtures.ownerBusy);
 
-    for (const label of ["Time to share", "Time to reply"]) {
-      expect(within(kpiTile(label)).getByText("▲").parentElement.className).toContain("--danger");
-    }
-    expect(within(kpiTile("Win rate")).getByText("▲").parentElement.className).toContain("--success");
+    expect(within(kpiTile("Time to share")).getByText("0.8d slower").className).toContain("--danger");
+    expect(within(kpiTile("Time to reply")).getByText("1.2h slower").className).toContain("--danger");
+    expect(within(kpiTile("Win rate")).getByText("+16.7 pts").className).toContain("--success");
+  });
+
+  it("shows the itineraries clients opened most recently", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const viewed = screen.getByRole("region", { name: "Recently viewed" });
+    const rows = within(viewed).getAllByRole("button", { name: /views?,/ });
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Kyoto Autumn Escape, Maria Santos, 4 views, last viewed 5 hours ago",
+      "Palawan Family Trip, Lim Family, 2 views, last viewed 4 days ago",
+      "Boracay Barkada Weekend, Dela Cruz Barkada, 2 views, last viewed 6 days ago",
+    ]);
+    expect(within(viewed).getByRole("button", { name: "Show all (4)" })).toBeInTheDocument();
   });
 });
 
@@ -135,27 +150,28 @@ describe("Owner dashboard in plain words", () => {
     expect(within(kpiTile("Client rating")).getByText("0 of 3 rated")).toBeInTheDocument();
   });
 
-  it("names the period the numbers cover and what the arrows compare against", () => {
+  it("names the period the numbers cover and what they are compared with", () => {
     renderOwner(fixtures.ownerBusyWeek);
 
-    expect(screen.getByRole("heading", { name: "Last 7 days" })).toBeInTheDocument();
-    expect(screen.getByText("Compared with the 7 days before. Green is better, red is worse.")).toBeInTheDocument();
-    expect(screen.queryByText("OVERVIEW · 30d")).not.toBeInTheDocument();
+    const insights = screen.getByRole("complementary", { name: "Insights" });
+    expect(within(insights).getByText("Last 7 days, compared with the 7 days before")).toBeInTheDocument();
   });
 
   it("describes trip progress without funnel jargon", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const progress = screen.getByRole("heading", { name: "From new trip to approval" }).closest("section");
+    const progress = screen.getByRole("region", { name: "Trip progress" });
     expect(within(progress).getByText("Last 30 days: 6 trips created, 2 approved.")).toBeInTheDocument();
     expect(within(progress).getByRole("button", { name: /^Shared with client: 3\./ })).toBeInTheDocument();
     expect(within(progress).getByRole("button", { name: /^Viewed by client: 3\./ })).toBeInTheDocument();
+    expect(within(progress).getByText("Biggest drop: drafted to shared (50%)")).toBeInTheDocument();
   });
 
-  it("titles the page with the question it answers", () => {
+  it("greets the viewer and says how much needs them today", () => {
     renderOwner(fixtures.ownerBusy);
 
-    expect(screen.getByRole("heading", { level: 1, name: "How your agency is doing" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)$/ })).toBeInTheDocument();
+    expect(screen.getByText("7 things need you today")).toBeInTheDocument();
   });
 
   it("says the to-do list is clear without placeholder counts", () => {
@@ -165,50 +181,65 @@ describe("Owner dashboard in plain words", () => {
     expect(screen.getByText("Nothing needs your attention right now.")).toBeInTheDocument();
     expect(screen.queryByText(/N active shares/)).not.toBeInTheDocument();
   });
+
+  it("shows this month's calendar beside the to-do list", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    expect(screen.getByRole("heading", { name: "September 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("grid", { name: "September 2026" })).toBeInTheDocument();
+  });
 });
 
 describe("Owner to-do list says why each trip is on it", () => {
+  it("lists the low rating first and the stale draft last", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const rows = within(needsYouList()).getAllByRole("listitem");
+    expect(rows).toHaveLength(7);
+    expect(rows[0]).toHaveTextContent("Rated 2 out of 5");
+    expect(rows[rows.length - 1]).toHaveTextContent("Last edited 9d ago");
+  });
+
   it("quotes each unread client comment and how long it has waited", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const group = worklistGroup("Client comments to answer");
-    expect(within(group).getByText("“Is the ryokan wheelchair accessible? My father uses one.”")).toBeInTheDocument();
-    expect(within(group).getByText("Waiting 1d")).toBeInTheDocument();
-    expect(within(group).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
-    expect(within(group).getByText("Waiting 6h")).toBeInTheDocument();
+    const list = needsYouList();
+    expect(within(list).getByText("“Is the ryokan wheelchair accessible? My father uses one.”")).toBeInTheDocument();
+    expect(within(list).getByText("Waiting 1d")).toBeInTheDocument();
+    expect(within(list).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
+    expect(within(list).getByText("Waiting 6h")).toBeInTheDocument();
   });
 
   it("shows how often a client viewed a proposal nobody has followed up", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const group = worklistGroup("Viewed by the client, no follow-up yet");
-    expect(within(group).getByText("Viewed 4 times")).toBeInTheDocument();
-    expect(within(group).getByText("Last viewed 5h ago")).toBeInTheDocument();
-    expect(within(group).getByText("Viewed 2 times")).toBeInTheDocument();
-    expect(within(group).getByText("Last viewed 6d ago")).toBeInTheDocument();
+    const list = needsYouList();
+    expect(within(list).getByText("Viewed 4 times")).toBeInTheDocument();
+    expect(within(list).getByText("Last viewed 5h ago")).toBeInTheDocument();
+    expect(within(list).getByText("Viewed 2 times")).toBeInTheDocument();
+    expect(within(list).getByText("Last viewed 6d ago")).toBeInTheDocument();
   });
 
   it("shows how long a stuck draft has gone untouched", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const group = worklistGroup("Drafts untouched for over a week");
-    expect(within(group).getByText("Batanes Road Trip")).toBeInTheDocument();
-    expect(within(group).getByText("Last edited 9d ago")).toBeInTheDocument();
+    const list = needsYouList();
+    expect(within(list).getByText("Batanes Road Trip")).toBeInTheDocument();
+    expect(within(list).getByText("Last edited 9d ago")).toBeInTheDocument();
   });
 
   it("shows when an expiring itinerary link runs out", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const group = worklistGroup("Itinerary links expiring within 2 days");
-    expect(within(group).getByText("Link expires in 20h")).toBeInTheDocument();
+    expect(within(needsYouList()).getByText("Link expires in 20h")).toBeInTheDocument();
   });
 
   it("shows the low rating a client gave and when", () => {
     renderOwner(fixtures.ownerBusy);
 
-    const group = worklistGroup("Low ratings from clients");
-    expect(within(group).getByText("Rated 2 out of 5")).toBeInTheDocument();
-    expect(within(group).getByText("6d ago")).toBeInTheDocument();
+    const list = needsYouList();
+    expect(within(list).getByText("Rated 2 out of 5")).toBeInTheDocument();
+    expect(within(list).getByText("6d ago")).toBeInTheDocument();
   });
 
   it("lists two comments on the same trip as separate rows", () => {
@@ -232,7 +263,7 @@ describe("Staff dashboard with real server payloads", () => {
   it("says why each client is waiting", () => {
     renderStaff();
 
-    const worklist = screen.getByRole("region", { name: "Clients waiting on you" });
+    const worklist = screen.getByRole("region", { name: "Needs you today" });
     expect(within(worklist).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
     for (const text of ["Waiting 1d", "Waiting 6h", "Last edited 4d ago", "Link expires in 20h", "Starts in 3 days"]) {
       expect(within(worklist).getByText(text)).toBeInTheDocument();
@@ -258,5 +289,15 @@ describe("Staff dashboard with real server payloads", () => {
 
     const counts = screen.getByRole("group", { name: "Your trips by status" });
     expect(within(counts).getByRole("button", { name: /Traveling now/ })).toBeInTheDocument();
+  });
+
+  it("shows the recently viewed itineraries the server sends for staff", () => {
+    renderStaff();
+
+    const viewed = screen.getByRole("region", { name: "Recently viewed" });
+    expect(within(viewed).getAllByRole("button", { name: /views?,/ }).map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Kyoto Autumn Escape, Maria Santos, 4 views, last viewed 5 hours ago",
+      "Palawan Family Trip, Lim Family, 2 views, last viewed 4 days ago",
+    ]);
   });
 });

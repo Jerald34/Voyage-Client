@@ -8,6 +8,7 @@ import {
   uploadChatImages,
   updateAgentThreadTitle,
 } from "../lib/api/index.js";
+import { normalizeTravelerNeeds } from "../lib/accessibility/travelerNeeds.js";
 
 function createPlanningContext(type, id) {
   if (!id || (type !== "trip" && type !== "draft")) return null;
@@ -108,6 +109,7 @@ function normalizeDraftThreadState(thread, itinerary = null) {
     itinerary,
     loaded: true,
     createdAt: thread.createdAt ?? null,
+    travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
   };
 }
 
@@ -191,11 +193,14 @@ export function useTripPlanning(agencyId) {
         messages: hydrated.messages,
         itinerary: hydrated.itinerary ?? existingState?.itinerary ?? null,
         loaded: true,
+        travelerNeeds: existingState?.travelerNeeds ?? null,
       };
 
+      // Merge inside the setter: a needs edit made while the thread was hydrating lives in the
+      // current entry, not in the snapshot taken before the await, and must win.
       setTripStates((previous) => ({
         ...previous,
-        [tripId]: nextState,
+        [tripId]: { ...nextState, travelerNeeds: previous[tripId]?.travelerNeeds ?? nextState.travelerNeeds },
       }));
 
       return nextState;
@@ -234,9 +239,10 @@ export function useTripPlanning(agencyId) {
         itinerary: hydrated.itinerary ?? existingState.itinerary ?? null,
         loaded: true,
       };
+      // Same as trips: the current entry's needs win over the pre-await snapshot.
       setDraftThreadStates((previous) => ({
         ...previous,
-        [draftId]: nextState,
+        [draftId]: { ...nextState, travelerNeeds: previous[draftId]?.travelerNeeds ?? nextState.travelerNeeds },
       }));
       return nextState;
     })();
@@ -315,6 +321,7 @@ export function useTripPlanning(agencyId) {
             loaded: false,
             createdAt: thread.createdAt ?? null,
             status: thread.status ?? null,
+            travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
           };
           fallbackContext ??= createPlanningContext("trip", tripId);
           continue;
@@ -329,6 +336,7 @@ export function useTripPlanning(agencyId) {
           loaded: false,
           createdAt: thread.createdAt ?? null,
           status: thread.status ?? null,
+          travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
         };
         nextDraftOrder.push(thread.id);
         fallbackContext ??= createPlanningContext("draft", thread.id);
@@ -362,14 +370,16 @@ export function useTripPlanning(agencyId) {
     return promise;
   };
 
-  const dispatchMessage = async (content, startStream, imageFiles = []) => {
+  // Resolves to { sent, contextId, threadId } so callers can track what reached the server.
+  const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null) => {
+    const outcome = { sent: false, contextId: null, threadId: null };
     if (!agencyId) {
       setAgentError("Missing agency context. Refresh and log in again.");
-      return;
+      return outcome;
     }
     const cleanContent = content.trim();
     const hasImages = Array.isArray(imageFiles) && imageFiles.length > 0;
-    if ((!cleanContent && !hasImages) || isSending) return;
+    if ((!cleanContent && !hasImages) || isSending) return outcome;
 
     setAgentError("");
     setIsSending(true);
@@ -381,7 +391,8 @@ export function useTripPlanning(agencyId) {
       if (!currentContext || (currentContext.type === "draft" && String(currentContext.id).startsWith("pending-"))) {
         ensuredState = await createDraftThread();
         currentContext = createPlanningContext("draft", ensuredState?.threadId ?? null);
-        setActiveContext(currentContext);
+        // Without a thread, stay on the pending context: replacing it would drop the needs chosen for it.
+        if (ensuredState?.threadId) setActiveContext(currentContext);
       } else if (currentContext.type === "draft") {
         ensuredState = (await ensureDraftThreadState(currentContext.id))
           ?? draftThreadStatesRef.current[currentContext.id]
@@ -392,6 +403,21 @@ export function useTripPlanning(agencyId) {
 
       const currentThreadId = ensuredState?.threadId;
       if (!currentThreadId) throw new Error("Failed to create agent thread.");
+      outcome.contextId = currentContext.id;
+      outcome.threadId = currentThreadId;
+
+      // Persist the chosen needs on the thread as soon as it exists. The chips
+      // (and HomePage's pending-needs hand-off) key off this, so it must not
+      // wait for the image upload, which can fail and return early.
+      if (travelerNeeds) {
+        const needsPatch = { travelerNeeds };
+        const applyNeeds = (prev) => ({
+          ...prev,
+          [currentContext.id]: { ...(prev[currentContext.id] || {}), ...needsPatch },
+        });
+        if (currentContext.type === "draft") setDraftThreadStates(applyNeeds);
+        else setTripStates(applyNeeds);
+      }
 
       runTargetRef.current = createRunTargetKey(currentContext);
 
@@ -405,7 +431,7 @@ export function useTripPlanning(agencyId) {
           console.error("Failed to upload images", uploadError);
           setAgentError("Failed to upload images. Please try again.");
           setIsSending(false);
-          return;
+          return outcome;
         }
       }
 
@@ -431,7 +457,8 @@ export function useTripPlanning(agencyId) {
         }));
       }
 
-      const sendResult = await sendMessage(agencyId, currentThreadId, messageContent, imageUrls);
+      const sendResult = await sendMessage(agencyId, currentThreadId, messageContent, imageUrls, travelerNeeds);
+      outcome.sent = true;
       const runId = sendResult?.runId || sendResult?.run?.id;
       if (runId && startStream) startStream(runId);
     } catch (error) {
@@ -440,6 +467,7 @@ export function useTripPlanning(agencyId) {
     } finally {
       setIsSending(false);
     }
+    return outcome;
   };
 
   const renameThread = async (threadId, nextTitle) => {
