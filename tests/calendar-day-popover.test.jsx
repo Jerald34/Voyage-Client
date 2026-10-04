@@ -161,6 +161,45 @@ describe("CalendarDayPopover", () => {
     expect(badges[4]).toContain("bg-text-muted/15"); // a view
   });
 
+  it("says in words what an item needs, so colour is not the only cue", () => {
+    const at = new Date(2026, 9, 8, 9).toISOString();
+    const base = { tripId: "t1", tripTitle: "Lisbon Getaway", clientName: "Tanaka", occurredAt: at };
+    const payload = {
+      from: "2026-09-27",
+      to: "2026-11-07",
+      generatedAt: "",
+      tripsWithoutDates: 0,
+      trips: [kyoto, { ...osaka, startDate: "2026-10-01", endDate: "2026-10-20" }],
+      events: [
+        { ...base, id: "client_commented:c1", kind: "client_commented", detail: { excerpt: "Hi", needsReply: true } },
+        { ...base, id: "proposal_rated:p1", kind: "proposal_rated", detail: { rating: 2 } },
+        { ...base, id: "share_expires:s1", kind: "share_expires", detail: {} },
+        { ...base, id: "client_viewed:s1", kind: "client_viewed", detail: { viewCount: 2 } },
+      ],
+    };
+    const cell = buildCalendarDays(payload, OCT, TODAY).find((day) => day.key === "2026-10-08");
+    render(<CalendarDayPopover cell={cell} todayKey="2026-10-03" anchorEl={null} containerEl={null} inline onClose={vi.fn()} onAction={vi.fn()} />);
+
+    const [reply, lowRating, expiring, departing, midTrip, view] = screen.getAllByRole("listitem");
+    for (const [item, words] of [
+      [reply, "Needs reply:"],
+      [lowRating, "Low rating:"],
+      [expiring, "Link expires:"],
+      [departing, "Departs soon:"],
+    ]) {
+      const note = within(item).getByText(words);
+      expect(note).toHaveClass("sr-only");
+      expect(note).not.toHaveAttribute("aria-hidden");
+    }
+    // Trips mid-trip and quiet activity say nothing extra.
+    expect(midTrip.querySelector(".sr-only")).toBeNull();
+    expect(view.querySelector(".sr-only")).toBeNull();
+    // The visible title is untouched: its own text is still just the title.
+    expect(within(reply).getByText("Tanaka commented")).toBeVisible();
+    // The words come before the title in the item, and describe its button.
+    expect(within(reply).getByRole("button", { name: /^Reply/ })).toHaveAccessibleDescription(/^Needs reply: ?Tanaka commented$/);
+  });
+
   it("greys a link that already expired", () => {
     const payload = {
       from: "2026-09-27",

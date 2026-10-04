@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { ACTION_STYLE } from "./DayMarks";
 import KindIcon from "./KindIcon";
 import { describeDayItems, fullDayLabel, relativeDayLabel } from "@/app/lib/calendarDays";
 
@@ -145,6 +146,8 @@ export default function CalendarDayPopover({ cell, todayKey, anchorEl, container
               </span>
               <div className="min-w-0 flex-1">
                 <p id={`${itemIdPrefix}-${index}`} className="text-[13px] font-semibold leading-snug text-text-primary">
+                  {/* The badge colour says what this needs; this says it in words (and describes the button below). */}
+                  {item.actionKind ? <span className="sr-only">{`${ACTION_STYLE[item.actionKind].legend}: `}</span> : null}
                   {item.title}
                 </p>
                 {item.detail ? <p className="text-[12px] text-text-muted">{item.detail}</p> : null}
