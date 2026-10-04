@@ -1,5 +1,6 @@
 "use client";
 import { useAgencyRole } from "@/app/hooks/useAgencyRole";
+import { useViewerName } from "@/app/hooks/useViewerName";
 import OwnerOverview from "./OwnerOverview";
 import StaffMyWork from "./StaffMyWork";
 
@@ -8,6 +9,7 @@ export default function AgencyDashboardClient({ agencyId, initialData }) {
   // (e.g. when SSR failed and initialData is null).
   const view = initialData?.view;
   const role = useAgencyRole(agencyId);
+  const viewerName = useViewerName();
 
   const effectiveView =
     view ?? (role === "STAFF" ? "staff" : role ? "owner" : null);
@@ -18,7 +20,7 @@ export default function AgencyDashboardClient({ agencyId, initialData }) {
   }
 
   if (effectiveView === "staff") {
-    return <StaffMyWork agencyId={agencyId} initialData={initialData} />;
+    return <StaffMyWork agencyId={agencyId} initialData={initialData} viewerName={viewerName} />;
   }
-  return <OwnerOverview agencyId={agencyId} initialData={initialData} />;
+  return <OwnerOverview agencyId={agencyId} initialData={initialData} viewerName={viewerName} />;
 }

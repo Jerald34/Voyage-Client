@@ -1,15 +1,26 @@
 import React from "react";
 import ClientSwitcher from "../command-center/ClientSwitcher.jsx";
+import { NAV_DRAWER_ID } from "./DashboardSidebar.jsx";
 
+/**
+ * Top bar for the Command Center, Itineraries, Settings and Admin tabs:
+ * New Itinerary, the client/trip switcher, "Save to Client" and the agent's
+ * live status. The brand and the account live in the rail.
+ *
+ * `variant="compact"` (Dashboard tab) keeps only the menu button and the
+ * logo. It is always rendered and hidden on desktop with CSS, so phones never
+ * wait on JS to show the menu button (no pop-in); the Dashboard has its own
+ * greeting row there.
+ */
 export default function DashboardHeader({
+  variant = "full",
   isSidebarOpen,
   setIsSidebarOpen,
+  menuButtonRef,
   liveStatus,
   scopedStreamError,
   scopedIsStreaming,
   getInitials,
-  displayName,
-  agencyId,
   activeTab,
   // Trip management props
   onNewItinerary,
@@ -32,15 +43,18 @@ export default function DashboardHeader({
   canApproveDraft,
   onApproveDraft
 }) {
-  const showCenterActions = activeTab !== "itineraries";
+  const isFull = variant === "full";
+  const showCenterActions = isFull && activeTab !== "itineraries";
   return (
-    <header className="flex items-center justify-between h-[84px] bg-background/80 border-b border-border/10 backdrop-blur-md px-7 flex-shrink-0 z-[100] gap-5 max-[900px]:px-3 max-[900px]:h-[48px] max-[900px]:gap-2">
-      {/* Brand logo */}
-      <div className="flex items-center gap-3.5 max-[600px]:gap-2">
+    <header className={`flex h-[84px] flex-shrink-0 items-center justify-between gap-5 border-b border-[color:var(--frame-border)] px-7 max-[900px]:h-[48px] max-[900px]:gap-2 max-[900px]:px-3 ${isFull ? "" : "min-[900px]:hidden"}`}>
+      <div className="flex items-center gap-2">
         <button
+          ref={menuButtonRef}
           className="hidden max-[900px]:flex bg-transparent border-none text-primary p-2 cursor-pointer"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           aria-label="Toggle menu"
+          aria-expanded={Boolean(isSidebarOpen)}
+          aria-controls={NAV_DRAWER_ID}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             {isSidebarOpen ? (
@@ -50,18 +64,7 @@ export default function DashboardHeader({
             )}
           </svg>
         </button>
-        <span
-          className="w-11 h-11 rounded-[14px] bg-secondary text-white inline-flex items-center justify-center shadow-[0_6px_20px_rgba(215,122,97,0.25)] flex-shrink-0 max-[900px]:hidden"
-          aria-hidden="true"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2l3.2 6.3 6.8 1-4.9 4.8 1.2 6.8L12 17.7 5.7 21l1.2-6.8L2 9.3l6.8-1L12 2z" />
-          </svg>
-        </span>
-        <div className="max-[900px]:hidden">
-          <div className="text-[15px] font-bold tracking-[0.24em] text-primary max-[600px]:text-[13px]">VOYAGE</div>
-          <div className="text-xs text-text-muted mt-0.5 max-[900px]:hidden">Agency trip workspace</div>
-        </div>
+        {!isFull ? <img src="/icon.svg" alt="Voyage" className="h-7 w-7" /> : null}
       </div>
 
       {showCenterActions && (
@@ -105,40 +108,30 @@ export default function DashboardHeader({
                 onClick={() => onApproveDraft?.()}
                 type="button"
               >
-                Save<span className="max-[900px]:hidden"> to Client</span>
+                {/* One inline label: as two flex items, "to Client" would lose its leading space. */}
+                <span>Save <span className="max-[900px]:hidden">to Client</span></span>
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Header actions */}
-      <div className="flex items-center gap-3.5">
-        <div
-          className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-pill text-xs font-semibold border transition-colors max-[900px]:hidden ${
-            scopedStreamError
-              ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900"
-              : scopedIsStreaming
-              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900"
-              : "bg-white/5 text-text-primary border-border/10"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-pill bg-current" />
-          {liveStatus}
-        </div>
-        <div className="flex items-center gap-3 pl-3 border-l border-border/10 max-[900px]:border-none max-[900px]:pl-0 max-[900px]:gap-1">
+      {isFull ? (
+        <div className="flex items-center">
           <div
-            className="w-10 h-10 rounded-full inline-flex items-center justify-center bg-secondary text-white text-[13px] font-bold tracking-[0.04em] flex-shrink-0 max-[900px]:w-8 max-[900px]:h-8 max-[900px]:text-[11px]"
-            aria-hidden="true"
+            className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-pill text-xs font-semibold border transition-colors max-[900px]:hidden ${
+              scopedStreamError
+                ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900"
+                : scopedIsStreaming
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900"
+                : "bg-white/5 text-text-primary border-border/10"
+            }`}
           >
-            {getInitials(displayName)}
-          </div>
-          <div className="flex flex-col max-[900px]:hidden">
-            <strong className="text-sm text-primary transition-colors">{displayName}</strong>
-            <span className="text-xs text-text-soft">{agencyId ? "Agency workspace" : "No agency selected"}</span>
+            <span className="w-2 h-2 rounded-pill bg-current" />
+            {liveStatus}
           </div>
         </div>
-      </div>
+      ) : null}
     </header>
   );
 }

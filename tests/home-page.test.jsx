@@ -466,7 +466,8 @@ describe("Agency portfolio HomePage", () => {
     expect(screen.getByRole("button", { name: "New Itinerary" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Current client: Santos Family" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
   });
 
   it("opens settings from the homepage sidebar", async () => {

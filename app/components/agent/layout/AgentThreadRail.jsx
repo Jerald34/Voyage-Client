@@ -17,7 +17,7 @@ export default function AgentThreadRail() {
       </header>
 
       <div>
-        <button className="w-full px-3 py-3 bg-primary text-white border-0 rounded-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition hover:-translate-y-px">
+        <button className="w-full px-3 py-3 bg-primary text-on-primary border-0 rounded-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition hover:-translate-y-px">
           <span className="text-base leading-none">+</span>
           New Itinerary Draft
         </button>

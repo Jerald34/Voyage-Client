@@ -7,6 +7,7 @@ import { usePrototypeState } from "./hooks/usePrototypeState.js";
 import { useTripDashboard } from "./hooks/useTripDashboard.js";
 import { useAuth } from "./hooks/useAuth.js";
 import { fetchApi } from "./lib/api/index.js";
+import { resolveInitialView } from "./lib/deepLinks.js";
 
 import LandingPage from "./components/landing/LandingPage.jsx";
 import HomePage from "./components/trip-dashboard/HomePage.jsx";
@@ -21,10 +22,9 @@ function HomePageInner() {
   const searchParams = useSearchParams();
   const { logout } = useAuth();
   const authenticatedParam = searchParams.get("authenticated");
-  // Team lives inside the Dashboard tab, so the `tab=team` deep link (invite
-  // acceptance, /agency/:id/team) opens the Dashboard — HomePage has no "team" tab.
-  const requestedDashboardTab = searchParams.get("tab") === "team" ? "dashboard" : "command-center";
-  const showJoinedNotice = requestedDashboardTab === "dashboard" && searchParams.get("invited") === "1";
+  // `tab=team` links: invite acceptance lands on the Dashboard with a welcome
+  // notice; other team links open Settings at the Team panel.
+  const { initialTab, showJoinedNotice, settingsSection } = resolveInitialView(searchParams);
   const [shouldBypassLanding, setShouldBypassLanding] = useState(false);
   const [user, setUser] = useState(null);
   const [agencyStatus, setAgencyStatus] = useState(null); // null | { status, name, rejectionReason, suspensionReason }
@@ -154,7 +154,8 @@ function HomePageInner() {
       <HomePage
         user={user}
         agencyTrips={[]}
-        initialTab={requestedDashboardTab}
+        initialTab={initialTab}
+        initialSettingsSection={settingsSection}
         showJoinedNotice={showJoinedNotice}
         onContinue={() => setActiveScreen("agent-kickoff")}
         onOpenTrip={() => {

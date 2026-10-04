@@ -41,12 +41,12 @@ export default function SegmentedControl({
             aria-checked={isTab ? undefined : active}
             onClick={() => onChange(o.value)}
             className={`relative inline-flex min-h-11 items-center whitespace-nowrap rounded-pill font-semibold transition-transform active:scale-[0.97] motion-reduce:transition-none ${pad} ${
-              active ? "bg-primary text-white shadow-soft" : "text-text-muted hover:text-text-primary"
+              active ? "bg-primary text-on-primary shadow-soft" : "text-text-muted hover:text-text-primary"
             }`}
           >
             {o.label}
             {o.badge > 0 && (
-              <span className="ml-2 inline-flex min-w-[18px] items-center justify-center rounded-pill bg-secondary px-1 text-[10px] font-bold leading-[18px] text-white">
+              <span className="ml-2 inline-flex min-w-[18px] items-center justify-center rounded-pill bg-secondary-strong px-1 text-[10px] font-bold leading-[18px] text-on-secondary-strong">
                 {o.badge > 99 ? "99+" : o.badge}
               </span>
             )}

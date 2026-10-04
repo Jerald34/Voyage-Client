@@ -19,4 +19,12 @@ describe("ReportProblemModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /send report/i }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ subject: "Crash", message: "It broke" })));
   });
+
+  it("shows validation errors in the theme's danger colour", () => {
+    render(<ReportProblemModal open onClose={() => {}} onSubmit={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /send report/i }));
+    const alert = screen.getByRole("alert");
+    expect(alert.className).toContain("text-status-danger");
+    expect(alert.className).not.toContain("text-red-400");
+  });
 });

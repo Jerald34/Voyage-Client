@@ -23,11 +23,18 @@ describe("WorklistRow", () => {
     expect(screen.getByRole("button", { name: "Reply" })).toBeInTheDocument();
   });
 
-  it("includes a screen-reader status label paired with the tone color (not color-only)", () => {
-    const { container } = renderRow({ tone: "warning" });
-    const srLabel = container.querySelector(".sr-only");
-    expect(srLabel).toBeTruthy();
-    expect(srLabel.textContent.toLowerCase()).toContain("warning");
+  it.each([
+    ["warning", "Needs attention: "],
+    ["danger", "Urgent: "],
+    ["success", "Coming up: "],
+  ])('names the %s tone for screen readers in words ("%s"), not the raw key', (tone, label) => {
+    const { container } = renderRow({ tone });
+    expect(container.querySelector(".sr-only").textContent).toBe(label);
+  });
+
+  it("adds no tone label to plain info rows", () => {
+    const { container } = renderRow({ tone: "info" });
+    expect(container.querySelector(".sr-only")).toBeNull();
   });
 
   it("fires onAction when the action button is clicked", () => {
@@ -64,5 +71,46 @@ describe("WorklistRow", () => {
     expect(btn).toBeDisabled();
     fireEvent.click(btn);
     expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("shows the row's kind as an icon, keeping the tone label for screen readers", () => {
+    const { container } = renderRow({ kind: "unreadComments", tone: "warning" });
+    expect(container.querySelector("svg")).toBeInTheDocument();
+    expect(container.querySelector(".sr-only").textContent).toBe("Needs attention: ");
+  });
+
+  it("enters after the delay it is given", () => {
+    renderRow({ enterDelay: 80 });
+    expect(screen.getByRole("listitem")).toHaveStyle({ transitionDelay: "80ms" });
+  });
+
+  it("shows a dot, not an icon, when the row has no kind", () => {
+    const { container } = renderRow();
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
+    expect(container.querySelector(".h-2.w-2.rounded-full")).toBeInTheDocument();
+  });
+
+  it("falls back to a dot when the kind has no icon", () => {
+    const { container } = renderRow({ kind: "somethingTheServerAddedLater" });
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
+    expect(container.querySelector(".h-2.w-2.rounded-full")).toBeInTheDocument();
+  });
+
+  it("shows no dot next to a kind that has an icon", () => {
+    const { container } = renderRow({ kind: "unreadComments" });
+    expect(container.querySelector(".h-2.w-2.rounded-full")).not.toBeInTheDocument();
+  });
+
+  it("announces the tone as part of the row button's accessible name when tone matters", () => {
+    renderRow({ tone: "danger", onRowClick: () => {} });
+    expect(screen.getByRole("button", { name: /^Urgent/ })).toBeInTheDocument();
+  });
+
+  it("does not include tone in the row button's accessible name for info tone", () => {
+    renderRow({ tone: "info", onRowClick: () => {} });
+    // The row body should be a button with no tone prefix in its name.
+    const button = screen.getByRole("button", { name: /^Reply to Jane Doe/ });
+    expect(button).toBeInTheDocument();
+    expect(button.textContent).not.toMatch(/^Urgent|^Needs attention|^Coming up/);
   });
 });

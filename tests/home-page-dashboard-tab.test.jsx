@@ -102,7 +102,40 @@ describe("HomePage Dashboard tab", () => {
 
     const scroller = screen.getByTestId("dashboard-scroll");
     expect(scroller).toHaveClass("min-h-0", "overflow-y-auto");
-    expect(within(scroller).getByRole("heading", { name: "How your agency is doing" })).toBeInTheDocument();
+    expect(
+      within(scroller).getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), Mara$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no Command Center header content on the Dashboard", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="dashboard" />);
+
+    expect(screen.queryByRole("button", { name: "New Itinerary" })).not.toBeInTheDocument();
+    // The label is split across nested spans, so match the button by its accessible name.
+    expect(screen.queryByRole("button", { name: "Save to Client" })).not.toBeInTheDocument();
+  });
+
+  it("always renders the compact header on the Dashboard and hides it on desktop with CSS", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="dashboard" />);
+
+    // Rendered unconditionally, so phones get the menu button on first paint
+    // instead of after a JS media-query check. jsdom applies no CSS, so assert
+    // the class that hides it at >= 900px.
+    const menuButton = screen.getByRole("button", { name: "Toggle menu" });
+    expect(menuButton.closest("header")).toHaveClass("min-[900px]:hidden");
+  });
+
+  it("does not hide the full header on the Command Center", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="command-center" />);
+
+    const menuButton = screen.getByRole("button", { name: "Toggle menu" });
+    expect(menuButton.closest("header")).not.toHaveClass("min-[900px]:hidden");
+  });
+
+  it("keeps the Command Center header on the Command Center tab", () => {
+    render(<HomePage user={agencyUser("OWNER")} initialTab="command-center" />);
+
+    expect(screen.getByRole("button", { name: "New Itinerary" })).toBeInTheDocument();
   });
 
   it("falls back to the Command Center when the user has no agency workspace", () => {
@@ -119,9 +152,7 @@ describe("HomePage Dashboard tab", () => {
 
     // Above the first dashboard section, not buried in the Team section at the bottom.
     const notice = screen.getByText(JOINED_NOTICE);
-    const firstSection = screen.getByRole("heading", {
-      name: role === "STAFF" ? "Clients waiting on you" : "Needs your eyes today",
-    });
+    const firstSection = screen.getByRole("heading", { name: "Needs you today" });
     expect(notice.compareDocumentPosition(firstSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

@@ -27,4 +27,20 @@ describe("SegmentedControl", () => {
     render(<SegmentedControl options={[{ value: "a", label: "Alpha", badge: 3 }]} value="a" onChange={() => {}} ariaLabel="x" />);
     expect(screen.getByText("3")).toBeInTheDocument();
   });
+
+  it("fills the active segment with the theme-aware text colour, never plain white", () => {
+    render(<SegmentedControl options={opts} value="a" onChange={() => {}} ariaLabel="x" />);
+    const active = screen.getByRole("tab", { name: "Alpha" });
+    expect(active.className).toContain("bg-primary");
+    expect(active.className).toContain("text-on-primary");
+    expect(active.className).not.toMatch(/(^|\s)text-white(\s|$)/);
+  });
+
+  it("draws the badge in the strong terracotta pair, readable in both themes", () => {
+    render(<SegmentedControl options={[{ value: "a", label: "Alpha", badge: 3 }]} value="a" onChange={() => {}} ariaLabel="x" />);
+    const badge = screen.getByText("3");
+    expect(badge.className).toContain("bg-secondary-strong");
+    expect(badge.className).toContain("text-on-secondary-strong");
+    expect(badge.className).not.toMatch(/(^|\s)text-white(\s|$)/);
+  });
 });

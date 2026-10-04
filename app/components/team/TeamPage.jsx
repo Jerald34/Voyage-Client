@@ -10,7 +10,7 @@ import InviteMemberModal from "./InviteMemberModal";
 import ChangeRoleModal from "./ChangeRoleModal";
 import RemoveMemberModal from "./RemoveMemberModal";
 
-export default function TeamPage({ agencyId, showJoinedNotice = false }) {
+export default function TeamPage({ agencyId, showJoinedNotice = false, embedded = false }) {
   const [data, setData] = useState({ members: [], viewerRole: null });
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +77,7 @@ export default function TeamPage({ agencyId, showJoinedNotice = false }) {
   const canInvite = data.viewerRole === "OWNER" || data.viewerRole === "ADMIN";
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className={embedded ? "" : "mx-auto max-w-3xl px-6 py-8"}>
       {showJoinedNotice && (
         <div role="status" className="mb-4 rounded-lg border border-status-success/25 bg-status-success/10 px-4 py-3 text-sm text-status-success">
           You joined this agency. Your workspace access is ready.
@@ -91,11 +91,15 @@ export default function TeamPage({ agencyId, showJoinedNotice = false }) {
       )}
 
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl text-text-primary">Team</h1>
+        {embedded ? (
+          <h2 className="font-sans text-lg font-semibold tracking-normal text-text-primary">Team</h2>
+        ) : (
+          <h1 className="text-xl text-text-primary">Team</h1>
+        )}
         {canInvite && (
           <button
             type="button"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition"
+            className="rounded-lg bg-secondary-strong px-4 py-2 text-sm font-semibold text-on-secondary-strong shadow-sm hover:opacity-90 transition"
             onClick={() => setInviteOpen(true)}
           >
             Invite member

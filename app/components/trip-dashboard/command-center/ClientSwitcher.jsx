@@ -84,7 +84,7 @@ export default function ClientSwitcher({
         {activeTripClientName ? (
           <>
             <span className="flex items-center flex-shrink-0" aria-hidden="true">
-              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white text-[10px] font-bold max-[900px]:w-5 max-[900px]:h-5 max-[900px]:text-[8px]">
+              <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-on-primary text-[10px] font-bold max-[900px]:w-5 max-[900px]:h-5 max-[900px]:text-[8px]">
                 {activeTripInitials}
               </span>
               {activeTripOrganizerInitials && (
@@ -137,7 +137,7 @@ export default function ClientSwitcher({
                       setIsClientMenuOpen(false);
                     }}
                   >
-                    <span className="inline-flex items-center justify-center w-9 h-9 flex-shrink-0 rounded-full bg-primary text-white text-[11px] font-bold" aria-hidden="true">
+                    <span className="inline-flex items-center justify-center w-9 h-9 flex-shrink-0 rounded-full bg-primary text-on-primary text-[11px] font-bold" aria-hidden="true">
                       {initials}
                     </span>
                     <span className="flex flex-col min-w-0 flex-1">

@@ -68,7 +68,7 @@ export default function ClientList({
                   title={`View ${c.name}'s itineraries`}
                 >
                   <div className="relative flex-shrink-0">
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-[0.85rem] shadow-[0_4px_10px_rgba(0,0,0,0.1)] transition-all duration-200 ${isSelected ? "bg-secondary text-white" : "bg-secondary/40 text-white"
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-[0.85rem] shadow-[0_4px_10px_rgba(0,0,0,0.1)] transition-all duration-200 ${isSelected ? "bg-secondary-strong text-on-secondary-strong" : "bg-secondary/15 text-text-primary"
                       }`}>
                       {initials}
                     </div>
@@ -82,7 +82,7 @@ export default function ClientList({
                     )}
                   </div>
                   <div className="flex flex-col gap-0.5 min-w-0">
-                    <strong className={`block text-[0.95rem] font-bold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis transition-colors duration-200 ${isSelected ? "text-secondary font-black" : "text-text-primary"
+                    <strong className={`block text-[0.95rem] tracking-tight whitespace-nowrap overflow-hidden text-ellipsis text-text-primary ${isSelected ? "font-black" : "font-bold"
                       }`}>
                       {c.name}
                     </strong>
@@ -114,10 +114,7 @@ export default function ClientList({
                   </div>
                 ) : (
                   <button
-                    className={`border-none w-8 h-8 flex items-center justify-center cursor-pointer rounded-lg transition-all duration-200 flex-shrink-0 mr-1 ${isSelected
-                      ? "bg-transparent text-white/60 hover:bg-white/15 hover:text-white"
-                      : "bg-transparent text-text-soft hover:bg-[#fef2f2] hover:text-[#dc2626] hover:scale-110"
-                      }`}
+                    className="border-none w-8 h-8 flex items-center justify-center cursor-pointer rounded-lg transition-all duration-200 flex-shrink-0 mr-1 bg-transparent text-text-muted hover:bg-status-danger/10 hover:text-status-danger hover:scale-110"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowClientDeleteConfirm(c.id);

@@ -26,12 +26,24 @@ function StatusChip({ status }) {
   const tone = STATUS_TONES[status] || 'muted';
   const label = STATUS_LABELS[status] || status;
 
-  // CSS color mappings for each tone — use system tokens so colors track theme
+  // Each tone's own colour, used for its tint and border. System tokens, so
+  // they track the theme.
   const toneColorMap = {
     warning: 'var(--warning)',
     accent: 'var(--accent)',
     success: 'var(--success)',
-    muted: 'rgb(var(--color-text-soft-rgb))',
+    muted: 'rgb(var(--color-text-muted-rgb))',
+  };
+
+  // Text on the 12% tint must reach 4.5:1 at 12px. Coloured text (amber,
+  // terracotta, green) only gets ~4.2-4.6:1 there, so labels read in the body
+  // colour; the tint, border and leading dot carry the status. Muted already
+  // clears 4.5:1 for archived.
+  const textColorMap = {
+    warning: 'rgb(var(--color-text-rgb))',
+    accent: 'rgb(var(--color-text-rgb))',
+    success: 'rgb(var(--color-text-rgb))',
+    muted: 'rgb(var(--color-text-muted-rgb))',
   };
 
   const bgColorMap = {
@@ -41,7 +53,7 @@ function StatusChip({ status }) {
     muted:   'rgb(var(--color-border-rgb) / 0.08)',
   };
 
-  const color = toneColorMap[tone];
+  const color = textColorMap[tone];
   const bgColor = bgColorMap[tone];
 
   const borderColor = toneColorMap[tone]
@@ -50,13 +62,18 @@ function StatusChip({ status }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.7rem] font-extrabold uppercase tracking-[0.05em]"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-[0.05em]"
       style={{
         backgroundColor: bgColor,
         color: color,
         border: `1px solid ${borderColor}`,
       }}
     >
+      <span
+        aria-hidden="true"
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: toneColorMap[tone] }}
+      />
       {label}
     </span>
   );
@@ -64,19 +81,19 @@ function StatusChip({ status }) {
 
 export default function HeroContinueCard({ trip, onContinue }) {
   if (!trip) {
-    return <EmptyState variant="staff-hero" />;
+    return <EmptyState variant="staff-hero" compact />;
   }
 
   return (
-    <div className="h-[200px] dashboard-card p-6 flex flex-col justify-between">
+    <div className="frame-tile flex flex-col gap-3 rounded-[16px] p-4">
       {/* Top: status chip, title, client name */}
       <div>
         <div className="mb-3">
           <StatusChip status={trip.statusChip} />
         </div>
-        <h2 className="text-lg font-extrabold text-text-primary mb-1 line-clamp-2">
+        <h3 className="mb-1 line-clamp-2 font-sans text-[15px] font-semibold tracking-normal text-text-primary">
           {trip.tripTitle}
-        </h2>
+        </h3>
         <p className="text-sm text-text-muted">
           {trip.clientName}
         </p>
@@ -93,7 +110,7 @@ export default function HeroContinueCard({ trip, onContinue }) {
       <button
         type="button"
         onClick={() => onContinue(trip.tripId)}
-        className="w-full h-11 rounded-lg bg-secondary text-white font-bold text-sm shadow-soft hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+        className="h-11 w-full rounded-lg bg-secondary-strong text-sm font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
       >
         Continue
       </button>

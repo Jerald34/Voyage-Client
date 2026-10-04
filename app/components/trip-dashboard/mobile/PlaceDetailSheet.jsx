@@ -25,7 +25,7 @@ export default function PlaceDetailSheet({ item, onClose }) {
   const mapsUrl = getGoogleMapsPlaceUrl(snapshot || item);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center max-[900px]:block min-[901px]:hidden">
+    <div className="fixed inset-0 z-40 flex items-end justify-center max-[900px]:block min-[900px]:hidden">
       {/* Backdrop */}
       <button
         type="button"
