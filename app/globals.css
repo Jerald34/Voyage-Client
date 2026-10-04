@@ -480,6 +480,8 @@ body::before {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transform: none !important;
+    /* Tailwind 4's scale-* utilities set the standalone `scale` property, not transform. */
+    scale: none !important;
   }
 }
 
