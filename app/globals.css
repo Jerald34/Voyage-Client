@@ -480,7 +480,14 @@ body::before {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transform: none !important;
-    /* Tailwind 4's scale-* utilities set the standalone `scale` property, not transform. */
+  }
+
+  /* Tailwind 4's scale-* utilities (the press feedback) set the standalone `scale`
+     property, which `transform: none` doesn't reach. It is a separate rule with a
+     different selector list on purpose: Lightning CSS, which minifies the production
+     build, folds a `scale` declaration into `transform` when they share a rule (or
+     adjacent rules with the same selectors) and drops the reset. */
+  :where(*), ::before, ::after {
     scale: none !important;
   }
 }
