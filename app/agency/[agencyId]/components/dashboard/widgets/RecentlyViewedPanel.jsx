@@ -59,7 +59,9 @@ export default function RecentlyViewedPanel({ views = [], onOpenTrip }) {
                 className={`frame-tile flex w-full flex-col gap-1 rounded-[12px] px-3 py-2 text-left hover:bg-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`}
               >
                 <span className="flex min-w-0 items-start justify-between gap-2">
-                  <span className="truncate text-[13px] font-semibold leading-snug text-text-primary">{view.tripTitle}</span>
+                  <span className="truncate text-[13px] font-semibold leading-snug text-text-primary" title={view.tripTitle}>
+                    {view.tripTitle}
+                  </span>
                   <span className="inline-flex shrink-0 items-center gap-1 text-[12px] tabular-nums text-text-muted">
                     <KindIcon kind="client_viewed" className="h-3.5 w-3.5" />
                     {viewsText(view.viewCount)}

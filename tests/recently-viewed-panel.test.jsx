@@ -67,6 +67,12 @@ describe("RecentlyViewedPanel", () => {
     expect(within(panel()).queryByRole("button", { name: /^Bohol Weekend,/ })).not.toBeInTheDocument();
   });
 
+  it("offers a truncated trip title in full on hover", () => {
+    render(<RecentlyViewedPanel views={VIEWS} onOpenTrip={vi.fn()} />);
+
+    expect(within(rows()[0]).getByText("Kyoto Autumn Escape")).toHaveAttribute("title", "Kyoto Autumn Escape");
+  });
+
   it("opens the trip a row names", () => {
     const onOpenTrip = vi.fn();
     render(<RecentlyViewedPanel views={VIEWS} onOpenTrip={onOpenTrip} />);
