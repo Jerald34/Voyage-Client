@@ -164,6 +164,7 @@ function CalendarBody({ agencyId, onOpenTrip, todayKey, refreshKey }) {
     refreshKeyRef.current = refreshKey;
     refetch();
   }, [refreshKey, refetch]);
+
   const cells = useMemo(() => buildCalendarDays(data, month, today), [data, month, today]);
   const weeks = [0, 1, 2, 3, 4, 5].map((week) => cells.slice(week * 7, week * 7 + 7));
   const isFirstLoad = isLoading && !data;

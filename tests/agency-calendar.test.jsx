@@ -431,6 +431,14 @@ describe("AgencyCalendar action marks", () => {
     expect(screen.queryByText("Client activity")).not.toBeInTheDocument();
     expect(screen.queryByText("Link expiry")).not.toBeInTheDocument();
   });
+
+  it("draws the legend's ·N sample the way a tile draws it: regular weight, tabular figures", () => {
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+
+    const sample = screen.getByText("·N");
+    expect(sample.className).toContain("tabular-nums");
+    expect(sample.className).not.toContain("font-semibold");
+  });
 });
 
 describe("AgencyCalendar refresh", () => {

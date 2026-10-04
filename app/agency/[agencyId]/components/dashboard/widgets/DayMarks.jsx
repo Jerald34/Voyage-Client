@@ -95,7 +95,7 @@ export function CalendarLegend() {
         </span>
       ))}
       <span className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="font-semibold tabular-nums">
+        <span aria-hidden="true" className="tabular-nums">
           ·N
         </span>
         Other activity
