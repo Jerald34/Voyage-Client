@@ -5,6 +5,7 @@ import FunnelChart from "./FunnelChart";
 import KpiTile from "./KpiTile";
 import PeriodSwitcher from "./PeriodSwitcher";
 import RatingsPanel from "./RatingsPanel";
+import RecentlyViewedPanel from "./RecentlyViewedPanel";
 
 const PERIOD_DAYS = { "7d": 7, "30d": 30, "90d": 90 };
 const formatOneDecimal = (value) => value.toFixed(1);
@@ -18,10 +19,12 @@ function formatRatedCount(kpi) {
 
 /**
  * The owner dashboard's right column: period switcher, four KPI tiles, trip
- * progress and the latest reviews. The period label follows the payload (not
- * the switcher), which runs ahead of the data while a refetch is in flight.
+ * progress, the recently viewed itineraries and the latest reviews. The period
+ * label follows the payload (not the switcher), which runs ahead of the data
+ * while a refetch is in flight. Recently viewed ignores the period, and is
+ * left out when the payload has no `recentViews` (an older server).
  */
-export default function InsightsColumn({ data, period, onPeriodChange, isFetching = false, agencyId }) {
+export default function InsightsColumn({ data, period, onPeriodChange, isFetching = false, agencyId, onOpenViewedTrip }) {
   const headingId = useId();
   const kpis = data?.kpis ?? {};
   const periodDays = PERIOD_DAYS[data?.period ?? period] ?? 30;
@@ -81,6 +84,10 @@ export default function InsightsColumn({ data, period, onPeriodChange, isFetchin
 
       {data?.funnel?.stages?.length > 0 ? (
         <FunnelChart stages={data.funnel.stages} agencyId={agencyId} periodLabel={periodLabel} />
+      ) : null}
+
+      {Array.isArray(data?.recentViews) ? (
+        <RecentlyViewedPanel views={data.recentViews} onOpenTrip={onOpenViewedTrip} />
       ) : null}
 
       <RatingsPanel reviews={data?.recentReviews ?? []} />

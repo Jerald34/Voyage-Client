@@ -43,6 +43,8 @@ export default function StaffMyWork({
   // one frame of "All caught up" first. No data and no failure yet means loading.
   const isLoading = !data && !error;
   const [slideTrip, setSlideTrip] = useState(null); // { tripId, tripTitle, subtitle }
+  // Bumped after a reply so the calendar reloads at once, not at its next poll.
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   // Where the slide-over returns focus if the row that opened it was removed by a poll.
   const needsYouRef = useRef(null);
   const needsYou = buildNeedsYouItems(data?.worklist, STAFF_NEEDS_YOU_ORDER);
@@ -72,6 +74,12 @@ export default function StaffMyWork({
     else openTrip(item.tripId);
   }
 
+  // A reply changes what needs the agent: reload the to-do list and the calendar now.
+  function handleReplied() {
+    refetch().catch(() => {}); // a failed refetch already shows the stale-data banner
+    setCalendarRefreshKey((key) => key + 1);
+  }
+
   return (
     <div className="px-6 py-6 md:px-8 lg:px-10">
       {showJoinedNotice && <JoinedNotice className="mb-5" />}
@@ -83,7 +91,7 @@ export default function StaffMyWork({
       <div className={DASHBOARD_GRID_CLASS}>
         <div className="min-w-0 space-y-5">
           {data ? <NeedsYouList ref={needsYouRef} items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
-          <AgencyCalendar agencyId={agencyId} onOpenTrip={openTripSlide} />
+          <AgencyCalendar agencyId={agencyId} onOpenTrip={openTripSlide} refreshKey={calendarRefreshKey} />
         </div>
         {data ? (
           <MyWorkColumn
@@ -93,6 +101,8 @@ export default function StaffMyWork({
             agencyId={agencyId}
             onOpenTrip={openTrip}
             onOpenItineraries={onOpenItineraries}
+            recentViews={data.recentViews}
+            onOpenViewedTrip={openTripSlide}
           />
         ) : isLoading ? (
           <SideColumnSkeleton label="Loading your work" />
@@ -107,6 +117,7 @@ export default function StaffMyWork({
         tripTitle={slideTrip?.tripTitle}
         subtitle={slideTrip?.subtitle}
         returnFocusRef={needsYouRef}
+        onReplied={handleReplied}
         onOpenFull={(tripId) => {
           setSlideTrip(null);
           openTrip(tripId);

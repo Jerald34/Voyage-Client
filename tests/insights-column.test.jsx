@@ -37,4 +37,29 @@ describe("InsightsColumn", () => {
     renderColumn(fixtures.ownerBusy);
     expect(screen.getByText("0 of 3 rated")).toBeInTheDocument();
   });
+
+  it("lists recently viewed itineraries above the latest reviews", () => {
+    const column = renderColumn(fixtures.ownerBusy);
+
+    const viewed = within(column).getByRole("region", { name: "Recently viewed" });
+    const reviews = within(column).getByRole("region", { name: "Latest reviews" });
+    expect(viewed.compareDocumentPosition(reviews) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(viewed).getByRole("button", { name: /^Kyoto Autumn Escape, Maria Santos, 4 views/ })).toBeInTheDocument();
+  });
+
+  it("opens a viewed trip with the handler it is given", () => {
+    const onOpenViewedTrip = vi.fn();
+    const column = renderColumn(fixtures.ownerBusy, { onOpenViewedTrip });
+
+    fireEvent.click(within(column).getByRole("button", { name: /^Kyoto Autumn Escape,/ }));
+    expect(onOpenViewedTrip).toHaveBeenCalledWith("trip-kyoto", "Kyoto Autumn Escape", "Maria Santos");
+  });
+
+  it("leaves the card out for a server that doesn't send recent views", () => {
+    const older = { ...fixtures.ownerBusy };
+    delete older.recentViews;
+    renderColumn(older);
+
+    expect(screen.queryByRole("region", { name: "Recently viewed" })).not.toBeInTheDocument();
+  });
 });

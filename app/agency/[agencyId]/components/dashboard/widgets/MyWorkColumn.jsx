@@ -4,6 +4,7 @@ import { useId } from "react";
 import { useRouter } from "next/navigation";
 import { timeAgo } from "@/app/lib/relativeTime";
 import HeroContinueCard from "./HeroContinueCard";
+import RecentlyViewedPanel from "./RecentlyViewedPanel";
 
 /** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
 const PRESS = "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]";
@@ -94,9 +95,20 @@ function PipelineCounter({ label, value, onClick }) {
 
 /**
  * The staff dashboard's right column: continue the latest trip, the trips by
- * status (each count opens the filtered list), and up to three recent trips.
+ * status (each count opens the filtered list), the recently viewed
+ * itineraries (rows call `onOpenViewedTrip`; left out without `recentViews`)
+ * and up to three recent trips.
  */
-export default function MyWorkColumn({ hero, recent = [], pipeline, agencyId, onOpenTrip, onOpenItineraries }) {
+export default function MyWorkColumn({
+  hero,
+  recent = [],
+  pipeline,
+  agencyId,
+  onOpenTrip,
+  onOpenItineraries,
+  recentViews,
+  onOpenViewedTrip,
+}) {
   const router = useRouter();
   const headingId = useId();
 
@@ -131,6 +143,8 @@ export default function MyWorkColumn({ hero, recent = [], pipeline, agencyId, on
           </div>
         </div>
       ) : null}
+
+      {Array.isArray(recentViews) ? <RecentlyViewedPanel views={recentViews} onOpenTrip={onOpenViewedTrip} /> : null}
 
       {recent.length > 0 ? (
         <div>

@@ -115,6 +115,19 @@ describe("Owner dashboard with real server payloads", () => {
     expect(within(kpiTile("Time to reply")).getByText("1.2h slower").className).toContain("--danger");
     expect(within(kpiTile("Win rate")).getByText("+16.7 pts").className).toContain("--success");
   });
+
+  it("shows the itineraries clients opened most recently", () => {
+    renderOwner(fixtures.ownerBusy);
+
+    const viewed = screen.getByRole("region", { name: "Recently viewed" });
+    const rows = within(viewed).getAllByRole("button", { name: /views?,/ });
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Kyoto Autumn Escape, Maria Santos, 4 views, last viewed 5 hours ago",
+      "Palawan Family Trip, Lim Family, 2 views, last viewed 4 days ago",
+      "Boracay Barkada Weekend, Dela Cruz Barkada, 2 views, last viewed 6 days ago",
+    ]);
+    expect(within(viewed).getByRole("button", { name: "Show all (4)" })).toBeInTheDocument();
+  });
 });
 
 describe("Owner dashboard in plain words", () => {
@@ -276,5 +289,15 @@ describe("Staff dashboard with real server payloads", () => {
 
     const counts = screen.getByRole("group", { name: "Your trips by status" });
     expect(within(counts).getByRole("button", { name: /Traveling now/ })).toBeInTheDocument();
+  });
+
+  it("shows recently viewed itineraries from the staff member's own trips only", () => {
+    renderStaff();
+
+    const viewed = screen.getByRole("region", { name: "Recently viewed" });
+    expect(within(viewed).getAllByRole("button", { name: /views?,/ }).map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Kyoto Autumn Escape, Maria Santos, 4 views, last viewed 5 hours ago",
+      "Palawan Family Trip, Lim Family, 2 views, last viewed 4 days ago",
+    ]);
   });
 });
