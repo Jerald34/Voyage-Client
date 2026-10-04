@@ -111,6 +111,8 @@ export function buildCalendarDays(payload, month, today = new Date()) {
       inMonth: date.getMonth() === monthIndex,
       isToday: key === todayKey,
       isPast: key < todayKey,
+      /** Whole days from today: 0 today, negative before. */
+      daysFromToday: daysBetweenKeys(todayKey, key),
       spans,
       events: eventsByDay.get(key) ?? [],
     });
