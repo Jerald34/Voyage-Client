@@ -446,4 +446,18 @@ describe("AgencyCalendar refresh", () => {
     rerender(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} refreshKey={1} />);
     expect(refetch).toHaveBeenCalledOnce();
   });
+
+  it("does not reload when only the refetch function changes", () => {
+    const refetch = vi.fn();
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ refetch }));
+    const { rerender } = render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} refreshKey={1} />);
+
+    // The hook returns a new refetch when the month or agency changes; the same refreshKey must not trigger it.
+    const nextRefetch = vi.fn();
+    mocks.useCalendarEvents.mockReturnValue(hookResult({ refetch: nextRefetch }));
+    rerender(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} refreshKey={1} />);
+
+    expect(nextRefetch).not.toHaveBeenCalled();
+    expect(refetch).not.toHaveBeenCalled();
+  });
 });
