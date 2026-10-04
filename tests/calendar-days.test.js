@@ -7,6 +7,7 @@ import {
   relativeDayLabel,
   toDateKey,
 } from "../app/lib/calendarDays.js";
+import { KNOWN_EVENT_KINDS } from "../app/lib/calendarActions.js";
 
 const OCT = new Date(2026, 9, 1);
 const TODAY = new Date(2026, 9, 3, 10, 0);
@@ -186,6 +187,23 @@ describe("describeDayItems", () => {
       ["trip:t-long", null], // mid-trip
       ["client_viewed:s1", null],
     ]);
+  });
+});
+
+describe("describeDayItems and the known event kinds", () => {
+  const at = new Date(2026, 9, 8, 9).toISOString();
+  const eventOf = (kind) => ({ id: `${kind}:1`, kind, tripId: "t1", tripTitle: "Lisbon Getaway", clientName: "Tanaka", occurredAt: at, detail: {} });
+
+  it("lists an event of every kind the day tile counts, so the popover and tile agree", () => {
+    for (const kind of KNOWN_EVENT_KINDS) {
+      const cells = buildCalendarDays(payload({ events: [eventOf(kind)] }), OCT, TODAY);
+      expect(describeDayItems(cellFor(cells, "2026-10-08")).map((item) => item.key), kind).toEqual([`${kind}:1`]);
+    }
+  });
+
+  it("leaves out an event kind it has no copy for", () => {
+    const cells = buildCalendarDays(payload({ events: [eventOf("brand_new_kind")] }), OCT, TODAY);
+    expect(describeDayItems(cellFor(cells, "2026-10-08"))).toEqual([]);
   });
 });
 

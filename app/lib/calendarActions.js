@@ -8,6 +8,20 @@
 /** Most urgent first: a tile with more kinds than it can show keeps the earlier ones. */
 export const ACTION_ORDER = ["reply", "lowRating", "expiring", "departing"];
 
+/**
+ * The event kinds the calendar describes (calendarDays.js's EVENT_COPY has
+ * copy for each). A kind outside this set, from a newer server, is skipped
+ * everywhere: a tile never counts something its day popover can't list.
+ */
+export const KNOWN_EVENT_KINDS = new Set([
+  "share_sent",
+  "share_expires",
+  "client_viewed",
+  "client_commented",
+  "proposal_rated",
+  "review_submitted",
+]);
+
 /** Ratings at or below this many stars are low (the "Needs you today" threshold). */
 export const LOW_RATING_MAX = 3;
 
@@ -45,7 +59,8 @@ export function spanAction(span, cell) {
 }
 
 /**
- * What a day holds, for its tile and its label.
+ * What a day holds, for its tile and its label. Events of a kind the calendar
+ * doesn't know are left out, as in the day popover.
  * `actions` lists only the kinds present, in ACTION_ORDER.
  * @returns {{ actions: Array<{ kind: string, count: number }>, actionCount: number, otherTripCount: number, quietCount: number }}
  */
@@ -59,6 +74,7 @@ export function summarizeDay(cell) {
     else otherTripCount += 1;
   }
   for (const event of cell.events) {
+    if (!KNOWN_EVENT_KINDS.has(event.kind)) continue;
     const action = eventAction(event, cell);
     if (action) counts[action] += 1;
     else quietCount += 1;

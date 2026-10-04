@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCalendarDays } from "../app/lib/calendarDays.js";
-import { daySummaryText, eventAction, spanAction, summarizeDay } from "../app/lib/calendarActions.js";
+import { KNOWN_EVENT_KINDS, daySummaryText, eventAction, spanAction, summarizeDay } from "../app/lib/calendarActions.js";
 
 const OCT = new Date(2026, 9, 1);
 const TODAY = new Date(2026, 9, 3, 10, 0); // Saturday, October 3
@@ -129,6 +129,31 @@ describe("summarizeDay", () => {
     });
   });
 
+  it("skips an event kind it doesn't know, as the day popover does", () => {
+    const all = cells({
+      events: [event("client_viewed", 5, { viewCount: 1 }), event("brand_new_kind", 5), event("brand_new_kind", 5)],
+    });
+
+    expect(summarizeDay(cellOn(all, "2026-10-05"))).toEqual({
+      actions: [],
+      actionCount: 0,
+      otherTripCount: 0,
+      quietCount: 1,
+    });
+    expect(daySummaryText(summarizeDay(cellOn(all, "2026-10-05")))).toBe("1 other update");
+  });
+
+  it("shows nothing for a day holding only unknown event kinds", () => {
+    const all = cells({ events: [event("brand_new_kind", 5)] });
+
+    expect(summarizeDay(cellOn(all, "2026-10-05"))).toEqual({
+      actions: [],
+      actionCount: 0,
+      otherTripCount: 0,
+      quietCount: 0,
+    });
+  });
+
   it("is empty for an empty day", () => {
     expect(summarizeDay(cellOn(cells(), "2026-10-05"))).toEqual({
       actions: [],
@@ -136,6 +161,14 @@ describe("summarizeDay", () => {
       otherTripCount: 0,
       quietCount: 0,
     });
+  });
+});
+
+describe("KNOWN_EVENT_KINDS", () => {
+  it("lists the event kinds the calendar can describe", () => {
+    expect([...KNOWN_EVENT_KINDS].sort()).toEqual(
+      ["client_commented", "client_viewed", "proposal_rated", "review_submitted", "share_expires", "share_sent"].sort(),
+    );
   });
 });
 
