@@ -27,17 +27,29 @@ const DRY_DAYTIME_TEXT = "no rain expected from 6 AM to 10 PM";
 /** A wet spell this many hours or longer reads "on and off", not as one part of the day. */
 const ON_AND_OFF_HOURS = 9;
 
-const WET_WORDS = { DRIZZLE: "drizzle", RAIN: "rain", HEAVY_RAIN: "heavy rain", THUNDERSTORM: "thunderstorms" };
-const SHORT_WET_WORDS = { DRIZZLE: "drizzle", RAIN: "rain", HEAVY_RAIN: "heavy rain", THUNDERSTORM: "storms" };
-const WINDOW_NOUNS = { DRIZZLE: "drizzle", RAIN: "rain", HEAVY_RAIN: "rain", THUNDERSTORM: "storm" };
+const WET_WORDS = {
+  DRIZZLE: "drizzle",
+  RAIN: "rain",
+  HEAVY_RAIN: "heavy rain",
+  THUNDERSTORM: "thunderstorms",
+  SNOW: "snow",
+};
+const SHORT_WET_WORDS = { DRIZZLE: "drizzle", RAIN: "rain", HEAVY_RAIN: "heavy rain", THUNDERSTORM: "storms", SNOW: "snow" };
+/** What the stops in a wet window "may see" (heavy rain reads as plain rain there). */
+const STOP_COUNT_NOUNS = { DRIZZLE: "drizzle", RAIN: "rain", HEAVY_RAIN: "rain", THUNDERSTORM: "storms", SNOW: "snow" };
 /** A stop counts toward the wet window when its outlook is at least the window's band. */
-const OUTLOOK_RANK = { DRY: 0, SHOWERS: 1, RAIN: 2, STORM: 3 };
-const WINDOW_RANK = { DRIZZLE: 1, RAIN: 2, HEAVY_RAIN: 2, THUNDERSTORM: 3 };
+const OUTLOOK_RANK = { DRY: 0, SHOWERS: 1, RAIN: 2, SNOW: 3, STORM: 4 };
+const WINDOW_RANK = { DRIZZLE: 1, RAIN: 2, HEAVY_RAIN: 2, SNOW: 3, THUNDERSTORM: 4 };
+
+/** A daytime chance of rain at or above this makes a no-wet-window day "light rain possible". */
+const SHOWERS_POSSIBLE_PCT = 50;
+const SHOWERS_POSSIBLE_TEXT = "Light rain possible at times";
 
 const STOP_OUTLOOKS = {
   DRY: { label: "Likely dry", condition: "CLEAR", tone: "dry" },
   SHOWERS: { label: "Light rain possible", condition: "DRIZZLE", tone: "wet" },
   RAIN: { label: "Rain likely", condition: "RAIN", tone: "wet" },
+  SNOW: { label: "Snow likely", condition: "SNOW", tone: "wet" },
   STORM: { label: "Storms likely", condition: "THUNDERSTORM", tone: "storm" },
 };
 
@@ -62,12 +74,33 @@ export function formatHourRange(fromHour, toHour) {
   return from.slice(-2) === to.slice(-2) ? `${from.slice(0, -3)}–${to}` : `${from}–${to}`;
 }
 
-function partOfDay(fromHour) {
-  if (fromHour < 12) return { long: "Morning", short: "AM" };
-  if (fromHour < 17) return { long: "Afternoon", short: "PM" };
-  return { long: "Evening", short: "evening" };
+/** Morning 6-12, afternoon 12-17, evening 17-22; hours outside 6-22 count toward the nearest part. */
+const DAY_PARTS = [
+  { long: "Morning", short: "AM" },
+  { long: "Afternoon", short: "PM" },
+  { long: "Evening", short: "evening" },
+];
+
+function dayPartIndex(hour) {
+  if (hour < 12) return 0;
+  if (hour < 17) return 1;
+  return 2;
 }
 
+/** The part of the day most of the spell's hours fall in (`toHour` is exclusive); a tie goes to the earlier part. */
+function partOfDay(fromHour, toHour) {
+  const hoursIn = [0, 0, 0];
+  for (let hour = fromHour; hour < toHour; hour += 1) hoursIn[dayPartIndex(hour)] += 1;
+  if (hoursIn.every((hours) => hours === 0)) return DAY_PARTS[dayPartIndex(fromHour)];
+
+  let busiest = 0;
+  for (let index = 1; index < hoursIn.length; index += 1) {
+    if (hoursIn[index] > hoursIn[busiest]) busiest = index;
+  }
+  return DAY_PARTS[busiest];
+}
+
+/** Counts by forecast band, not by time, so the screen copy says "may see", never "will be in". */
 function countStopsInWindow(hourly) {
   const rank = WINDOW_RANK[hourly.wetWindow?.condition];
   if (!rank || !Array.isArray(hourly.stops)) return 0;
@@ -118,6 +151,14 @@ export function getWeatherAdvice(weather) {
   return advice;
 }
 
+/** The hourly summary is usable when it says "no wet window" or gives a window with numeric hours. */
+function hasUsableHourly(hourly) {
+  if (!hourly || typeof hourly !== "object") return false;
+  const window = hourly.wetWindow;
+  if (window === null) return true;
+  return Boolean(window) && typeof window === "object" && isNumber(window.fromHour) && isNumber(window.toHour);
+}
+
 /**
  * Display model for one day, or null when there is nothing to show: no date,
  * no located stops, a past date, or the provider was unavailable.
@@ -126,7 +167,7 @@ export function describeDayWeather(entry) {
   if (!entry || entry.status !== "OK" || !entry.weather) return null;
   const weather = entry.weather;
   // Hourly timing exists only for forecast days; typical (past-years) days never use it.
-  if (weather.kind !== "TYPICAL" && entry.hourly) return describeTimedDay(weather, entry.hourly);
+  if (weather.kind !== "TYPICAL" && hasUsableHourly(entry.hourly)) return describeTimedDay(weather, entry.hourly);
   return describeWholeDay(weather);
 }
 
@@ -151,6 +192,23 @@ function describeWholeDay(weather) {
   };
 }
 
+/** The tip about WHEN to go out, from the dry hours around the wet spell (`spellEnd` is exclusive). */
+function timingAdvice(first, spellEnd) {
+  const dryBefore = isNumber(first) && first >= 9;
+  const dryAfter = spellEnd <= 17;
+  if (dryBefore && dryAfter) return `Keep outdoor stops outside ${formatHourRange(first, spellEnd)}.`;
+  if (dryBefore) return `Put outdoor stops before ${formatHour(first)}.`;
+  if (dryAfter) return `Put outdoor stops after ${formatHour(spellEnd)}.`;
+  return RAIN_ADVICE;
+}
+
+/** Does a day with no wet window still carry a real daytime chance of showers? */
+function showersPossible(hourly) {
+  const peak = hourly.maxDaytimePrecipitationProbabilityPct;
+  if (isNumber(peak)) return peak >= SHOWERS_POSSIBLE_PCT;
+  return Array.isArray(hourly.stops) && hourly.stops.some((stop) => stop?.outlook === "SHOWERS");
+}
+
 /** A forecast day with hourly timing: say WHEN the rain comes, not just the day's worst hour. */
 function describeTimedDay(weather, hourly) {
   const temperature = formatTemperatureRange(weather);
@@ -158,6 +216,25 @@ function describeTimedDay(weather, hourly) {
   const window = hourly.wetWindow;
 
   if (!window || !WET_WORDS[window.condition]) {
+    if (showersPossible(hourly)) {
+      // No sustained wet spell, but the stops are tagged "light rain possible": don't call the day dry.
+      const peak = hourly.maxDaytimePrecipitationProbabilityPct;
+      const chance = isNumber(peak) ? `up to ${peak}% chance of rain` : "";
+      const sentence = [SHOWERS_POSSIBLE_TEXT, temperature, chance].filter(Boolean).join(", ");
+      return {
+        condition: "CLOUDY",
+        label: SHOWERS_POSSIBLE_TEXT,
+        temperature,
+        rain: capitalize(chance) || SHOWERS_POSSIBLE_TEXT,
+        isTypical: false,
+        isWet: true,
+        compactText: [temperature, "showers possible"].filter(Boolean).join(" · "),
+        ariaLabel: `Forecast: ${sentence}`,
+        advice: [RAIN_ADVICE, ...otherAdvice],
+        pdfText: `Weather forecast: ${sentence}`,
+      };
+    }
+
     // The daily code can still be wet from night rain; the daytime is what travelers see.
     const dailyIsWet = WET_CONDITIONS.has(weather.condition);
     const condition = dailyIsWet ? "CLOUDY" : weather.condition;
@@ -178,7 +255,7 @@ function describeTimedDay(weather, hourly) {
   }
 
   const onAndOff = window.toHour - window.fromHour >= ON_AND_OFF_HOURS;
-  const part = partOfDay(window.fromHour);
+  const part = partOfDay(window.fromHour, window.toHour);
   const range = formatHourRange(window.fromHour, window.toHour);
   const label = onAndOff
     ? `${capitalize(WET_WORDS[window.condition])} on and off, ${range}`
@@ -188,15 +265,18 @@ function describeTimedDay(weather, hourly) {
     : `${part.short} ${SHORT_WET_WORDS[window.condition]}`;
 
   const first = hourly.firstWetHour;
+  // The spell runs to the last wet hour when the server says so (older servers send only the window).
+  const spellEnd = Math.max(window.toHour, isNumber(hourly.lastWetHour) ? hourly.lastWetHour + 1 : window.toHour);
   const details = [];
-  if (isNumber(first) && first >= 12) details.push("dry morning");
+  if (isNumber(first) && first >= 15) details.push(`dry until ${formatHour(first)}`);
+  else if (isNumber(first) && first >= 12) details.push("dry morning");
   else if (isNumber(first) && first > DAYTIME_START_HOUR) details.push(`dry until ${formatHour(first)}`);
   if (isNumber(weather.precipitationMm) && weather.precipitationMm >= 1) {
     details.push(`about ${Math.round(weather.precipitationMm)} mm of rain`);
   }
   const atRisk = countStopsInWindow(hourly);
   const stopsText =
-    atRisk > 0 ? `${atRisk} ${atRisk === 1 ? "stop falls" : "stops fall"} in the ${WINDOW_NOUNS[window.condition]} window` : "";
+    atRisk > 0 ? `${atRisk} ${atRisk === 1 ? "stop" : "stops"} may see ${STOP_COUNT_NOUNS[window.condition]}` : "";
 
   const sentence = [label, temperature, ...details].filter(Boolean).join(", ");
   return {
@@ -209,7 +289,7 @@ function describeTimedDay(weather, hourly) {
     isWet: true,
     compactText: [temperature, shortTiming].filter(Boolean).join(" · "),
     ariaLabel: `Forecast: ${sentence}`,
-    advice: [isNumber(first) && first >= 9 ? `Put outdoor stops before ${formatHour(first)}.` : RAIN_ADVICE, ...otherAdvice],
+    advice: [timingAdvice(first, spellEnd), ...otherAdvice],
     pdfText: `Weather forecast: ${sentence}`,
   };
 }

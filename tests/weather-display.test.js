@@ -123,6 +123,8 @@ const baguio = {
 
 const baguioHourly = {
   firstWetHour: 11,
+  lastWetHour: 20,
+  maxDaytimePrecipitationProbabilityPct: 99,
   wetWindow: { condition: "THUNDERSTORM", fromHour: 14, toHour: 20 },
   stops: [
     { itemId: "s1", outlook: "DRY", maxPrecipitationProbabilityPct: 45 },
@@ -133,6 +135,15 @@ const baguioHourly = {
 };
 
 const timed = (weather, hourly) => ({ ...ok(weather), hourly });
+
+/** A day (no rain amount) whose single wet spell runs fromHour to toHour (exclusive). */
+const at = (condition, fromHour, toHour) =>
+  describeDayWeather(
+    timed(
+      { ...baguio, precipitationMm: null },
+      { firstWetHour: fromHour, lastWetHour: toHour - 1, wetWindow: { condition, fromHour, toHour }, stops: [] },
+    ),
+  );
 
 describe("formatHour / formatHourRange", () => {
   it("writes 12-hour clock hours and shares the meridiem inside one half of the day", () => {
@@ -151,7 +162,7 @@ describe("describeDayWeather with hourly timing", () => {
       condition: "THUNDERSTORM",
       label: "Afternoon thunderstorms, 2–8 PM",
       temperature: "16–24°C",
-      rain: "Dry until 11 AM · about 19 mm of rain · 2 stops fall in the storm window",
+      rain: "Dry until 11 AM · about 19 mm of rain · 2 stops may see storms",
       isTypical: false,
       isWet: true,
       compactText: "16–24°C · PM storms",
@@ -162,14 +173,162 @@ describe("describeDayWeather with hourly timing", () => {
   });
 
   it("names morning and evening spells, and long spells as on and off", () => {
-    const at = (condition, fromHour, toHour) =>
-      describeDayWeather(timed(baguio, { firstWetHour: fromHour, wetWindow: { condition, fromHour, toHour }, stops: [] }));
-
     expect(at("DRIZZLE", 7, 10)).toMatchObject({ label: "Morning drizzle, 7–10 AM", compactText: "16–24°C · AM drizzle" });
     expect(at("RAIN", 18, 21)).toMatchObject({ label: "Evening rain, 6–9 PM", compactText: "16–24°C · evening rain" });
     expect(at("RAIN", 8, 20)).toMatchObject({ label: "Rain on and off, 8 AM–8 PM", compactText: "16–24°C · rain on and off" });
-    // Wet from early morning: the generic tip, not "before 7 AM".
-    expect(at("DRIZZLE", 7, 10).advice).toEqual(["Plan indoor stops or bring rain gear."]);
+    // Dry from 10 AM on, so the generic tip gives way to a specific one (and never says "before 7 AM").
+    expect(at("DRIZZLE", 7, 10).advice).toEqual(["Put outdoor stops after 10 AM."]);
+  });
+
+  it("names a spell by the part of the day most of its hours fall in", () => {
+    // Across noon.
+    expect(at("RAIN", 11, 14)).toMatchObject({ label: "Afternoon rain, 11 AM–2 PM", compactText: "16–24°C · PM rain" });
+    expect(at("RAIN", 10, 18)).toMatchObject({ label: "Afternoon rain, 10 AM–6 PM" });
+    expect(at("RAIN", 9, 17)).toMatchObject({ label: "Afternoon rain, 9 AM–5 PM" });
+    // A tie goes to the earlier part: 2-8 PM is three afternoon hours and three evening hours.
+    expect(at("RAIN", 14, 20)).toMatchObject({ label: "Afternoon rain, 2–8 PM" });
+    expect(at("RAIN", 9, 15)).toMatchObject({ label: "Morning rain, 9 AM–3 PM" });
+    // Hours outside 6 AM-10 PM count toward the nearest part.
+    expect(at("RAIN", 4, 7)).toMatchObject({ label: "Morning rain, 4–7 AM" });
+  });
+
+  it("calls a spell of nine hours or more on and off, but eight hours still has a part of the day", () => {
+    expect(at("RAIN", 9, 18)).toMatchObject({ label: "Rain on and off, 9 AM–6 PM", compactText: "16–24°C · rain on and off" });
+    expect(at("HEAVY_RAIN", 6, 21)).toMatchObject({ label: "Heavy rain on and off, 6 AM–9 PM" });
+    expect(at("RAIN", 9, 17).label).toBe("Afternoon rain, 9 AM–5 PM");
+  });
+
+  it("names a snow spell", () => {
+    const snowy = { ...baguio, condition: "SNOW", precipitationMm: null };
+    const entry = timed(snowy, {
+      firstWetHour: 9,
+      lastWetHour: 14,
+      wetWindow: { condition: "SNOW", fromHour: 9, toHour: 15 },
+      stops: [
+        { itemId: "s1", outlook: "SNOW", maxPrecipitationProbabilityPct: 80 },
+        { itemId: "s2", outlook: "STORM", maxPrecipitationProbabilityPct: 95 },
+        { itemId: "s3", outlook: "RAIN", maxPrecipitationProbabilityPct: 70 },
+        { itemId: "s4", outlook: "DRY", maxPrecipitationProbabilityPct: 10 },
+      ],
+    });
+
+    expect(describeDayWeather(entry)).toEqual({
+      condition: "SNOW",
+      label: "Morning snow, 9 AM–3 PM",
+      temperature: "16–24°C",
+      rain: "Dry until 9 AM · 2 stops may see snow",
+      isTypical: false,
+      isWet: true,
+      compactText: "16–24°C · AM snow",
+      ariaLabel: "Forecast: Morning snow, 9 AM–3 PM, 16–24°C, dry until 9 AM",
+      advice: ["Keep outdoor stops outside 9 AM–3 PM."],
+      pdfText: "Weather forecast: Morning snow, 9 AM–3 PM, 16–24°C, dry until 9 AM",
+    });
+  });
+
+  it("counts the stops that may see the window's weather, by band", () => {
+    const withStops = (condition, outlooks) =>
+      describeDayWeather(
+        timed(
+          { ...baguio, precipitationMm: null },
+          {
+            firstWetHour: 14,
+            wetWindow: { condition, fromHour: 14, toHour: 20 },
+            stops: outlooks.map((outlook, i) => ({ itemId: `s${i}`, outlook, maxPrecipitationProbabilityPct: 50 })),
+          },
+        ),
+      ).rain;
+
+    expect(withStops("THUNDERSTORM", ["STORM"])).toBe("Dry morning · 1 stop may see storms");
+    expect(withStops("RAIN", ["RAIN", "STORM", "SHOWERS"])).toBe("Dry morning · 2 stops may see rain");
+    expect(withStops("HEAVY_RAIN", ["RAIN"])).toBe("Dry morning · 1 stop may see rain");
+    expect(withStops("DRIZZLE", ["SHOWERS", "RAIN", "DRY"])).toBe("Dry morning · 2 stops may see drizzle");
+    expect(withStops("RAIN", ["DRY", "SHOWERS"])).toBe("Dry morning");
+  });
+
+  it("tells travelers which hours are dry, on whichever side of the rain they fall", () => {
+    // Dry only before the rain (Baguio); the server's lastWetHour is optional.
+    expect(describeDayWeather(timed(baguio, baguioHourly)).advice).toEqual(["Put outdoor stops before 11 AM."]);
+    const { lastWetHour, ...withoutLastWetHour } = baguioHourly;
+    expect(describeDayWeather(timed(baguio, withoutLastWetHour)).advice).toEqual(["Put outdoor stops before 11 AM."]);
+
+    // Dry only after a morning spell.
+    expect(at("RAIN", 7, 11).advice).toEqual(["Put outdoor stops after 11 AM."]);
+    // Dry on both sides of a midday spell.
+    expect(at("RAIN", 11, 14).advice).toEqual(["Keep outdoor stops outside 11 AM–2 PM."]);
+    expect(at("RAIN", 9, 11).advice).toEqual(["Keep outdoor stops outside 9–11 AM."]);
+    // The "after" tip stops at 5 PM, and the "before" tip starts at 9 AM.
+    expect(at("RAIN", 13, 17).advice).toEqual(["Keep outdoor stops outside 1–5 PM."]);
+    expect(at("RAIN", 14, 18).advice).toEqual(["Put outdoor stops before 2 PM."]);
+    expect(at("RAIN", 8, 18).advice).toEqual(["Plan indoor stops or bring rain gear."]);
+    // Wet most of the day: nothing is dry, so the generic tip stays.
+    expect(at("RAIN", 8, 20).advice).toEqual(["Plan indoor stops or bring rain gear."]);
+  });
+
+  it("ends the spell at the last wet hour when the server sends it", () => {
+    const hourly = (lastWetHour) => ({
+      firstWetHour: 11,
+      lastWetHour,
+      wetWindow: { condition: "RAIN", fromHour: 11, toHour: 14 },
+      stops: [],
+    });
+
+    // Without it the spell ends with the window.
+    expect(describeDayWeather(timed(baguio, hourly(undefined))).advice).toEqual(["Keep outdoor stops outside 11 AM–2 PM."]);
+    // Rain drizzles on until 6 PM: nothing is dry after the window, only before it.
+    expect(describeDayWeather(timed(baguio, hourly(18))).advice).toEqual(["Put outdoor stops before 11 AM."]);
+    // A last wet hour earlier than the window never shrinks the spell.
+    expect(describeDayWeather(timed(baguio, hourly(12))).advice).toEqual(["Keep outdoor stops outside 11 AM–2 PM."]);
+  });
+
+  it("describes the dry hours before the rain by how late it starts", () => {
+    expect(at("RAIN", 13, 16).rain).toBe("Dry morning");
+    expect(at("RAIN", 12, 15).rain).toBe("Dry morning");
+    expect(at("RAIN", 15, 18).rain).toBe("Dry until 3 PM");
+    // An evening spell: the whole day before it is dry, not just the morning.
+    expect(at("RAIN", 19, 22)).toMatchObject({
+      label: "Evening rain, 7–10 PM",
+      rain: "Dry until 7 PM",
+      ariaLabel: "Forecast: Evening rain, 7–10 PM, 16–24°C, dry until 7 PM",
+    });
+    expect(at("RAIN", 9, 12).rain).toBe("Dry until 9 AM");
+    // Wet from the first daytime hour: nothing to say.
+    expect(at("RAIN", 6, 9).rain).toBe("");
+  });
+
+  it("keeps the UV tip while swapping the rain tip for a specific one", () => {
+    const sunburnt = { ...baguio, uvIndexMax: 9, precipitationMm: null };
+    expect(describeDayWeather(timed(sunburnt, baguioHourly)).advice).toEqual([
+      "Put outdoor stops before 11 AM.",
+      "Very high UV — bring sun protection.",
+    ]);
+  });
+
+  it("only mentions rain amounts of 1 mm or more", () => {
+    const hourly = { firstWetHour: 14, wetWindow: { condition: "RAIN", fromHour: 14, toHour: 17 }, stops: [] };
+    const light = describeDayWeather(timed({ ...baguio, precipitationMm: 0.4 }, hourly));
+    const missing = describeDayWeather(timed({ ...baguio, precipitationMm: undefined }, hourly));
+    const some = describeDayWeather(timed({ ...baguio, precipitationMm: 1 }, hourly));
+
+    for (const display of [light, missing]) {
+      expect(display.rain).toBe("Dry morning");
+      expect(display.ariaLabel).not.toMatch(/mm/);
+      expect(display.pdfText).not.toMatch(/mm/);
+    }
+    expect(some.rain).toBe("Dry morning · about 1 mm of rain");
+  });
+
+  it("falls back to the whole-day wording when the hourly summary is malformed", () => {
+    const wholeDay = describeDayWeather(ok(forecast));
+
+    expect(describeDayWeather(timed(forecast, {}))).toEqual(wholeDay);
+    expect(describeDayWeather(timed(forecast, { firstWetHour: 11, stops: [] }))).toEqual(wholeDay);
+    expect(describeDayWeather(timed(forecast, { wetWindow: { condition: "RAIN", fromHour: 14 }, stops: [] }))).toEqual(wholeDay);
+    expect(
+      describeDayWeather(timed(forecast, { wetWindow: { condition: "RAIN", fromHour: "14", toHour: "20" }, stops: [] })),
+    ).toEqual(wholeDay);
+    expect(describeDayWeather(timed(forecast, "oops"))).toEqual(wholeDay);
+    expect(wholeDay.label).toBe("Rain");
   });
 
   it("calls a day whose only rain falls at night mostly dry", () => {
@@ -185,6 +344,63 @@ describe("describeDayWeather with hourly timing", () => {
       advice: [],
       pdfText: "Weather forecast: Mostly dry, 16–24°C, no rain expected from 6 AM to 10 PM",
     });
+  });
+
+  it("does not call a day dry when light rain is likely at times", () => {
+    const hourly = { firstWetHour: null, wetWindow: null, maxDaytimePrecipitationProbabilityPct: 70, stops: [] };
+
+    expect(describeDayWeather(timed(baguio, hourly))).toEqual({
+      condition: "CLOUDY",
+      label: "Light rain possible at times",
+      temperature: "16–24°C",
+      rain: "Up to 70% chance of rain",
+      isTypical: false,
+      isWet: true,
+      compactText: "16–24°C · showers possible",
+      ariaLabel: "Forecast: Light rain possible at times, 16–24°C, up to 70% chance of rain",
+      advice: ["Plan indoor stops or bring rain gear."],
+      pdfText: "Weather forecast: Light rain possible at times, 16–24°C, up to 70% chance of rain",
+    });
+    // The 50% line is inclusive, and a clear daily code does not hide it.
+    expect(
+      describeDayWeather(timed({ ...baguio, condition: "CLEAR" }, { ...hourly, maxDaytimePrecipitationProbabilityPct: 50 })),
+    ).toMatchObject({ label: "Light rain possible at times", rain: "Up to 50% chance of rain" });
+    // The UV tip stays after the rain one.
+    expect(describeDayWeather(timed({ ...baguio, uvIndexMax: 9 }, hourly)).advice).toEqual([
+      "Plan indoor stops or bring rain gear.",
+      "Very high UV — bring sun protection.",
+    ]);
+  });
+
+  it("falls back to the stops' outlooks when the server sends no daytime peak", () => {
+    const hourly = {
+      firstWetHour: null,
+      wetWindow: null,
+      stops: [
+        { itemId: "s1", outlook: "DRY", maxPrecipitationProbabilityPct: 10 },
+        { itemId: "s2", outlook: "SHOWERS", maxPrecipitationProbabilityPct: 55 },
+      ],
+    };
+
+    expect(describeDayWeather(timed(baguio, hourly))).toMatchObject({
+      condition: "CLOUDY",
+      label: "Light rain possible at times",
+      rain: "Light rain possible at times",
+      isWet: true,
+      compactText: "16–24°C · showers possible",
+      ariaLabel: "Forecast: Light rain possible at times, 16–24°C",
+      pdfText: "Weather forecast: Light rain possible at times, 16–24°C",
+      advice: ["Plan indoor stops or bring rain gear."],
+    });
+  });
+
+  it("stays dry when the daytime peak is low, whatever the stop tags say", () => {
+    const stops = [{ itemId: "s1", outlook: "SHOWERS", maxPrecipitationProbabilityPct: 30 }];
+    const display = describeDayWeather(
+      timed(baguio, { firstWetHour: null, wetWindow: null, maxDaytimePrecipitationProbabilityPct: 49, stops }),
+    );
+
+    expect(display).toMatchObject({ label: "Mostly dry", isWet: false, compactText: "16–24°C · dry", advice: [] });
   });
 
   it("keeps a dry day's own condition when the daily code is dry too", () => {
@@ -221,6 +437,22 @@ describe("describeStopWeather", () => {
       pdfText: "Storms likely (up to 99% chance of rain)",
     });
     expect(describeStopWeather(entry, "s2")).toMatchObject({ label: "Light rain possible", condition: "DRIZZLE", tone: "wet" });
+  });
+
+  it("describes a snow stop", () => {
+    const entry = timed(baguio, {
+      ...baguioHourly,
+      stops: [{ itemId: "s5", outlook: "SNOW", maxPrecipitationProbabilityPct: 80 }],
+    });
+
+    expect(describeStopWeather(entry, "s5")).toEqual({
+      outlook: "SNOW",
+      label: "Snow likely",
+      condition: "SNOW",
+      tone: "wet",
+      ariaLabel: "Weather during this stop: Snow likely, up to 80% chance of rain",
+      pdfText: "Snow likely (up to 80% chance of rain)",
+    });
   });
 
   it("returns null without hourly data, for an unknown stop, or for a day that is not OK", () => {

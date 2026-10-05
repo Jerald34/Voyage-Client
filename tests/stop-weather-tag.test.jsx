@@ -62,6 +62,21 @@ describe("StopWeatherTag", () => {
     expect(screen.getByText("Weather during this stop: Storms likely, up to 99% chance of rain")).toHaveClass("sr-only");
   });
 
+  it("hides the visible label from screen readers and adds no duplicate title", () => {
+    const { container } = render(<StopWeatherTag entry={dayWeather} itemId="s3" />);
+
+    expect(screen.getByText("Storms likely")).toHaveAttribute("aria-hidden", "true");
+    expect(container.firstChild).not.toHaveAttribute("title");
+  });
+
+  it("tags a snow stop", () => {
+    const snowy = { ...dayWeather, hourly: { ...dayWeather.hourly, stops: [{ itemId: "s9", outlook: "SNOW", maxPrecipitationProbabilityPct: 80 }] } };
+    render(<StopWeatherTag entry={snowy} itemId="s9" />);
+
+    expect(screen.getByText("Snow likely")).toBeInTheDocument();
+    expect(screen.getByText("Weather during this stop: Snow likely, up to 80% chance of rain")).toHaveClass("sr-only");
+  });
+
   it("renders nothing without hourly data for the stop", () => {
     const { container } = render(<StopWeatherTag entry={dayWeather} itemId="unknown" />);
     expect(container).toBeEmptyDOMElement();
@@ -94,7 +109,7 @@ describe("stop weather on the itinerary", () => {
 
     expect(screen.getByText("Likely dry")).toBeInTheDocument();
     expect(screen.getByText("Storms likely")).toBeInTheDocument();
-    expect(screen.getByText("Dry until 11 AM · about 19 mm of rain · 1 stop falls in the storm window")).toBeInTheDocument();
+    expect(screen.getByText("Dry until 11 AM · about 19 mm of rain · 1 stop may see storms")).toBeInTheDocument();
   });
 
   it("tags the stop inside the mobile card's button", () => {

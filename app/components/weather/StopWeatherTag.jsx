@@ -19,7 +19,6 @@ export default function StopWeatherTag({ entry, itemId, className = "" }) {
 
   return (
     <span
-      title={display.ariaLabel}
       className={`inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-[0.7rem] font-semibold leading-tight ${TONES[display.tone] ?? TONES.wet} ${className}`.trim()}
     >
       <WeatherIcon condition={display.condition} size={12} className="flex-shrink-0" />
