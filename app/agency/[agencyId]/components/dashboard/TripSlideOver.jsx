@@ -568,7 +568,7 @@ export default function TripSlideOver({
             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary/10 border border-secondary/20 text-secondary text-[0.65rem] font-extrabold uppercase tracking-[0.05em] mb-1.5">
               TRIP
             </span>
-            <h2 className="font-sans text-base font-semibold tracking-normal text-text-primary truncate">
+            <h2 className="font-sans text-base font-semibold leading-snug tracking-normal text-text-primary truncate">
               {tripTitle}
             </h2>
             {subtitle && (

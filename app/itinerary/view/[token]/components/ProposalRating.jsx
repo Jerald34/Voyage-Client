@@ -216,7 +216,7 @@ export default function ProposalRating({
         {savedRating !== null && !editing && !errorInfo?.lock && !windowClosed && (
           <button
             type="button"
-            className="px-3 py-1 text-[12px] font-medium border border-border rounded-sm bg-transparent text-text-soft cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] hover:text-primary"
+            className="px-3 py-1 text-[12px] font-medium border border-border/20 rounded-sm bg-transparent text-text-muted cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] hover:text-primary"
             onClick={handleUpdate}
           >
             Update
@@ -303,7 +303,7 @@ export default function ProposalRating({
             {savedRating !== null && (
               <button
                 type="button"
-                className="px-[14px] py-[6px] border border-border rounded-sm bg-transparent text-text-soft text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50"
+                className="px-[14px] py-[6px] border border-border/20 rounded-sm bg-transparent text-text-muted text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50"
                 onClick={() => setEditing(false)}
                 disabled={status === "submitting"}
               >

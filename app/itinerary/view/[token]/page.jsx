@@ -567,7 +567,7 @@ export default function PublicItineraryPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-dvh bg-background px-6">
-        <div className="grid gap-3 justify-items-center text-center max-w-[400px] px-8 py-10 bg-surface border border-border rounded-lg shadow-soft">
+        <div className="grid gap-3 justify-items-center text-center max-w-[400px] px-8 py-10 bg-surface border border-border/15 rounded-lg shadow-soft">
           <div className="mb-1">
             {error.type === "expired" ? (
               <CalendarIcon width={48} height={48} strokeWidth={1.5} />

@@ -55,8 +55,10 @@ function sourceFiles(dir) {
 const read = (rel) => readFileSync(join(ROOT, rel), "utf8");
 
 // Every <h1>–<h6> element: its tag, its attribute text, and its content on one line.
+// Attributes may hold `{…}` expressions with a ">" inside (e.g. `onClick={() => …}`),
+// so a brace group is consumed whole instead of stopping at its first ">".
 function headings(rel) {
-  return [...read(rel).matchAll(/<(h[1-6])\b([^>]*)>([\s\S]*?)<\/\1>/g)].map(([, tag, attrs, inner]) => ({
+  return [...read(rel).matchAll(/<(h[1-6])\b((?:[^>{]|\{[^}]*\})*)>([\s\S]*?)<\/\1>/g)].map(([, tag, attrs, inner]) => ({
     tag,
     attrs,
     text: inner.replace(/\s+/g, " ").trim(),
