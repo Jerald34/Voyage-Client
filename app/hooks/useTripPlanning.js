@@ -54,6 +54,12 @@ function normalizeMessagesArray(rawMessages, itineraryId = null) {
       }))
     : [];
 
+  // The server links each reply to the itinerary its run touched, the same replies the
+  // live run tagged. Guess from the reply text only for a server that sends no link.
+  if (normalized.some((message) => message.itineraryId || message.metadata?.itineraryId)) {
+    return normalized;
+  }
+
   const targetItineraryId = String(itineraryId ?? "").trim();
   if (!targetItineraryId) return normalized;
 
