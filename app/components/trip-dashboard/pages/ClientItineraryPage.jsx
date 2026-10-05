@@ -21,7 +21,7 @@ import {
   TUTORIAL_MOCK_FULL_ITINERARY,
 } from "../tutorial/tutorialMockData.js";
 import ShareDialog from "../itinerary/ShareDialog.jsx";
-import { generateItineraryPdf, titleToFilename } from "../../../lib/pdfExport.js";
+import { useItineraryPdf } from "../../../hooks/useItineraryPdf.js";
 import MobileGlassSheet from "../mobile/MobileGlassSheet.jsx";
 import CompactPlaceCard from "../mobile/CompactPlaceCard.jsx";
 import useMobileViewport from "../mobile/useMobileViewport.js";
@@ -81,7 +81,6 @@ export default function ClientItineraryPage({
   const [showCommentsPanel, setShowCommentsPanel] = useState(false);
   const [unreadCommentCount, setUnreadCommentCount] = useState(0);
   const [unreadByTrip, setUnreadByTrip] = useState({});
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
   const [internalMobilePane, setInternalMobilePane] = useState("list"); // "list" | "detail" — mobile only
@@ -356,26 +355,25 @@ export default function ClientItineraryPage({
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!fullItinerary || pdfLoading) return;
-    setPdfLoading(true);
-    try {
-      const dateRange = tripDateRange;
-      const doc = await generateItineraryPdf({
-        title: tripTitle,
-        summary: tripSummary,
-        dateRange,
-        travelerCount,
-        days: attachWeatherToDays(safeDays, itineraryWeather.byDayId),
-        agencyName: "Voyage",
-      });
-      doc.save(titleToFilename(tripTitle));
-    } catch (err) {
-      console.error("PDF export failed:", err);
-    } finally {
-      setPdfLoading(false);
-    }
-  };
+  // Built ahead of the tap so the hand-off stays inside the gesture (iOS share sheet).
+  const pdfInput = useMemo(
+    () =>
+      fullItinerary
+        ? {
+            title: tripTitle,
+            summary: tripSummary,
+            dateRange: tripDateRange,
+            travelerCount,
+            days: attachWeatherToDays(safeDays, itineraryWeather.byDayId),
+            agencyName: "Voyage",
+          }
+        : null,
+    [fullItinerary, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId],
+  );
+  const itineraryPdf = useItineraryPdf(pdfInput);
+  // Spinner while building; a failed build re-enables the button (the error is logged).
+  const pdfLoading = !itineraryPdf.canDownload && itineraryPdf.status !== "error";
+  const handleDownloadPdf = itineraryPdf.download;
 
   const handleCipSnapChange = useCallback((snap) => {
     const vh = window.visualViewport?.height ?? window.innerHeight;
