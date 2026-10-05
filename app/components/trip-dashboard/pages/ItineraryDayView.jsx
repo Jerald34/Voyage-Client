@@ -10,6 +10,7 @@ import { getSnapshotPhotoUrl, getReadablePlaceType } from "../../../lib/trip-das
 import { formatDayDate, getItemTimeLabel, getAccommodationLabel } from "../../../lib/formatters.js";
 import CommentsPanel from "./CommentsPanel.jsx";
 import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
+import StopWeatherTag from "../../weather/StopWeatherTag.jsx";
 import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
 import TripAccessibilitySummary from "../../accessibility/TripAccessibilitySummary.jsx";
 
@@ -137,9 +138,12 @@ export default function ItineraryDayView({
                     >
                       {/* Time badge + type */}
                       <div className="flex items-center justify-between gap-2 border-b border-border/5 pb-2">
-                        <span className="px-2.5 py-1 rounded-full bg-secondary/10 text-secondary text-[0.7rem] font-black tracking-tight">
-                          {timeLabel || "Time pending"}
-                        </span>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-secondary/10 text-secondary text-[0.7rem] font-black tracking-tight">
+                            {timeLabel || "Time pending"}
+                          </span>
+                          <StopWeatherTag entry={dayWeather} itemId={item.id} />
+                        </div>
                         <div className="flex items-center gap-2">
                           {placeType && (
                             <span className="text-[0.65rem] font-bold tracking-widest uppercase text-text-soft">

@@ -1,5 +1,6 @@
 import { getSnapshotPhotoUrl } from "../../../lib/trip-dashboard/richItinerary.js";
 import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
+import StopWeatherTag from "../../weather/StopWeatherTag.jsx";
 import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
 import { getPrimaryAccessibilityBadge } from "../../../lib/accessibility/placeAccessibility.js";
 
@@ -7,6 +8,8 @@ export default function CompactPlaceCard({
   item,
   isSelected = false,
   onSelect,
+  // The day's weather entry; the card shows this stop's slice of it.
+  dayWeather = null,
   // Optional controls (the stop menu). They sit beside the card's button, never
   // inside it: a button can't contain another button.
   actions = null,
@@ -62,6 +65,7 @@ export default function CompactPlaceCard({
             {timeLabel}
           </span>
         )}
+        <StopWeatherTag entry={dayWeather} itemId={item?.id} className="self-start" />
       </div>
     </button>
   );

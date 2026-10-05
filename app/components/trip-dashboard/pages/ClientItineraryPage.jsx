@@ -741,6 +741,7 @@ export default function ClientItineraryPage({
                               key={item.id ?? `${selectedDay.dayNumber}-${iIdx}`}
                               item={item}
                               isSelected={activeStopIndex === iIdx}
+                              dayWeather={itineraryWeather.byDayId.get(selectedDay.id) ?? null}
                               onSelect={() => {
                                 setActiveStopIndex(iIdx);
                                 setSelectedPlaceId(item.__placeEntityId);
