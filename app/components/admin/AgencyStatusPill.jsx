@@ -21,7 +21,7 @@ const statusDot = (s) =>
     SUSPENDED: "bg-status-warning",
   }[s] || "bg-text-soft");
 
-/** An agency's review status as a dot + label pill. Shared by the agency table and the account detail pane. */
+/** An agency's review status as a dot + label pill. Shared by the agency table, the agency detail and the account detail panes. */
 export default function AgencyStatusPill({ status }) {
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-0.5 text-xs font-semibold tracking-wide ${statusPillClasses(status)}`}>

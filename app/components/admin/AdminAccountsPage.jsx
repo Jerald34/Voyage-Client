@@ -142,8 +142,9 @@ export default function AdminAccountsPage() {
         </div>
       )}
       {!loading && !error && sorted.length === 0 && (
-        // aria-hidden: the live region below carries this message for assistive tech.
-        <div aria-hidden="true" className="py-16 text-center text-sm text-text-muted">
+        // Left exposed so touch and mouse-tracking screen readers can read the visible text; the
+        // status region above is what announces the change.
+        <div className="py-16 text-center text-sm text-text-muted">
           {emptyMessage}
         </div>
       )}

@@ -233,6 +233,9 @@ describe("AdminAccountsPage", () => {
       expect(screen.getAllByText("No accounts match your search.").length).toBeGreaterThan(0);
       expect(statusRegion()).toHaveTextContent("No accounts match your search.");
       expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      // The visible copy stays readable to touch / mouse-tracking screen readers.
+      const visible = screen.getAllByText("No accounts match your search.").find((el) => el !== statusRegion());
+      expect(visible.closest("[aria-hidden='true']")).toBeNull();
     });
   });
 
