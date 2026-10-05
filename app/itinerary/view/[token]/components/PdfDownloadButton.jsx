@@ -1,6 +1,7 @@
 "use client";
 
 import Spinner from "../../../../components/ui/Spinner";
+import PdfDeliveryNotice from "../../../../components/ui/PdfDeliveryNotice";
 import { useItineraryPdf } from "../../../../hooks/useItineraryPdf.js";
 
 /**
@@ -37,17 +38,7 @@ export default function PdfDownloadButton({ input, className = "" }) {
           </>
         )}
       </button>
-      <div aria-live="polite" className="text-[12px] leading-[1.5] text-text-muted">
-        {pdf.status === "error" ? <p className="m-0">We couldn&apos;t build the PDF. Reload the page to try again.</p> : null}
-        {pdf.fallbackUrl ? (
-          <p className="m-0">
-            Your device didn&apos;t save it automatically.{" "}
-            <a href={pdf.fallbackUrl} target="_blank" rel="noopener" className="font-semibold text-secondary-strong underline">
-              Open the PDF
-            </a>
-          </p>
-        ) : null}
-      </div>
+      <PdfDeliveryNotice status={pdf.status} fallbackUrl={pdf.fallbackUrl} />
     </div>
   );
 }

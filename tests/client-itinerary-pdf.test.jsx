@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const api = vi.hoisted(() => ({
   approveClientTrip: vi.fn(),
@@ -17,13 +17,14 @@ const api = vi.hoisted(() => ({
   fetchItineraryWeather: vi.fn(() => new Promise(() => {})),
 }));
 const delivery = vi.hoisted(() => ({ deliverPdf: vi.fn(async () => "downloaded") }));
-
-vi.mock("../app/lib/api/index.js", () => api);
-vi.mock("../app/lib/pdfDelivery.js", () => delivery);
-vi.mock("../app/lib/pdfExport.js", () => ({
+const pdfExport = vi.hoisted(() => ({
   generateItineraryPdf: vi.fn(async () => ({ output: () => new Blob(["%PDF-1.7"], { type: "application/pdf" }) })),
   titleToFilename: vi.fn((title) => `${title}.pdf`),
 }));
+
+vi.mock("../app/lib/api/index.js", () => api);
+vi.mock("../app/lib/pdfDelivery.js", () => delivery);
+vi.mock("../app/lib/pdfExport.js", () => pdfExport);
 vi.mock("../app/components/icons/index.js", () => ({
   SearchIcon: () => null, CloseIcon: () => null, CheckIcon: () => null, ReplyIcon: () => null,
   ArrowLeftIcon: () => null, ArrowRightIcon: () => null, PlusIcon: () => null, TrashIcon: () => null,
@@ -54,7 +55,24 @@ import ClientItineraryPage from "../app/components/trip-dashboard/pages/ClientIt
 
 const trip = { id: "t1", clientName: "Garcia", approvalStatus: "Approved", destination: "Baguio", itineraryId: "iter-1", isSaved: true };
 
+const originalCreate = URL.createObjectURL;
+const originalRevoke = URL.revokeObjectURL;
+
 describe("dashboard itinerary PDF", () => {
+  beforeEach(() => {
+    delivery.deliverPdf.mockClear();
+    // jsdom has no URL.createObjectURL; the fallback link needs one.
+    URL.createObjectURL = vi.fn(() => "blob:fallback");
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  afterEach(() => {
+    // Unmount before restoring: the hook revokes its fallback URL on unmount.
+    cleanup();
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+  });
+
   it("hands the prepared PDF to the device inside the tap", async () => {
     render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
 
@@ -80,5 +98,67 @@ describe("dashboard itinerary PDF", () => {
     const button = await screen.findByRole("button", { name: "Download PDF" });
     expect(button).toBeDisabled();
     expect(screen.queryByText("Generating...")).not.toBeInTheDocument();
+  });
+
+  it("offers a tappable link when the device refuses the hand-off", async () => {
+    delivery.deliverPdf.mockResolvedValueOnce("failed");
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled(), { timeout: 5000 });
+    fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
+
+    const link = await screen.findByRole("link", { name: "Open the PDF" });
+    expect(link).toHaveAttribute("href", "blob:fallback");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("disables the PDF button and says so when the PDF could not be built", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    pdfExport.generateItineraryPdf.mockRejectedValueOnce(new Error("pdf unavailable"));
+
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+    expect(await screen.findByText(/couldn.t build the PDF/, {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download PDF" })).toBeDisabled();
+    expect(delivery.deliverPdf).not.toHaveBeenCalled();
+  });
+
+  describe("on the mobile layout", () => {
+    const originalMatchMedia = window.matchMedia;
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    function useMobileViewport() {
+      window.matchMedia = (query) => ({
+        matches: true,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+      });
+    }
+
+    it("offers the same link beside the PDF button when the device refuses the hand-off", async () => {
+      useMobileViewport();
+      delivery.deliverPdf.mockResolvedValueOnce("failed");
+      render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" tourMobilePaneOverride="detail" />);
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled(), { timeout: 5000 });
+      fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
+
+      expect(await screen.findByRole("link", { name: "Open the PDF" })).toHaveAttribute("href", "blob:fallback");
+    });
+
+    it("disables the PDF button and says so when the PDF could not be built", async () => {
+      useMobileViewport();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      pdfExport.generateItineraryPdf.mockRejectedValueOnce(new Error("pdf unavailable"));
+      render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" tourMobilePaneOverride="detail" />);
+
+      expect(await screen.findByText(/couldn.t build the PDF/, {}, { timeout: 5000 })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Download PDF" })).toBeDisabled();
+    });
   });
 });

@@ -11,6 +11,8 @@ import {
 import { formatSavedItineraryCount, getSavedStatusLabel } from "../../../lib/trip-dashboard/savedItineraries.js";
 import { getSavedStatusClass } from "../../../lib/formatters.js";
 import ReuseLauncher from "../../ratedHistory/entryPoints/ReuseLauncher.jsx";
+// By direct path: the page tests mock ui/index.js with a fixed export list.
+import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice.jsx";
 
 // The header is a size container (`@container`). Under 720px of its own width the
 // actions drop their visible label but keep the icon, tooltip and aria-label, so the
@@ -36,6 +38,11 @@ export default function ItineraryHeader({
   fullItinerary,
   unreadCommentCount,
   pdfLoading,
+  // The PDF hook's state. The defaults suit a caller with no PDF hook: nothing to
+  // announce, and the button follows the itinerary alone.
+  pdfStatus = "idle",
+  pdfFallbackUrl = null,
+  pdfReady = true,
   showCommentsPanel,
   onBackToList,
   onAddTripForClient,
@@ -100,6 +107,7 @@ export default function ItineraryHeader({
                 </>
               ) : null}
             </div>
+            <PdfDeliveryNotice status={pdfStatus} fallbackUrl={pdfFallbackUrl} className="mt-1 empty:mt-0" />
           </div>
 
           <div data-tour-target="cip-actions" className="flex flex-shrink-0 items-center gap-1.5">
@@ -148,9 +156,9 @@ export default function ItineraryHeader({
 
                 <button
                   type="button"
-                  className={`${ACTION_BUTTON} ${ACTION_IDLE} ${pdfLoading ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
+                  className={`${ACTION_BUTTON} ${ACTION_IDLE} disabled:cursor-not-allowed disabled:opacity-60 ${pdfLoading ? "pointer-events-none" : ""}`}
                   onClick={onDownloadPdf}
-                  disabled={pdfLoading || !fullItinerary}
+                  disabled={pdfLoading || !fullItinerary || !pdfReady}
                   title="Download itinerary as PDF"
                   aria-label="Download PDF"
                 >

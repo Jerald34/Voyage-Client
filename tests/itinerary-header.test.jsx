@@ -124,6 +124,39 @@ describe("ItineraryHeader", () => {
     expect(screen.queryByRole("button", { name: /approv/i })).toBeNull();
   });
 
+  it("shows the PDF fallback link and build error under the status line", () => {
+    renderHeader({ pdfStatus: "error", pdfFallbackUrl: "blob:fallback" });
+
+    expect(screen.getByText(/couldn.t build the PDF/)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Open the PDF" });
+    expect(link).toHaveAttribute("href", "blob:fallback");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener");
+  });
+
+  it("keeps an empty polite region, and no message, until a PDF problem happens", () => {
+    const { container } = renderHeader();
+
+    expect(screen.queryByRole("link", { name: "Open the PDF" })).toBeNull();
+    expect(screen.queryByText(/couldn.t build the PDF/)).toBeNull();
+    const region = container.querySelector("header [aria-live='polite']");
+    expect(region).toBeEmptyDOMElement();
+    // Empty, it must take no space: the one-line status row stays as it was.
+    expect(region.className).toContain("empty:mt-0");
+  });
+
+  it("disables the PDF button until the file is ready", () => {
+    renderHeader({ pdfReady: false });
+
+    expect(screen.getByRole("button", { name: "Download PDF" })).toBeDisabled();
+  });
+
+  it("enables the PDF button once the itinerary is loaded and the file is ready", () => {
+    renderHeader({ pdfReady: true });
+
+    expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled();
+  });
+
   it("marks open Comments with the contrast-safe terracotta", () => {
     renderHeader({ showCommentsPanel: true });
     const comments = screen.getByRole("button", { name: "Comments" });

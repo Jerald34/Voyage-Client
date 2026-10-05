@@ -23,6 +23,8 @@ import {
 } from "../tutorial/tutorialMockData.js";
 import ShareDialog from "../itinerary/ShareDialog.jsx";
 import { useItineraryPdf } from "../../../hooks/useItineraryPdf.js";
+// By direct path: the page tests mock ui/index.js with a fixed export list.
+import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice.jsx";
 import MobileGlassSheet from "../mobile/MobileGlassSheet.jsx";
 import CompactPlaceCard from "../mobile/CompactPlaceCard.jsx";
 import useMobileViewport from "../mobile/useMobileViewport.js";
@@ -543,9 +545,9 @@ export default function ClientItineraryPage({
                         <ShareIcon width={16} height={16} />
                       </button>
                       <button
-                        className={`inline-flex items-center justify-center w-10 h-10 rounded-full border border-border/20 bg-surface-elevated text-text-primary transition-all duration-200 ${pdfLoading ? "opacity-60" : ""}`}
+                        className={`inline-flex items-center justify-center w-10 h-10 rounded-full border border-border/20 bg-surface-elevated text-text-primary transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60`}
                         onClick={handleDownloadPdf}
-                        disabled={pdfLoading || !fullItinerary}
+                        disabled={pdfLoading || !fullItinerary || !itineraryPdf.canDownload}
                         aria-label="Download PDF"
                       >
                         {pdfLoading ? (
@@ -558,6 +560,7 @@ export default function ClientItineraryPage({
                     </div>
                   ) : null}
                 </div>
+                <PdfDeliveryNotice status={itineraryPdf.status} fallbackUrl={itineraryPdf.fallbackUrl} className="mt-1.5 empty:mt-0" />
               </div>
               {selectedClient ? (
                 <div className="flex flex-col flex-1 overflow-hidden pt-2">
@@ -702,6 +705,9 @@ export default function ClientItineraryPage({
               fullItinerary={fullItinerary}
               unreadCommentCount={unreadCommentCount}
               pdfLoading={pdfLoading}
+              pdfStatus={itineraryPdf.status}
+              pdfFallbackUrl={itineraryPdf.fallbackUrl}
+              pdfReady={itineraryPdf.canDownload}
               showCommentsPanel={showCommentsPanel}
               onBackToList={() => setMobilePane("list")}
               onAddTripForClient={onAddTripForClient}
