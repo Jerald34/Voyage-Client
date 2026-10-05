@@ -116,4 +116,47 @@ describe("public share weather", () => {
     expect(screen.queryByText(/°C/)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Weather data by Open-Meteo.com" })).not.toBeInTheDocument();
   });
+
+  it("tags each timed stop with the weather during it", async () => {
+    const base = await api.fetchPublicItinerary();
+    api.fetchPublicItinerary.mockResolvedValue({
+      ...base,
+      itinerary: {
+        ...base.itinerary,
+        days: [
+          {
+            ...base.itinerary.days[0],
+            items: [
+              { id: "item-1", type: "ACTIVITY", title: "Burnham Park", startTime: "14:00", endTime: "16:00", placeSnapshot: null },
+            ],
+          },
+        ],
+      },
+    });
+    api.fetchSharedItineraryWeather.mockResolvedValue({
+      weather: {
+        provider: "open-meteo",
+        attribution: { text: "Weather data by Open-Meteo.com", url: "https://open-meteo.com/" },
+        days: [
+          {
+            dayId: "day-1",
+            dayNumber: 1,
+            date: "2026-10-10",
+            status: "OK",
+            weather: { kind: "FORECAST", condition: "THUNDERSTORM", temperatureMinC: 16, temperatureMaxC: 24, precipitationProbabilityPct: 99 },
+            hourly: {
+              firstWetHour: 14,
+              wetWindow: { condition: "THUNDERSTORM", fromHour: 14, toHour: 20 },
+              stops: [{ itemId: "item-1", outlook: "STORM", maxPrecipitationProbabilityPct: 99 }],
+            },
+          },
+        ],
+      },
+    });
+
+    render(<PublicItineraryPage />);
+
+    expect(await screen.findByText("Storms likely")).toBeInTheDocument();
+    expect(screen.getByText("16–24°C · PM storms")).toBeInTheDocument();
+  });
 });

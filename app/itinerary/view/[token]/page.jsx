@@ -716,6 +716,7 @@ export default function PublicItineraryPage() {
                         item={item}
                         isActive={activeIndex === globalIdx}
                         timeLabel={formatTimeRange(item.startTime, item.endTime)}
+                        dayWeather={shareWeather.byDayId.get(day.id) ?? null}
                         icon={itemTypeIcon(item.type)}
                         onHoverChange={(hovering) => handleHoverItem(hovering ? globalIdx : -1)}
                         actions={

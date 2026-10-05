@@ -1,6 +1,7 @@
 "use client";
 
 import AccessibilityBadges from "../../../../components/accessibility/AccessibilityBadges.jsx";
+import StopWeatherTag from "../../../../components/weather/StopWeatherTag.jsx";
 import { MapPinIcon, ChatIcon } from "../../../../components/icons/index.js";
 import { getReadablePlaceType, getSnapshotPhotoUrl } from "../../../../lib/trip-dashboard/richItinerary.js";
 
@@ -10,7 +11,7 @@ import { getReadablePlaceType, getSnapshotPhotoUrl } from "../../../../lib/trip-
  * like the dashboard's card titles), rating, then details. `actions` sit beside the title; `children` holds the
  * stop's comment form and comments.
  */
-export default function ShareStopCard({ item, isActive = false, timeLabel = "", icon = null, actions = null, onHoverChange, children }) {
+export default function ShareStopCard({ item, isActive = false, timeLabel = "", icon = null, actions = null, dayWeather = null, onHoverChange, children }) {
   const snapshot = item.placeSnapshot ?? null;
   const photoUrl = getSnapshotPhotoUrl(snapshot);
   const placeType = getReadablePlaceType(snapshot);
@@ -33,7 +34,10 @@ export default function ShareStopCard({ item, isActive = false, timeLabel = "", 
       {timeLabel || placeType ? (
         <div className="flex items-center justify-between gap-2 border-b border-border/10 pb-2">
           {timeLabel ? (
-            <span className="rounded-pill bg-secondary/10 px-2.5 py-1 text-[0.72rem] font-bold text-secondary-strong">{timeLabel}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="rounded-pill bg-secondary/10 px-2.5 py-1 text-[0.72rem] font-bold text-secondary-strong">{timeLabel}</span>
+              <StopWeatherTag entry={dayWeather} itemId={item.id} />
+            </span>
           ) : (
             <span />
           )}
