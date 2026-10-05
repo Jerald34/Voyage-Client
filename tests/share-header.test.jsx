@@ -16,6 +16,14 @@ describe("ShareHeader", () => {
     expect(screen.queryByRole("img", { name: "Voyage" })).toBeNull();
   });
 
+  it("caps a very wide agency logo so the brand name keeps its room on phones", () => {
+    render(<ShareHeader brand={{ type: "agency", name: "Island Hops Travel", logoUrl: "https://cdn.example/wide-logo.png" }} />);
+    const logo = screen.getByRole("img", { name: "Island Hops Travel" });
+
+    expect(logo.className).toContain("max-w-[40vw]");
+    expect(logo.className).toContain("sm:max-w-[200px]");
+  });
+
   it("sets the agency name like a personal name, in the dashboard's sans (Design decision 6)", () => {
     render(<ShareHeader brand={{ type: "agency", name: "Island Hops Travel", logoUrl: null }} />);
     const name = screen.getByText("Island Hops Travel");

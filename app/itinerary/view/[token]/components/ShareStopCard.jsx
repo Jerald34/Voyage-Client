@@ -21,8 +21,13 @@ export default function ShareStopCard({ item, isActive = false, timeLabel = "", 
       data-active={isActive ? "true" : "false"}
       onMouseEnter={() => onHoverChange?.(true)}
       onMouseLeave={() => onHoverChange?.(false)}
-      className={`grid gap-3 rounded-xl border p-4 transition-[border-color,background-color,box-shadow] duration-200 motion-reduce:transition-none max-[400px]:p-3 ${
-        isActive ? "border-secondary/40 bg-secondary/5 shadow-soft" : "border-border/15 bg-surface-elevated"
+      onFocus={() => onHoverChange?.(true)}
+      onBlur={(e) => {
+        // Focus moving between this card's own buttons keeps the map highlight.
+        if (!e.currentTarget.contains(e.relatedTarget)) onHoverChange?.(false);
+      }}
+      className={`grid gap-3 rounded-xl border bg-surface-elevated p-4 transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none max-[400px]:p-3 ${
+        isActive ? "border-secondary/40 shadow-soft" : "border-border/15"
       }`}
     >
       {timeLabel || placeType ? (

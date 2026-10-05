@@ -35,7 +35,7 @@ function ShareBrand({ brand }) {
     return (
       <div className="flex min-w-0 items-center gap-2">
         {brand.logoUrl ? (
-          <img src={brand.logoUrl} alt={brand.name || "Agency logo"} className="h-7 w-auto flex-shrink-0 object-contain" />
+          <img src={brand.logoUrl} alt={brand.name || "Agency logo"} className="h-7 w-auto max-w-[40vw] flex-shrink-0 object-contain sm:max-w-[200px]" />
         ) : null}
         {brand.name ? (
           <span className="truncate text-[16px] font-semibold max-sm:text-[14px]">{brand.name}</span>

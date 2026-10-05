@@ -77,6 +77,14 @@ describe("public share weather", () => {
     expect(api.fetchSharedItineraryWeather).toHaveBeenCalledWith("share-token-12");
   });
 
+  it("keeps the weather chip pill-sized: justify-self-start in the day header's grid, not the vertical-only self-start", async () => {
+    render(<PublicItineraryPage />);
+
+    const chip = (await screen.findByText("16–24°C · 20% rain")).closest("span[title]");
+    expect(chip.className).toContain("justify-self-start");
+    expect(chip.className).not.toMatch(/(^|\s)self-start(\s|$)/);
+  });
+
   it("shows no credit when every entry is past, undated or unlocated", async () => {
     api.fetchSharedItineraryWeather.mockResolvedValue({
       weather: {

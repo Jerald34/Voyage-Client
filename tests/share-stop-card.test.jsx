@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 // components/icons/index.js contains JSX in a .js file, which vitest cannot parse.
 vi.mock("../app/components/icons/index.js", () => ({ MapPinIcon: () => null, ChatIcon: () => null }));
@@ -58,5 +58,79 @@ describe("ShareStopCard", () => {
     expect(screen.getByRole("article")).toHaveAttribute("data-active", "true");
     expect(screen.getByRole("button", { name: "Comment" })).toBeInTheDocument();
     expect(screen.getByText("A comment")).toBeInTheDocument();
+  });
+
+  it("shows the active stop by border and shadow, keeping the elevated background so the time pill stays readable", () => {
+    render(<ShareStopCard item={item} isActive timeLabel="8:00 AM" />);
+    const card = screen.getByRole("article");
+
+    expect(card.className).toContain("bg-surface-elevated");
+    expect(card.className).toContain("border-secondary/40");
+    expect(card.className).toContain("shadow-soft");
+    expect(card.className).not.toMatch(/\bbg-secondary\/5\b/);
+  });
+
+  describe("keyboard parity with hover", () => {
+    function renderWithTwoButtons(onHoverChange) {
+      render(
+        <div>
+          <ShareStopCard
+            item={item}
+            onHoverChange={onHoverChange}
+            actions={
+              <>
+                <button type="button">Map pin</button>
+                <button type="button">Comment</button>
+              </>
+            }
+          />
+          <button type="button">Outside</button>
+        </div>,
+      );
+    }
+
+    it("highlights the stop on the map when focus enters the card", () => {
+      const onHoverChange = vi.fn();
+      renderWithTwoButtons(onHoverChange);
+
+      fireEvent.focus(screen.getByRole("button", { name: "Map pin" }));
+
+      expect(onHoverChange).toHaveBeenCalledWith(true);
+    });
+
+    it("keeps the highlight while focus moves between controls inside the card", () => {
+      const onHoverChange = vi.fn();
+      renderWithTwoButtons(onHoverChange);
+      const mapPin = screen.getByRole("button", { name: "Map pin" });
+      const comment = screen.getByRole("button", { name: "Comment" });
+
+      fireEvent.focus(mapPin);
+      onHoverChange.mockClear();
+      fireEvent.blur(mapPin, { relatedTarget: comment });
+
+      expect(onHoverChange).not.toHaveBeenCalled();
+    });
+
+    it("drops the highlight when focus leaves the card", () => {
+      const onHoverChange = vi.fn();
+      renderWithTwoButtons(onHoverChange);
+      const mapPin = screen.getByRole("button", { name: "Map pin" });
+
+      fireEvent.focus(mapPin);
+      fireEvent.blur(mapPin, { relatedTarget: screen.getByRole("button", { name: "Outside" }) });
+
+      expect(onHoverChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it("drops the highlight when focus leaves the page entirely (no related target)", () => {
+      const onHoverChange = vi.fn();
+      renderWithTwoButtons(onHoverChange);
+      const mapPin = screen.getByRole("button", { name: "Map pin" });
+
+      fireEvent.focus(mapPin);
+      fireEvent.blur(mapPin, { relatedTarget: null });
+
+      expect(onHoverChange).toHaveBeenLastCalledWith(false);
+    });
   });
 });
