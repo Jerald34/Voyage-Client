@@ -55,6 +55,11 @@ import ClientItineraryPage from "../app/components/trip-dashboard/pages/ClientIt
 
 const trip = { id: "t1", clientName: "Garcia", approvalStatus: "Approved", destination: "Baguio", itineraryId: "iter-1", isSaved: true };
 
+const draftOf = (id, title) => ({
+  itinerary: { id, version: 1, title, days: [{ id: `${id}-day-1`, dayNumber: 1, title: "Arrival", date: "2026-10-10", items: [] }] },
+});
+const defaultDraft = api.fetchItineraryDraft.getMockImplementation();
+
 const originalCreate = URL.createObjectURL;
 const originalRevoke = URL.revokeObjectURL;
 
@@ -71,6 +76,7 @@ describe("dashboard itinerary PDF", () => {
     cleanup();
     URL.createObjectURL = originalCreate;
     URL.revokeObjectURL = originalRevoke;
+    api.fetchItineraryDraft.mockImplementation(defaultDraft);
   });
 
   it("hands the prepared PDF to the device inside the tap", async () => {
@@ -98,6 +104,27 @@ describe("dashboard itinerary PDF", () => {
     const button = await screen.findByRole("button", { name: "Download PDF" });
     expect(button).toBeDisabled();
     expect(screen.queryByText("Generating...")).not.toBeInTheDocument();
+  });
+
+  it("never offers the previous trip's PDF while the next trip's itinerary loads", async () => {
+    const second = { ...trip, id: "t2", destination: "Lisbon", itineraryId: "iter-2" };
+    let finishSecond;
+    api.fetchItineraryDraft.mockImplementation((_agencyId, id) =>
+      id === "iter-2" ? new Promise((resolve) => { finishSecond = resolve; }) : Promise.resolve(draftOf("iter-1", "Baguio weekend")),
+    );
+    render(<ClientItineraryPage agencyTrips={[trip, second]} agencyId="agency-1" />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled(), { timeout: 5000 });
+    pdfExport.generateItineraryPdf.mockClear();
+
+    // The header now shows the second trip, but the first trip's itinerary lingers in state until the fetch lands.
+    fireEvent.click(screen.getByRole("button", { name: "Lisbon" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeDisabled());
+    expect(pdfExport.generateItineraryPdf).not.toHaveBeenCalled();
+
+    finishSecond(draftOf("iter-2", "Lisbon getaway"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled(), { timeout: 5000 });
+    fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
+    expect(delivery.deliverPdf.mock.calls[0][0].name).toBe("Lisbon getaway.pdf");
   });
 
   it("offers a tappable link when the device refuses the hand-off", async () => {

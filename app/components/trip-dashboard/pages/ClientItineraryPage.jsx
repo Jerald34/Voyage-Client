@@ -374,10 +374,14 @@ export default function ClientItineraryPage({
     }
   };
 
+  // After a trip switch the previous itinerary lingers in state until the new one
+  // lands (see the weather hook above); until then the header shows the new trip, so
+  // the PDF must not be built, or offered, from the old one.
+  const itineraryIsCurrent = isTutorialItinerary || String(fullItinerary?.id ?? "") === String(selectedItineraryId ?? "");
   // Built ahead of the tap so the hand-off stays inside the gesture (iOS share sheet).
   const pdfInput = useMemo(
     () =>
-      fullItinerary
+      fullItinerary && itineraryIsCurrent
         ? {
             title: tripTitle,
             summary: tripSummary,
@@ -387,7 +391,7 @@ export default function ClientItineraryPage({
             agencyName: "Voyage",
           }
         : null,
-    [fullItinerary, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId],
+    [fullItinerary, itineraryIsCurrent, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId],
   );
   const itineraryPdf = useItineraryPdf(pdfInput);
   // Spinner only while a build is under way: no itinerary means no build (the hook
