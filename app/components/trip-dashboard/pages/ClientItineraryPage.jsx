@@ -420,7 +420,8 @@ export default function ClientItineraryPage({
   );
   const itineraryPdf = useItineraryPdf(pdfInput);
   // Spinner only while a build is under way: no itinerary means no build (the hook
-  // sits idle), and a failed build re-enables the button (the error is logged).
+  // sits idle), and a failed build stops the spinner, leaves the button disabled and
+  // shows the notice beside it (the error is logged).
   const pdfLoading = Boolean(pdfInput) && !itineraryPdf.canDownload && itineraryPdf.status !== "error";
   const handleDownloadPdf = itineraryPdf.download;
 

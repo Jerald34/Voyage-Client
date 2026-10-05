@@ -134,7 +134,7 @@ describe("ItineraryHeader", () => {
     expect(title).toHaveAttribute("tabindex", "-1");
     expect(title.className).toContain("focus-visible:ring-2");
     // A plain `focus:` ring would also show after a mouse click.
-    expect(title.className).not.toMatch(/(^|s)focus:(ring|outline)/);
+    expect(title.className).not.toMatch(/(^|\s)focus:(ring|outline)/);
   });
 
   it("disables Approve while the request runs", () => {

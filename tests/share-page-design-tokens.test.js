@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 // jsdom replaces the global URL, so resolve from import.meta.dirname (see theme-safe-classes.test.js).
 const ROOT = resolve(import.meta.dirname, "..");
 const SHARE_DIR = join(ROOT, "app", "itinerary", "view", "[token]");
+// Shown on the share page too, but lives with the shared UI, outside the share folder.
+const SHARED_UI_FILES = [join(ROOT, "app", "components", "ui", "PdfDeliveryNotice.jsx")];
 
 function sourceFiles(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -15,7 +17,7 @@ function sourceFiles(dir) {
 }
 
 function shareLines() {
-  return sourceFiles(SHARE_DIR).flatMap((file) => {
+  return [...sourceFiles(SHARE_DIR), ...SHARED_UI_FILES].flatMap((file) => {
     const rel = relative(ROOT, file).split(sep).join("/");
     return readFileSync(file, "utf8")
       .split("\n")
@@ -26,7 +28,9 @@ function shareLines() {
 // A Tailwind class with any variants in front ("hover:", "max-sm:", "@min-[720px]:") and an
 // optional opacity ("/90") after it, so `hover:bg-secondary` and `bg-secondary/90` still
 // count as `bg-secondary`. `bg-secondary-strong` is a different token and does not.
-const hasClass = (text, name) => new RegExp(`(^|[\\s"'\`])(?:[^\\s"'\`:]+:)*${name}(?:/\\d+)?($|[\\s"'\`])`).test(text);
+// `{ opacity: false }` matches only the solid class, with no "/NN" suffix.
+const hasClass = (text, name, { opacity = true } = {}) =>
+  new RegExp(`(^|[\\s"'\`])(?:[^\\s"'\`:]+:)*${name}${opacity ? "(?:/\\d+)?" : ""}($|[\\s"'\`])`).test(text);
 
 describe("public share page colours", () => {
   it("uses theme tokens instead of raw hex or rgba colours", () => {
@@ -43,9 +47,10 @@ describe("public share page colours", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("never puts white text on the contrast-safe terracotta, which has its own on-colour", () => {
+  it("never puts white text on the solid contrast-safe terracotta, which has its own on-colour", () => {
+    // Solid fills only: a tinted chip (`bg-secondary-strong/10 text-secondary-strong`) is not a fill that needs the on-colour.
     const offenders = shareLines()
-      .filter(({ text }) => hasClass(text, "bg-secondary-strong") && (!hasClass(text, "text-on-secondary-strong") || hasClass(text, "text-white")))
+      .filter(({ text }) => hasClass(text, "bg-secondary-strong", { opacity: false }) && (!hasClass(text, "text-on-secondary-strong") || hasClass(text, "text-white")))
       .map(({ where }) => where);
     expect(offenders).toEqual([]);
   });
