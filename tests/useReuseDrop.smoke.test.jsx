@@ -290,6 +290,31 @@ describe("useReuseDrop — smoke", () => {
     expect(onError).toHaveBeenCalledWith("stale_version", expect.any(String));
   });
 
+  it("409 itinerary_locked → explains the lock without refreshing", async () => {
+    const onStaleVersion = vi.fn();
+    const onError = vi.fn();
+    fetchSpy.mockResolvedValueOnce({
+      status: 409,
+      json: async () => ({ error: "itinerary_locked" }),
+    });
+
+    const apiRef = { current: null };
+    const { container } = render(
+      <Probe apiRef={apiRef} onError={onError} onStaleVersion={onStaleVersion} onInserted={vi.fn()} />
+    );
+    setupDayLayout(container);
+
+    const surface = container.querySelector("[data-testid='surface']");
+    const dt = createMockDataTransfer({ kind: "day", sourceTripId: "trip-src", dayIds: ["d1"] });
+
+    await act(async () => {
+      fireDropAt(surface, { dataTransfer: dt, clientX: 100, clientY: 0 });
+    });
+
+    expect(onStaleVersion).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith("itinerary_locked", expect.stringMatching(/approved/i));
+  });
+
   it("410 source_deleted → calls onSourceDeleted with sourceTripId", async () => {
     const onSourceDeleted = vi.fn();
     const onError = vi.fn();

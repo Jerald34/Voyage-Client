@@ -64,10 +64,16 @@ describe("NeedsYouList", () => {
     expect(onAction).toHaveBeenCalledWith(item(2));
   });
 
-  it("says when everything is done", () => {
+  it("collapses to its header line when everything is done", () => {
     render(<NeedsYouList items={[]} onAction={() => {}} />);
+    const list = screen.getByRole("region", { name: "Needs you today" });
+    const headerRow = screen.getByRole("heading", { name: "Needs you today" }).parentElement;
 
-    expect(screen.getByText("All caught up.")).toBeInTheDocument();
+    // The status sits beside the heading, so the empty card is one line tall.
+    expect(headerRow).toContainElement(within(list).getByText("All caught up."));
+    // The greeting already says nothing needs you; the card doesn't repeat it.
+    expect(within(list).queryByText("Nothing needs your attention right now.")).not.toBeInTheDocument();
+    expect(within(list).queryByRole("heading", { name: "All caught up." })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Show all/ })).not.toBeInTheDocument();
   });
 });

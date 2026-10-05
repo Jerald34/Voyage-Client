@@ -21,7 +21,10 @@ vi.mock("../app/components/theme/ThemeToggle", () => ({ default: () => null }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ token: "share-token-12" }) }));
 vi.mock("next/dynamic", () => ({ default: () => function DynamicStub() { return null; } }));
 vi.mock("../app/itinerary/view/[token]/components/ProposalRating.jsx", () => ({ default: () => null }));
-vi.mock("../app/lib/pdfExport.js", () => ({ generateItineraryPdf: vi.fn(), titleToFilename: vi.fn((s) => s) }));
+vi.mock("../app/lib/pdfExport.js", () => ({
+  generateItineraryPdf: vi.fn(async () => ({ output: () => new Blob([]) })),
+  titleToFilename: vi.fn((s) => s),
+}));
 
 import PublicItineraryPage from "../app/itinerary/view/[token]/page.jsx";
 

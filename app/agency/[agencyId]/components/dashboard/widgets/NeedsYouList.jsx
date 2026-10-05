@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState } from "react";
-import EmptyState from "./EmptyState";
 import WorklistRow from "./WorklistRow";
 
 /** Rows shown before "Show all". */
@@ -17,9 +16,11 @@ const PRESS = "transition-[color,background-color,scale] duration-150 ease-out a
 /**
  * "Needs you today": the flattened worklist, most urgent first. Shows five
  * rows and the rest on request. `onAction(item)` runs for the row body and
- * its action button.
+ * its action button. With nothing to do it collapses to its header line: the
+ * greeting already says so, and the calendar moves up.
  * `ref` reaches the section, which can take programmatic focus: the slide-over
- * returns focus here when the row that opened it has gone.
+ * returns focus here when the row that opened it has gone, so the section stays
+ * mounted even when empty.
  */
 export default function NeedsYouList({ items, onAction, ref }) {
   const headingId = useId();
@@ -27,6 +28,7 @@ export default function NeedsYouList({ items, onAction, ref }) {
   const visible = expanded ? items : items.slice(0, NEEDS_YOU_VISIBLE);
   // Rows revealed by "Show all" stagger from the first new row, not from the top.
   const staggerFrom = expanded ? NEEDS_YOU_VISIBLE : 0;
+  const isEmpty = items.length === 0;
 
   return (
     <section
@@ -35,20 +37,25 @@ export default function NeedsYouList({ items, onAction, ref }) {
       aria-labelledby={headingId}
       className="frame-tile rounded-[20px] px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
     >
-      <div className="flex items-center justify-between gap-3 pb-1">
+      <div className={`flex items-center justify-between gap-3 ${isEmpty ? "" : "pb-1"}`}>
         <h2 id={headingId} className="font-sans text-[15px] font-semibold tracking-normal text-text-primary">
           Needs you today
         </h2>
-        {items.length > 0 ? (
+        {isEmpty ? (
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-muted">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-status-success">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            All caught up.
+          </span>
+        ) : (
           <span className="text-[12px] text-text-muted">
             {items.length} {items.length === 1 ? "item" : "items"}
           </span>
-        ) : null}
+        )}
       </div>
 
-      {items.length === 0 ? (
-        <EmptyState variant="worklist" />
-      ) : (
+      {isEmpty ? null : (
         <>
           <div role="list" className="divide-y divide-[color:var(--frame-border)]">
             {visible.map((item, index) => (

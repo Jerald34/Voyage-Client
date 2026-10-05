@@ -35,7 +35,7 @@ const ItineraryLiveMap = dynamic(() => import("./itinerary/ItineraryLiveMap.jsx"
 import ClientItineraryPage from "./pages/ClientItineraryPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import SaveItineraryModal from "./modals/SaveItineraryModal.jsx";
-import DashboardHeader from "./layout/DashboardHeader.jsx";
+import DashboardHeader, { headerVariantForTab } from "./layout/DashboardHeader.jsx";
 import DashboardSidebar from "./layout/DashboardSidebar.jsx";
 import AdminPage from "../admin/AdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
@@ -675,7 +675,7 @@ export default function HomePage({
 
           <div className="relative flex min-w-0 flex-1 flex-col">
             <DashboardHeader
-              variant={currentTab === "dashboard" ? "compact" : "full"}
+              variant={headerVariantForTab(currentTab)}
               isSidebarOpen={isSidebarOpen}
               setIsSidebarOpen={setIsSidebarOpen}
               menuButtonRef={menuButtonRef}
@@ -683,7 +683,6 @@ export default function HomePage({
               scopedStreamError={isVisible ? streamError : null}
               scopedIsStreaming={isVisible ? isStreaming : false}
               getInitials={getInitials}
-              activeTab={currentTab}
               onNewItinerary={() => {
                 setPendingClientName(null);
                 handleNewItinerary();
@@ -698,7 +697,7 @@ export default function HomePage({
               activeTripOrganizerInitials={activeTripOrganizerInitials}
               clientMenuEmptyTitle={clientMenuEmptyTitle}
               clientMenuEmptyBody={clientMenuEmptyBody}
-              safeOptions={currentTab === "itineraries" ? effectivePlanningOptions.filter(o => o.type !== "draft") : effectivePlanningOptions}
+              safeOptions={effectivePlanningOptions}
               activeOption={effectiveActiveOption}
               onPlanningOptionDelete={handleDeleteOption}
               deletingThreadId={deletingThreadId}

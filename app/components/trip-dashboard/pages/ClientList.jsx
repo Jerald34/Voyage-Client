@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EmptyState } from "../../ui/index.js";
 import { SearchIcon, TrashIcon, UsersIcon } from "../../icons/index.js";
+import { formatSavedItineraryCount } from "../../../lib/trip-dashboard/savedItineraries.js";
 
 export default function ClientList({
   clients,
@@ -32,7 +33,7 @@ export default function ClientList({
     <>
       {/* Pane header */}
       <div className="px-4 py-4 border-b border-border grid gap-2.5">
-        <h3 className="font-serif text-[1.6rem] text-text-primary m-0 tracking-tight">Client Directory</h3>
+        <h3 className="m-0 font-sans text-[15px] font-semibold tracking-normal text-text-primary">Client Directory</h3>
         <div className="relative flex items-center">
           <SearchIcon width={18} height={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-soft pointer-events-none z-[1]" />
           <input
@@ -89,7 +90,7 @@ export default function ClientList({
                     {!isConfirming && (
                       <span className={`text-[0.75rem] font-semibold opacity-70 transition-colors duration-200 ${isSelected ? "text-text-primary" : "text-text-soft"
                         }`}>
-                        {c.trips.length} saved itineraries
+                        {formatSavedItineraryCount(c.trips.length)}
                       </span>
                     )}
                   </div>

@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AccountMenu from "../app/components/trip-dashboard/layout/AccountMenu.jsx";
-import DashboardHeader from "../app/components/trip-dashboard/layout/DashboardHeader.jsx";
+import DashboardHeader, { headerVariantForTab } from "../app/components/trip-dashboard/layout/DashboardHeader.jsx";
 import DashboardSidebar, { NAV_DRAWER_ID } from "../app/components/trip-dashboard/layout/DashboardSidebar.jsx";
 import RailButton from "../app/components/trip-dashboard/layout/RailButton.jsx";
 
@@ -240,7 +240,6 @@ describe("DashboardHeader", () => {
     render(
       <DashboardHeader
         variant="full"
-        activeTab="command-center"
         isSidebarOpen={false}
         setIsSidebarOpen={() => {}}
         isClientMenuOpen={false}
@@ -258,6 +257,25 @@ describe("DashboardHeader", () => {
     // item drops its leading space, which rendered "Saveto Client".
     expect(save.childNodes).toHaveLength(1);
     expect(save.firstChild.textContent).toBe("Save to Client");
+  });
+
+  it.each([
+    ["dashboard", "compact"],
+    ["itineraries", "compact"],
+    ["command-center", "full"],
+    ["settings", "full"],
+    ["admin", "full"],
+  ])("gives the %s tab the %s bar", (tab, variant) => {
+    expect(headerVariantForTab(tab)).toBe(variant);
+  });
+
+  it("keeps only the phone menu button and the logo in the compact bar, and hides it on desktop", () => {
+    render(<DashboardHeader variant="compact" isSidebarOpen={false} setIsSidebarOpen={() => {}} liveStatus="Ready" />);
+
+    expect(screen.getByRole("banner").className).toContain("min-[900px]:hidden");
+    expect(screen.getByRole("button", { name: "Toggle menu" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Voyage" })).toBeInTheDocument();
+    expect(screen.queryByText("Ready")).toBeNull();
   });
 });
 

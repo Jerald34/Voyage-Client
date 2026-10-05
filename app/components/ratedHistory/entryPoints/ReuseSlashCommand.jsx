@@ -202,7 +202,7 @@ export default function ReuseSlashCommand({
       }
 
       // Error path
-      const reason = errorReasonFor(res.status);
+      const reason = errorReasonFor(res.status, data?.error);
       postSystemError(`Couldn't add items: ${reason}`);
 
       function postSystem(content, metadata) {
@@ -334,7 +334,7 @@ function buildSuccessRecap(selection, data, pendingComment) {
   return base;
 }
 
-function errorReasonFor(status) {
+function errorReasonFor(status, code) {
   switch (status) {
     case 400:
       return "please re-select and try again.";
@@ -343,7 +343,9 @@ function errorReasonFor(status) {
     case 404:
       return "source trip not found.";
     case 409:
-      return "itinerary changed elsewhere — please refresh.";
+      return code === "itinerary_locked"
+        ? "this itinerary is approved, reopen it to make changes."
+        : "itinerary changed elsewhere — please refresh.";
     case 410:
       return "that trip was removed.";
     default:

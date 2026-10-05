@@ -56,7 +56,7 @@ function StarButton({ index, filled, hovered, onHover, onLeave, onSelect, disabl
         color:
           filled || hovered
             ? "var(--rating-star)"
-            : "var(--text-muted, #9ca3af)",
+            : "var(--color-text-soft)",
       }}
       onMouseEnter={() => onHover(index)}
       onMouseLeave={onLeave}
@@ -100,7 +100,7 @@ function StarDisplay({ rating }) {
             color:
               n <= rating
                 ? "var(--rating-star)"
-                : "var(--text-muted, #9ca3af)",
+                : "var(--color-text-soft)",
           }}
           aria-hidden="true"
         >
@@ -210,13 +210,13 @@ export default function ProposalRating({
 
       {/* header */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-serif text-[17px] font-normal m-0 text-primary">
+        <h3 className="m-0 font-sans text-[15px] font-semibold tracking-normal text-primary">
           Rate this proposal
         </h3>
         {savedRating !== null && !editing && !errorInfo?.lock && !windowClosed && (
           <button
             type="button"
-            className="px-3 py-1 text-[12px] font-medium border border-border rounded-sm bg-transparent text-text-soft cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] hover:text-primary"
+            className="px-3 py-1 text-[12px] font-medium border border-border/20 rounded-sm bg-transparent text-text-muted cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] hover:text-primary"
             onClick={handleUpdate}
           >
             Update
@@ -243,7 +243,7 @@ export default function ProposalRating({
 
       {/* error message (locked or informational) */}
       {errorInfo && (
-        <p className="m-0 text-[13px] font-medium text-red-500">
+        <p className="m-0 text-[13px] font-medium text-status-danger">
           {errorInfo.message}
         </p>
       )}
@@ -280,7 +280,7 @@ export default function ProposalRating({
 
             {/* comment textarea */}
             <textarea
-              className="w-full box-border px-3 py-[9px] border border-border/40 rounded-sm bg-background text-[13px] leading-[1.55] text-text-primary resize-y outline-none font-[inherit] transition-all duration-150 min-h-[64px] focus:border-secondary focus:shadow-[0_0_0_3px_rgba(215,122,97,0.1)] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full box-border px-3 py-[9px] border border-border/40 rounded-sm bg-background text-[13px] leading-[1.55] text-text-primary resize-y outline-none font-[inherit] transition-all duration-150 min-h-[64px] focus:border-secondary focus:ring-[3px] focus:ring-secondary/10 disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="Anything to add? (optional)"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
@@ -293,7 +293,7 @@ export default function ProposalRating({
 
           {/* inline submit error */}
           {status === "error" && errorInfo && !errorInfo.lock && (
-            <p className="m-0 -mt-2 text-[12px] text-red-500 font-medium">
+            <p className="m-0 -mt-2 text-[12px] text-status-danger font-medium">
               {errorInfo.message}
             </p>
           )}
@@ -303,7 +303,7 @@ export default function ProposalRating({
             {savedRating !== null && (
               <button
                 type="button"
-                className="px-[14px] py-[6px] border border-border rounded-sm bg-transparent text-text-soft text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50"
+                className="px-[14px] py-[6px] border border-border/20 rounded-sm bg-transparent text-text-muted text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50"
                 onClick={() => setEditing(false)}
                 disabled={status === "submitting"}
               >
@@ -312,7 +312,7 @@ export default function ProposalRating({
             )}
             <button
               type="submit"
-              className="px-4 py-[6px] bg-secondary text-white border-none rounded-sm text-[12px] font-semibold cursor-pointer transition-all duration-150 hover:enabled:bg-[#c46a51] active:enabled:scale-97 disabled:opacity-45 disabled:cursor-not-allowed"
+              className="px-4 py-[6px] bg-secondary-strong text-on-secondary-strong border-none rounded-sm text-[12px] font-semibold cursor-pointer transition-all duration-150 hover:enabled:opacity-90 active:enabled:scale-97 disabled:opacity-45 disabled:cursor-not-allowed"
               disabled={selectedRating === 0 || status === "submitting"}
             >
               {status === "submitting" ? "Saving…" : "Submit rating"}
