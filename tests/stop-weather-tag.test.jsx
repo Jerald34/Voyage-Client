@@ -84,7 +84,7 @@ describe("StopWeatherTag", () => {
 });
 
 describe("stop weather on the itinerary", () => {
-  it("tags each stop in the desktop day view and counts the stops in the storm window", () => {
+  it("tags each stop in the desktop day view and counts the stops that may see storms", () => {
     render(
       <ItineraryDayView
         agencyId="ag-1"

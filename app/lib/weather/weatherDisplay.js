@@ -44,6 +44,8 @@ const WINDOW_RANK = { DRIZZLE: 1, RAIN: 2, HEAVY_RAIN: 2, SNOW: 3, THUNDERSTORM:
 /** A daytime chance of rain at or above this makes a no-wet-window day "light rain possible". */
 const SHOWERS_POSSIBLE_PCT = 50;
 const SHOWERS_POSSIBLE_TEXT = "Light rain possible at times";
+/** The rain line when there is no daytime chance to quote (the label already says "possible at times"). */
+const SHOWERS_NO_CHANCE_TEXT = "At times during the day";
 
 const STOP_OUTLOOKS = {
   DRY: { label: "Likely dry", condition: "CLEAR", tone: "dry" },
@@ -151,12 +153,26 @@ export function getWeatherAdvice(weather) {
   return advice;
 }
 
-/** The hourly summary is usable when it says "no wet window" or gives a window with numeric hours. */
+function isKnownWetCondition(condition) {
+  return typeof condition === "string" && Object.prototype.hasOwnProperty.call(WET_WORDS, condition);
+}
+
+/**
+ * The hourly summary is usable when it says "no wet window", or gives a window with numeric hours
+ * and a weather the client has words for. A window it cannot name falls back to the whole-day
+ * wording rather than reading as a dry day.
+ */
 function hasUsableHourly(hourly) {
   if (!hourly || typeof hourly !== "object") return false;
   const window = hourly.wetWindow;
   if (window === null) return true;
-  return Boolean(window) && typeof window === "object" && isNumber(window.fromHour) && isNumber(window.toHour);
+  return (
+    Boolean(window) &&
+    typeof window === "object" &&
+    isNumber(window.fromHour) &&
+    isNumber(window.toHour) &&
+    isKnownWetCondition(window.condition)
+  );
 }
 
 /**
@@ -215,7 +231,7 @@ function describeTimedDay(weather, hourly) {
   const otherAdvice = getWeatherAdvice(weather).filter((tip) => tip !== RAIN_ADVICE);
   const window = hourly.wetWindow;
 
-  if (!window || !WET_WORDS[window.condition]) {
+  if (!window) {
     if (showersPossible(hourly)) {
       // No sustained wet spell, but the stops are tagged "light rain possible": don't call the day dry.
       const peak = hourly.maxDaytimePrecipitationProbabilityPct;
@@ -225,7 +241,7 @@ function describeTimedDay(weather, hourly) {
         condition: "CLOUDY",
         label: SHOWERS_POSSIBLE_TEXT,
         temperature,
-        rain: capitalize(chance) || SHOWERS_POSSIBLE_TEXT,
+        rain: capitalize(chance) || SHOWERS_NO_CHANCE_TEXT,
         isTypical: false,
         isWet: true,
         compactText: [temperature, "showers possible"].filter(Boolean).join(" · "),
@@ -235,8 +251,8 @@ function describeTimedDay(weather, hourly) {
       };
     }
 
-    // The daily code can still be wet from night rain; the daytime is what travelers see.
-    const dailyIsWet = WET_CONDITIONS.has(weather.condition);
+    // The daily code can still be wet from night rain or snow; the daytime is what travelers see.
+    const dailyIsWet = WET_CONDITIONS.has(weather.condition) || weather.condition === "SNOW";
     const condition = dailyIsWet ? "CLOUDY" : weather.condition;
     const label = dailyIsWet ? "Mostly dry" : WEATHER_CONDITION_LABELS[condition] ?? WEATHER_CONDITION_LABELS.UNKNOWN;
     const sentence = [label, temperature, DRY_DAYTIME_TEXT].filter(Boolean).join(", ");

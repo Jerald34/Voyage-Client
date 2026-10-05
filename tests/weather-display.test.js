@@ -348,6 +348,19 @@ describe("describeDayWeather with hourly timing", () => {
     expect(wholeDay.label).toBe("Rain");
   });
 
+  it("falls back to the whole-day wording when the wet window is a weather the client does not know", () => {
+    const wholeDay = describeDayWeather(ok(forecast));
+    const window = (condition) => ({ condition, fromHour: 14, toHour: 20 });
+
+    // A hail window must not read as a dry day just because the client has no word for it.
+    expect(describeDayWeather(timed(forecast, { firstWetHour: 14, wetWindow: window("HAIL"), stops: [] }))).toEqual(wholeDay);
+    expect(describeDayWeather(timed(forecast, { firstWetHour: 14, wetWindow: { fromHour: 14, toHour: 20 }, stops: [] }))).toEqual(wholeDay);
+    expect(describeDayWeather(timed(forecast, { firstWetHour: 14, wetWindow: window(null), stops: [] }))).toEqual(wholeDay);
+    // Names inherited from Object are not weather either.
+    expect(describeDayWeather(timed(forecast, { firstWetHour: 14, wetWindow: window("constructor"), stops: [] }))).toEqual(wholeDay);
+    expect(describeDayWeather(timed(forecast, { firstWetHour: 14, wetWindow: window("RAIN"), stops: [] })).label).toBe("Afternoon rain, 2–8 PM");
+  });
+
   it("calls a day whose only rain falls at night mostly dry", () => {
     expect(describeDayWeather(timed(baguio, { firstWetHour: null, wetWindow: null, stops: [] }))).toEqual({
       condition: "CLOUDY",
@@ -402,7 +415,8 @@ describe("describeDayWeather with hourly timing", () => {
     expect(describeDayWeather(timed(baguio, hourly))).toMatchObject({
       condition: "CLOUDY",
       label: "Light rain possible at times",
-      rain: "Light rain possible at times",
+      // Not the label again: with no chance to quote, the line says when instead.
+      rain: "At times during the day",
       isWet: true,
       compactText: "16–24°C · showers possible",
       ariaLabel: "Forecast: Light rain possible at times, 16–24°C",
@@ -418,6 +432,19 @@ describe("describeDayWeather with hourly timing", () => {
     );
 
     expect(display).toMatchObject({ label: "Mostly dry", isWet: false, compactText: "16–24°C · dry", advice: [] });
+  });
+
+  it("calls a day whose only snow falls at night mostly dry, like night rain", () => {
+    const snowy = { ...baguio, condition: "SNOW" };
+
+    expect(describeDayWeather(timed(snowy, { firstWetHour: null, wetWindow: null, stops: [] }))).toMatchObject({
+      condition: "CLOUDY",
+      label: "Mostly dry",
+      rain: "No rain expected from 6 AM to 10 PM",
+      isWet: false,
+      compactText: "16–24°C · dry",
+      ariaLabel: "Forecast: Mostly dry, 16–24°C, no rain expected from 6 AM to 10 PM",
+    });
   });
 
   it("keeps a dry day's own condition when the daily code is dry too", () => {
