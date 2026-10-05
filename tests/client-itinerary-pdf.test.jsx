@@ -59,7 +59,9 @@ describe("dashboard itinerary PDF", () => {
     render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
 
     // Re-query inside waitFor: the header can re-render while the trip loads.
-    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled());
+    // The PDF builds on a timer after the trip loads, which can pass waitFor's 1s
+    // default when the whole suite runs in parallel.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled(), { timeout: 5000 });
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
 
     expect(delivery.deliverPdf).toHaveBeenCalledTimes(1);
@@ -74,7 +76,7 @@ describe("dashboard itinerary PDF", () => {
 
     render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
 
-    await waitFor(() => expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ message: "itinerary unavailable" })));
+    await waitFor(() => expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ message: "itinerary unavailable" })), { timeout: 5000 });
     const button = await screen.findByRole("button", { name: "Download PDF" });
     expect(button).toBeDisabled();
     expect(screen.queryByText("Generating...")).not.toBeInTheDocument();

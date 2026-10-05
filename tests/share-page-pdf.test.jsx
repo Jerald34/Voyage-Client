@@ -63,8 +63,10 @@ afterEach(() => {
 
 const PDF_BUTTON = { name: "Download itinerary as PDF" };
 
+// The PDF builds on a timer after the share loads, which can pass waitFor's 1s
+// default when the whole suite runs in parallel.
 async function readyButton() {
-  await waitFor(() => expect(screen.getByRole("button", PDF_BUTTON)).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole("button", PDF_BUTTON)).toBeEnabled(), { timeout: 5000 });
   return screen.getByRole("button", PDF_BUTTON);
 }
 
