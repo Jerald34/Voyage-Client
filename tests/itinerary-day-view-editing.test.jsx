@@ -107,4 +107,11 @@ describe("CompactPlaceCard actions", () => {
     const card = screen.getByRole("button", { name: /Museum/ });
     expect(card).not.toContainElement(screen.getByRole("button", { name: "Actions" }));
   });
+
+  it("shows the stop's own title over its place's name, like the desktop card", () => {
+    const item = { id: "i-9", title: "Lunch by the beach", placeSnapshot: { id: "s-9", name: "Great Northwest Travel Stop" } };
+    render(<CompactPlaceCard item={item} onSelect={vi.fn()} />);
+    expect(screen.getByText("Lunch by the beach")).toBeInTheDocument();
+    expect(screen.queryByText("Great Northwest Travel Stop")).toBeNull();
+  });
 });

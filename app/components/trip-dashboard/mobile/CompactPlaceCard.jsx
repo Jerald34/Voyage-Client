@@ -16,6 +16,8 @@ export default function CompactPlaceCard({
   // Space is tight on the compact card: one badge, the most important. Inline spans, as this is inside a button.
   const primaryBadge = getPrimaryAccessibilityBadge(snapshot);
   const placeName = snapshot?.name || item?.placeName || item?.title || "Untitled";
+  // The stop's own title wins, as on the desktop card, so a hand-edited title shows.
+  const stopTitle = item?.title || placeName;
   const timeLabel =
     item?.startTime && item?.endTime
       ? `${item.startTime} - ${item.endTime}`
@@ -40,14 +42,14 @@ export default function CompactPlaceCard({
         />
       ) : (
         <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center bg-[rgba(255,255,255,0.08)] text-text-soft text-lg font-semibold border border-white/10 backdrop-blur-md">
-          {placeName.slice(0, 1).toUpperCase()}
+          {stopTitle.slice(0, 1).toUpperCase()}
         </div>
       )}
 
       {/* Info */}
       <div className="flex flex-col gap-0.5 min-w-0 flex-1">
         <span className="text-[0.875rem] font-semibold text-text-primary leading-tight line-clamp-2">
-          {placeName}
+          {stopTitle}
         </span>
         <PlaceStatusBadge
           businessStatus={snapshot?.businessStatus}
