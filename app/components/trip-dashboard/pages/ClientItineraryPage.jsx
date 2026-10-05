@@ -450,6 +450,17 @@ export default function ClientItineraryPage({
     itineraryStatus: fullItinerary?.status,
   });
   const canEditItinerary = Boolean(agencyId && fullItinerary && itineraryIsCurrent && !isTutorialItinerary && !isLocked);
+  // The itinerary is read fresh, the trip list can be older: another tab may have
+  // approved the trip. The header follows the itinerary, so it offers Reopen, not Approve.
+  const itineraryApprovedElsewhere =
+    itineraryIsCurrent &&
+    !isTutorialItinerary &&
+    fullItinerary?.status === "APPROVED_INTERNAL" &&
+    Boolean(selectedTrip) &&
+    selectedTrip.approvalStatus !== "Approved";
+  useEffect(() => {
+    if (itineraryApprovedElsewhere) onTripStatusChange?.(selectedTrip.id, "Approved");
+  }, [itineraryApprovedElsewhere, onTripStatusChange, selectedTrip?.id]);
   // An edit's response replaces the itinerary, unless the user moved to another trip meanwhile.
   const handleEditedItinerary = useCallback(
     (response) => {

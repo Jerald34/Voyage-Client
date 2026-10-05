@@ -113,6 +113,29 @@ describe("hand edits on the Itineraries page", () => {
     await waitFor(() => expect(dayView.props?.editor?.canEdit).toBe(true));
   });
 
+  it("relabels the trip as approved when its itinerary was approved elsewhere", async () => {
+    statuses["iter-1"] = "APPROVED_INTERNAL";
+    const onTripStatusChange = vi.fn();
+    render(<ClientItineraryPage agencyTrips={[inReviewTrip]} agencyId="agency-1" onTripStatusChange={onTripStatusChange} />);
+
+    await waitFor(() => expect(onTripStatusChange).toHaveBeenCalledWith("t1", "Approved"));
+    expect(dayView.props.editor.canEdit).toBe(false);
+  });
+
+  it("relabels the trip as approved after an edit the lock refused", async () => {
+    const onTripStatusChange = vi.fn();
+    render(<ClientItineraryPage agencyTrips={[inReviewTrip]} agencyId="agency-1" onTripStatusChange={onTripStatusChange} />);
+    await waitFor(() => expect(dayView.props?.editor?.canEdit).toBe(true));
+
+    // Another tab approves the trip, then this tab moves a stop.
+    statuses["iter-1"] = "APPROVED_INTERNAL";
+    editApi.moveItineraryStop.mockRejectedValue(Object.assign(new Error("locked"), { status: 409, code: "ITINERARY_LOCKED" }));
+    const day = { id: "iter-1-day-1", items: [{ id: "a" }, { id: "b" }] };
+    await dayView.props.editor.moveStopBy(day, 0, 1);
+
+    await waitFor(() => expect(onTripStatusChange).toHaveBeenCalledWith("t1", "Approved"));
+  });
+
   it("keeps the trip locked and says so when reopening fails", async () => {
     editApi.reopenClientTrip.mockRejectedValue(Object.assign(new Error("boom"), { status: 500 }));
     const onTripStatusChange = vi.fn();
