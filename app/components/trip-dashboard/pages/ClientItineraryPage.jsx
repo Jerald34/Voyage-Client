@@ -26,7 +26,6 @@ import { useItineraryPdf } from "../../../hooks/useItineraryPdf.js";
 import MobileGlassSheet from "../mobile/MobileGlassSheet.jsx";
 import CompactPlaceCard from "../mobile/CompactPlaceCard.jsx";
 import useMobileViewport from "../mobile/useMobileViewport.js";
-import ReuseLauncher from "../../ratedHistory/entryPoints/ReuseLauncher.jsx";
 import CommentsPanel from "./CommentsPanel.jsx";
 import ClientList from "./ClientList.jsx";
 import ItineraryHeader from "./ItineraryHeader.jsx";
@@ -389,8 +388,9 @@ export default function ClientItineraryPage({
     [fullItinerary, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId],
   );
   const itineraryPdf = useItineraryPdf(pdfInput);
-  // Spinner while building; a failed build re-enables the button (the error is logged).
-  const pdfLoading = !itineraryPdf.canDownload && itineraryPdf.status !== "error";
+  // Spinner only while a build is under way: no itinerary means no build (the hook
+  // sits idle), and a failed build re-enables the button (the error is logged).
+  const pdfLoading = Boolean(pdfInput) && !itineraryPdf.canDownload && itineraryPdf.status !== "error";
   const handleDownloadPdf = itineraryPdf.download;
 
   const handleCipSnapChange = useCallback((snap) => {

@@ -96,4 +96,33 @@ describe("useItineraryPdf", () => {
     expect(result.current.canDownload).toBe(false);
     await waitFor(() => expect(result.current.filename).toBe("Cebu.pdf"));
   });
+
+  it("ignores a hand-off that fails after the itinerary changed, so no link to the old trip appears", async () => {
+    let settle;
+    delivery.deliverPdf.mockReturnValue(new Promise((resolve) => { settle = resolve; }));
+    const { result, rerender } = renderHook(({ input }) => useItineraryPdf(input), { initialProps: { input: INPUT } });
+    await waitFor(() => expect(result.current.canDownload).toBe(true));
+    act(() => result.current.download());
+
+    rerender({ input: { title: "Cebu", days: [] } });
+    await act(async () => settle("failed"));
+
+    expect(result.current.fallbackUrl).toBeNull();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    await waitFor(() => expect(result.current.filename).toBe("Cebu.pdf"));
+    expect(result.current.fallbackUrl).toBeNull();
+  });
+
+  it("does not make an object URL for a hand-off that fails after unmount", async () => {
+    let settle;
+    delivery.deliverPdf.mockReturnValue(new Promise((resolve) => { settle = resolve; }));
+    const { result, unmount } = renderHook(() => useItineraryPdf(INPUT));
+    await waitFor(() => expect(result.current.canDownload).toBe(true));
+    act(() => result.current.download());
+
+    unmount();
+    await act(async () => settle("failed"));
+
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
 });

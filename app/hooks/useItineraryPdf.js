@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { generateItineraryPdf, titleToFilename } from "../lib/pdfExport.js";
 import { deliverPdf } from "../lib/pdfDelivery.js";
 
@@ -10,7 +10,8 @@ import { deliverPdf } from "../lib/pdfDelivery.js";
  * needs that).
  *
  * @param {object|null} input generateItineraryPdf's argument; null until the
- *   itinerary has loaded. Memoize it: a new object rebuilds the PDF.
+ *   itinerary has loaded. Memoize it: an unmemoized object rebuilds the PDF on
+ *   every render, in an endless loop.
  * @returns {{ status: "idle"|"preparing"|"ready"|"error", canDownload: boolean,
  *   download: () => void, fallbackUrl: string|null, filename: string|null }}
  */
@@ -18,8 +19,12 @@ export function useItineraryPdf(input) {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("idle");
   const [fallbackUrl, setFallbackUrl] = useState(null);
+  // Bumped whenever the input changes or the component unmounts, so a hand-off
+  // that settles late can tell it belongs to a file nobody is looking at.
+  const generationRef = useRef(0);
 
   useEffect(() => {
+    generationRef.current += 1;
     // A rebuild must never leave the previous itinerary's file downloadable.
     setFile(null);
     setFallbackUrl(null);
@@ -30,7 +35,8 @@ export function useItineraryPdf(input) {
 
     let cancelled = false;
     setStatus("preparing");
-    // Next tick, so the page paints before jsPDF's synchronous layout work.
+    // Deferred a tick so a quick input change, or StrictMode's double effect,
+    // cancels the build before any jsPDF work starts.
     const timer = setTimeout(async () => {
       try {
         const doc = await generateItineraryPdf(input);
@@ -45,7 +51,9 @@ export function useItineraryPdf(input) {
       }
     }, 0);
 
+    // This cleanup also runs on unmount, so it covers that case too.
     return () => {
+      generationRef.current += 1;
       cancelled = true;
       clearTimeout(timer);
     };
@@ -60,8 +68,10 @@ export function useItineraryPdf(input) {
   const download = useCallback(() => {
     if (!file) return;
     setFallbackUrl(null);
+    const generation = generationRef.current;
     // No await before deliverPdf: the share sheet needs the tap's activation.
     deliverPdf(file, { title: input?.title ?? "" }).then((outcome) => {
+      if (generation !== generationRef.current) return;
       if (outcome === "failed") setFallbackUrl(URL.createObjectURL(file));
     });
   }, [file, input]);

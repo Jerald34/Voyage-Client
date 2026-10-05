@@ -67,4 +67,16 @@ describe("dashboard itinerary PDF", () => {
     expect(file.name).toBe("Baguio weekend.pdf");
     expect(options).toEqual({ title: "Baguio weekend" });
   });
+
+  it("does not claim to be generating a PDF when the itinerary failed to load", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    api.fetchItineraryDraft.mockRejectedValueOnce(new Error("itinerary unavailable"));
+
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+    await waitFor(() => expect(console.error).toHaveBeenCalledWith(expect.objectContaining({ message: "itinerary unavailable" })));
+    const button = await screen.findByRole("button", { name: "Download PDF" });
+    expect(button).toBeDisabled();
+    expect(screen.queryByText("Generating...")).not.toBeInTheDocument();
+  });
 });
