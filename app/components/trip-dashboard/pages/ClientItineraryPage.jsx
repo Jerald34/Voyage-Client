@@ -192,6 +192,31 @@ export default function ClientItineraryPage({
     return () => { cancelled = true; };
   }, [agencyId, selectedTrip, selectedItineraryId]);
 
+  // A Reuse insert returns the server's insert result, not an itinerary: it names itself
+  // `itineraryId` and carries no `version`. Show its days at once but keep this itinerary's id and
+  // version (the PDF gate, the Reuse launcher and the weather all key off them), then reload the
+  // canonical itinerary. The load effect bumps requestSequenceRef on every selection change, so a
+  // reload that lands after the selection moved on is dropped the same way a stale load is.
+  const handleReuseInserted = (updatedItinerary) => {
+    if (!updatedItinerary) return;
+    setFullItinerary((prev) => ({
+      ...prev,
+      ...updatedItinerary,
+      id: prev?.id ?? updatedItinerary.id ?? updatedItinerary.itineraryId,
+    }));
+    if (!agencyId || !selectedItineraryId) return;
+    const requestId = requestSequenceRef.current;
+    fetchItineraryDraft(agencyId, selectedItineraryId)
+      .then((res) => {
+        if (requestSequenceRef.current !== requestId) return;
+        setFullItinerary(normalizeItineraryResponse(res));
+      })
+      .catch((err) => {
+        // Keep the inserted days on screen; the next load of this trip corrects them.
+        console.error(err);
+      });
+  };
+
   // Fetch unread comment count when a trip with a valid agencyId is selected
   useEffect(() => {
     if (!agencyId || !selectedTripId) {
@@ -732,9 +757,7 @@ export default function ClientItineraryPage({
               }
               targetItineraryId={selectedItineraryId}
               currentVersion={fullItinerary?.version ?? null}
-              onReuseInserted={(updatedItinerary) => {
-                setFullItinerary(updatedItinerary);
-              }}
+              onReuseInserted={handleReuseInserted}
             />
 
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
