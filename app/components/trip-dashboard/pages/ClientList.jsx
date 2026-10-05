@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EmptyState } from "../../ui/index.js";
 import { SearchIcon, TrashIcon, UsersIcon } from "../../icons/index.js";
+import { formatSavedItineraryCount } from "../../../lib/trip-dashboard/savedItineraries.js";
 
 export default function ClientList({
   clients,
@@ -89,7 +90,7 @@ export default function ClientList({
                     {!isConfirming && (
                       <span className={`text-[0.75rem] font-semibold opacity-70 transition-colors duration-200 ${isSelected ? "text-text-primary" : "text-text-soft"
                         }`}>
-                        {c.trips.length} saved itineraries
+                        {formatSavedItineraryCount(c.trips.length)}
                       </span>
                     )}
                   </div>

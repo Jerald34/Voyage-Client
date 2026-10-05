@@ -10,6 +10,7 @@ import {
 import { getItineraryPlaceEntityId } from "../../../lib/trip-dashboard/placeEntities.js";
 import { getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
 import {
+  formatSavedItineraryCount,
   getSavedItineraryTrips,
   getStableItineraryId,
   groupSavedTripsByClient,
@@ -355,6 +356,23 @@ export default function ClientItineraryPage({
     }
   };
 
+  // Optimistic: the trip shows as approved at once and rolls back if the request fails.
+  const handleApproveTrip = async () => {
+    if (!selectedTrip) return;
+    const trip = selectedTrip;
+    const previous = trip.approvalStatus;
+    setApprovingTripId(trip.id);
+    onTripStatusChange?.(trip.id, "Approved");
+    try {
+      await approveClientTrip(agencyId, trip.id);
+    } catch (err) {
+      onTripStatusChange?.(trip.id, previous);
+      console.error(err);
+    } finally {
+      setApprovingTripId(null);
+    }
+  };
+
   // Built ahead of the tap so the hand-off stays inside the gesture (iOS share sheet).
   const pdfInput = useMemo(
     () =>
@@ -467,7 +485,7 @@ export default function ClientItineraryPage({
                           <strong className={`text-[0.9rem] font-bold tracking-tight truncate ${isSelected ? "text-secondary" : "text-text-primary"}`}>
                             {c.name}
                           </strong>
-                          <span className="text-[0.75rem] text-text-soft font-semibold">{c.trips.length} saved itineraries</span>
+                          <span className="text-[0.75rem] text-text-soft font-semibold">{formatSavedItineraryCount(c.trips.length)}</span>
                         </div>
                       </button>
                     );
@@ -690,6 +708,8 @@ export default function ClientItineraryPage({
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
               onDownloadPdf={handleDownloadPdf}
+              onApprove={selectedTrip?.approvalStatus === "In review" ? handleApproveTrip : null}
+              isApproving={Boolean(selectedTrip) && approvingTripId === selectedTrip.id}
               agencyId={agencyId}
               currentTrip={
                 selectedTrip
@@ -731,34 +751,6 @@ export default function ClientItineraryPage({
                       )}
                     </button>
                   ))}
-                </div>
-              )}
-
-              {/* Approve button — shown when selected trip is In review */}
-              {selectedTrip?.approvalStatus === "In review" && (
-                <div className="flex items-center gap-3 px-6 py-2 border-b border-border/10 flex-shrink-0">
-                  <span className="text-[0.75rem] font-bold text-text-soft uppercase tracking-wide">Status: In review</span>
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-pill bg-secondary text-white text-xs font-bold h-8 px-3 hover:-translate-y-px transition-transform disabled:opacity-50"
-                    disabled={approvingTripId === selectedTrip.id}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setApprovingTripId(selectedTrip.id);
-                      const previous = selectedTrip.approvalStatus;
-                      onTripStatusChange?.(selectedTrip.id, "Approved");
-                      try {
-                        await approveClientTrip(agencyId, selectedTrip.id);
-                      } catch (err) {
-                        onTripStatusChange?.(selectedTrip.id, previous);
-                        console.error(err);
-                      } finally {
-                        setApprovingTripId(null);
-                      }
-                    }}
-                  >
-                    {approvingTripId === selectedTrip.id ? "Approving..." : "Approve"}
-                  </button>
                 </div>
               )}
 

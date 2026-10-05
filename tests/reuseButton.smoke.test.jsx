@@ -101,4 +101,18 @@ describe("ReuseButton", () => {
 
     expect(screen.getByLabelText(/rated history picker/i)).toBeInTheDocument();
   });
+
+  it("lets the itinerary header's width decide whether the label shows", () => {
+    render(<ReuseButton onClick={vi.fn()} count={4} mode="clientItinerary" />);
+    const label = screen.getByText("Reuse");
+
+    expect(label.className).toContain("hidden");
+    expect(label.className).toContain("@min-[720px]:inline");
+  });
+
+  it("keeps the viewport rule in the editor", () => {
+    render(<ReuseButton onClick={vi.fn()} count={4} mode="editor" />);
+
+    expect(screen.getByText("Reuse").className).toContain("sm:inline");
+  });
 });

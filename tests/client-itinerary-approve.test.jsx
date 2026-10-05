@@ -154,4 +154,14 @@ describe("Approve button on ClientItineraryPage", () => {
     await waitFor(() => expect(onTripStatusChange).toHaveBeenCalledWith("t1", "Approved"));
     expect(approveClientTripMock).toHaveBeenCalledWith("agency-1", "t1");
   });
+
+  it("puts Approve in the header's actions instead of a separate status row", async () => {
+    const { container } = render(
+      <ClientItineraryPage agencyTrips={[inReviewTrip]} agencyId="agency-1" onTripStatusChange={vi.fn()} />
+    );
+
+    const approve = await screen.findByRole("button", { name: /^approve$/i });
+    expect(container.querySelector('[data-tour-target="cip-actions"]')).toContainElement(approve);
+    expect(screen.queryByText("Status: In review")).toBeNull();
+  });
 });
