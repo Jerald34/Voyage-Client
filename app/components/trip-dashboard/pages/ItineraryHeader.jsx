@@ -1,18 +1,36 @@
-// ItineraryHeader — workspace header with client title, status badge, and action buttons. Extracted from ClientItineraryPage.jsx.
+// ItineraryHeader — the workspace's page header: client name, a status and count line, and the trip's actions. Extracted from ClientItineraryPage.jsx.
 
-import { Spinner, StatusBadge } from "../../ui/index.js";
+import { useEffect, useRef } from "react";
+import { Spinner } from "../../ui/index.js";
 import {
   ArrowLeftIcon,
   PlusIcon,
   ChatIcon,
   ShareIcon,
   DownloadIcon,
-  BookmarkIcon,
-  CheckIcon,
 } from "../../icons/index.js";
-import { getSavedStatusLabel } from "../../../lib/trip-dashboard/savedItineraries.js";
+import { formatSavedItineraryCount, getSavedStatusLabel } from "../../../lib/trip-dashboard/savedItineraries.js";
 import { getSavedStatusClass } from "../../../lib/formatters.js";
 import ReuseLauncher from "../../ratedHistory/entryPoints/ReuseLauncher.jsx";
+// By direct path: the page tests mock ui/index.js with a fixed export list.
+import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice.jsx";
+
+// The header is a size container (`@container`). Under 720px of its own width the
+// actions drop their visible label but keep the icon, tooltip and aria-label, so the
+// row never wraps or cuts the client's name off. ReuseButton follows the same rule
+// in its "clientItinerary" mode. Padding and gaps stay tight (px-3, gap-1.5) so that,
+// at 1280px with Reuse and Approve showing, the name column still fits the status
+// line on one row.
+const ACTION_BUTTON =
+  "inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 @min-[720px]:px-3 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
+const ACTION_IDLE = "bg-surface-elevated text-text-primary border-border/20 hover:bg-surface hover:border-border/40";
+const ACTION_LABEL = "hidden @min-[720px]:inline";
+
+// In review waits on the agent, approved is done, anything else is neutral.
+function statusDotClass(label) {
+  if (/review/i.test(label)) return "bg-status-warning";
+  return getSavedStatusClass(label) === "approved" ? "bg-status-success" : "bg-text-soft";
+}
 
 export default function ItineraryHeader({
   selectedClient,
@@ -21,12 +39,24 @@ export default function ItineraryHeader({
   fullItinerary,
   unreadCommentCount,
   pdfLoading,
+  // The PDF hook's state. The defaults suit a caller with no PDF hook: nothing to
+  // announce, and the button follows the itinerary alone.
+  pdfStatus = "idle",
+  pdfFallbackUrl = null,
+  pdfReady = true,
   showCommentsPanel,
   onBackToList,
   onAddTripForClient,
   onToggleComments,
   onShare,
   onDownloadPdf,
+  // Approve shows only when the page passes a handler (the trip is in review).
+  onApprove = null,
+  isApproving = false,
+  // Reopen shows only when the page passes a handler (the trip is approved).
+  onReopen = null,
+  // Approved trips are locked, so the page hides Reuse for them.
+  canReuse = true,
   // Reuse launcher props (optional for Stage 6A)
   agencyId = null,
   currentTrip = null,
@@ -34,9 +64,31 @@ export default function ItineraryHeader({
   currentVersion = null,
   onReuseInserted = null,
 }) {
+  const nameRef = useRef(null);
+  // Approving hides the button at once (the trip leaves review), which would drop
+  // keyboard focus to the page. The name is the nearest stable place to leave it.
+  const handleApprove = () => {
+    nameRef.current?.focus();
+    onApprove();
+  };
+  // Reopen asks first, in a dialog. Once the trip unlocks, the button is gone and the
+  // dialog hands focus back to it, so focus falls to the page; leave it on the name
+  // too. Focus the user moved somewhere else stays where it is.
+  const canReopen = Boolean(onReopen);
+  const couldReopen = useRef(canReopen);
+  useEffect(() => {
+    const reopenWentAway = couldReopen.current && !canReopen;
+    couldReopen.current = canReopen;
+    const focusIsLost = !document.activeElement || document.activeElement === document.body;
+    if (reopenWentAway && focusIsLost) nameRef.current?.focus();
+  }, [canReopen]);
+  const rawStatus = selectedTrip ? getSavedStatusLabel(selectedTrip) : "";
+  // Tutorial data stores lowercase labels ("client approved").
+  const statusLabel = rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "";
+
   return (
     <>
-      {/* Mobile back button */}
+      {/* Back to the client list (single-column layout below lg) */}
       <button
         type="button"
         onClick={onBackToList}
@@ -45,97 +97,125 @@ export default function ItineraryHeader({
         <ArrowLeftIcon width={16} height={16} />
         All clients
       </button>
-      {/* Workspace header */}
-      <header className="px-4 sm:px-6 py-3 sm:py-4 bg-transparent flex justify-between items-start sm:items-center gap-3 border-b border-border/10 flex-shrink-0">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0">
-          <h2 className="font-serif text-[1.4rem] sm:text-[1.8rem] m-0 leading-tight truncate">{selectedClient.name}</h2>
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.75rem] font-extrabold uppercase tracking-[0.05em]">
-            <BookmarkIcon width={12} height={12} strokeWidth={3} />
-            Saved itineraries
-          </div>
-          <span className="text-[0.8rem] sm:text-[0.9rem] text-text-soft font-semibold">
-            {selectedClient.trips.length} saved
-          </span>
-        </div>
-        {selectedClient && onAddTripForClient && (
-          <button
-            type="button"
-            onClick={() => onAddTripForClient(selectedClient.name)}
-            className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-lg border border-secondary/30 bg-secondary/10 text-secondary text-[0.85rem] font-bold cursor-pointer transition-all duration-200 hover:bg-secondary/20 hover:border-secondary/50"
-            title={`Start a new trip for ${selectedClient.name}`}
-          >
-            <PlusIcon width={14} height={14} strokeWidth={2.5} aria-hidden="true" />
-            <span className="truncate max-w-[12ch]">New trip for {selectedClient.name}</span>
-          </button>
-        )}
-        <div data-tour-target="cip-actions" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          {selectedTrip && (
-            <StatusBadge variant={getSavedStatusClass(getSavedStatusLabel(selectedTrip)) === "approved" ? "approved" : "default"} size="sm">
-              <CheckIcon width={10} height={10} strokeWidth={3} />
-              {getSavedStatusLabel(selectedTrip)}
-            </StatusBadge>
-          )}
-          {selectedItineraryId && (
-            <>
-              {/* Reuse from rated trips — optional launcher for Stage 6A */}
-              {agencyId && currentTrip && targetItineraryId && currentVersion !== null && (
-                <ReuseLauncher
-                  agencyId={agencyId}
-                  currentTrip={currentTrip}
-                  targetTripId={currentTrip.tripId}
-                  targetItineraryId={targetItineraryId}
-                  currentVersion={currentVersion}
-                  mode="clientItinerary"
-                  onInserted={onReuseInserted || (() => {})}
-                />
-              )}
-
-              {/* Comments — icon-only on mobile, icon+label on sm+ */}
-              <button
-                className={`inline-flex items-center justify-center gap-2 min-w-[40px] min-h-[40px] px-2 sm:px-3.5 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-all duration-200 ${showCommentsPanel
-                  ? "bg-secondary text-white border-secondary shadow-soft"
-                  : "bg-surface-elevated text-text-primary border-border/20 hover:bg-surface hover:border-border/40"
-                  }`}
-                onClick={onToggleComments}
-                title="View client comments"
-                aria-label="Comments"
-              >
-                <ChatIcon width={14} height={14} aria-hidden="true" />
-                <span className="hidden sm:inline">Comments</span>
-                {unreadCommentCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-pill bg-[#dc2626] text-white text-[0.65rem] font-extrabold leading-none flex-shrink-0">
-                    {unreadCommentCount > 99 ? "99+" : unreadCommentCount}
+      <header className="@container flex-shrink-0 border-b border-border/10 px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h2
+              ref={nameRef}
+              tabIndex={-1}
+              className="m-0 truncate rounded-sm font-serif text-[28px] leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+              title={selectedClient.name}
+            >
+              {selectedClient.name}
+            </h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-text-muted">
+              {statusLabel ? (
+                <>
+                  <span role="status" className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
+                    <span aria-hidden="true" className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${statusDotClass(statusLabel)}`} />
+                    {statusLabel}
                   </span>
-                )}
-              </button>
+                  <span aria-hidden="true">·</span>
+                </>
+              ) : null}
+              <span>{formatSavedItineraryCount(selectedClient.trips.length)}</span>
+              {onAddTripForClient ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <button
+                    type="button"
+                    onClick={() => onAddTripForClient(selectedClient.name)}
+                    aria-label={`New trip for ${selectedClient.name}`}
+                    title={`Start a new trip for ${selectedClient.name}`}
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline"
+                  >
+                    <PlusIcon width={12} height={12} strokeWidth={2.5} aria-hidden="true" />
+                    New trip
+                  </button>
+                </>
+              ) : null}
+            </div>
+            <PdfDeliveryNotice status={pdfStatus} fallbackUrl={pdfFallbackUrl} className="mt-1 empty:mt-0" />
+          </div>
 
-              {/* Share */}
-              <button
-                className="inline-flex items-center justify-center gap-2 min-w-[40px] min-h-[40px] px-2 sm:px-3.5 rounded-lg border border-border/20 bg-surface-elevated text-text-primary text-[0.85rem] font-bold cursor-pointer transition-all duration-200 hover:bg-surface hover:border-border/40"
-                onClick={onShare}
-                aria-label="Share"
-              >
-                <ShareIcon width={14} height={14} aria-hidden="true" />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-
-              {/* PDF */}
-              <button
-                className={`inline-flex items-center justify-center gap-2 min-w-[40px] min-h-[40px] px-2 sm:px-3.5 rounded-lg border border-border/20 bg-surface-elevated text-text-primary text-[0.85rem] font-bold cursor-pointer transition-all duration-200 hover:bg-surface hover:border-border/40 ${pdfLoading ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
-                onClick={onDownloadPdf}
-                disabled={pdfLoading || !fullItinerary}
-                title="Download itinerary as PDF"
-                aria-label="Download PDF"
-              >
-                {pdfLoading ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <DownloadIcon width={14} height={14} aria-hidden="true" />
+          <div data-tour-target="cip-actions" className="flex flex-shrink-0 items-center gap-1.5">
+            {selectedItineraryId && (
+              <>
+                {/* Reuse from rated trips — optional launcher for Stage 6A */}
+                {canReuse && agencyId && currentTrip && targetItineraryId && currentVersion !== null && (
+                  <ReuseLauncher
+                    agencyId={agencyId}
+                    currentTrip={currentTrip}
+                    targetTripId={currentTrip.tripId}
+                    targetItineraryId={targetItineraryId}
+                    currentVersion={currentVersion}
+                    mode="clientItinerary"
+                    onInserted={onReuseInserted || (() => {})}
+                  />
                 )}
-                <span className="hidden sm:inline">{pdfLoading ? "Generating..." : "PDF"}</span>
+
+                <button
+                  type="button"
+                  className={`${ACTION_BUTTON} ${showCommentsPanel ? "bg-secondary-strong text-on-secondary-strong border-secondary-strong" : ACTION_IDLE}`}
+                  onClick={onToggleComments}
+                  title="View client comments"
+                  aria-label="Comments"
+                  aria-pressed={showCommentsPanel}
+                >
+                  <ChatIcon width={14} height={14} aria-hidden="true" />
+                  <span className={ACTION_LABEL}>Comments</span>
+                  {unreadCommentCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-pill bg-[#dc2626] text-white text-[0.65rem] font-extrabold leading-none flex-shrink-0">
+                      {unreadCommentCount > 99 ? "99+" : unreadCommentCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className={`${ACTION_BUTTON} ${ACTION_IDLE}`}
+                  onClick={onShare}
+                  title="Share itinerary"
+                  aria-label="Share"
+                >
+                  <ShareIcon width={14} height={14} aria-hidden="true" />
+                  <span className={ACTION_LABEL}>Share</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`${ACTION_BUTTON} ${ACTION_IDLE} disabled:cursor-not-allowed disabled:opacity-60 ${pdfLoading ? "pointer-events-none" : ""}`}
+                  onClick={onDownloadPdf}
+                  disabled={pdfLoading || !fullItinerary || !pdfReady}
+                  title="Download itinerary as PDF"
+                  aria-label="Download PDF"
+                >
+                  {pdfLoading ? <Spinner size="sm" /> : <DownloadIcon width={14} height={14} aria-hidden="true" />}
+                  <span className={ACTION_LABEL}>{pdfLoading ? "Generating..." : "PDF"}</span>
+                </button>
+              </>
+            )}
+
+            {onApprove ? (
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={isApproving}
+                className="inline-flex min-h-[40px] cursor-pointer items-center justify-center rounded-lg bg-secondary-strong px-4 text-[0.85rem] font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+              >
+                {isApproving ? "Approving…" : "Approve"}
               </button>
-            </>
-          )}
+            ) : null}
+            {onReopen ? (
+              <button
+                type="button"
+                onClick={onReopen}
+                className="inline-flex min-h-[40px] cursor-pointer items-center justify-center rounded-lg border border-border/30 bg-surface-elevated px-4 text-[0.85rem] font-semibold text-text-primary transition-[background-color,border-color,scale] duration-150 ease-out hover:border-border/50 hover:bg-surface active:scale-[0.97] motion-reduce:transition-none"
+              >
+                Reopen for edits
+              </button>
+            ) : null}
+          </div>
         </div>
       </header>
     </>

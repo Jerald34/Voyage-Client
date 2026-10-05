@@ -35,6 +35,8 @@ export default function Modal({
   variant = "center",
   children,
   footer,
+  // A form names the field to start on; otherwise focus goes to the first control.
+  initialFocusRef = null,
 }) {
   const panelRef = useRef(null);
   const previousFocus = useRef(null);
@@ -84,9 +86,9 @@ export default function Modal({
     // Move focus into panel
     const panel = panelRef.current;
     if (panel) {
-      const first = panel.querySelector(
-        'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])'
-      );
+      const first =
+        initialFocusRef?.current ??
+        panel.querySelector('a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])');
       (first ?? panel).focus();
     }
 
@@ -94,7 +96,7 @@ export default function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocus.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open, onClose, initialFocusRef]);
 
   // Prevent body scroll while open
   useEffect(() => {
@@ -123,7 +125,9 @@ export default function Modal({
           role="dialog"
           aria-modal="true"
           tabIndex={-1}
-          className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] flex flex-col bg-surface-elevated border-l border-border/20 shadow-strong overflow-hidden [animation:slide-in-from-right_0.25s_ease_both] focus:outline-none"
+          // Below sm the panel is a bottom sheet, so a form opens over the phone's map
+          // instead of covering the whole screen; from sm up it slides in from the right.
+          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-[20px] border-t border-border/20 bg-surface-elevated shadow-strong focus:outline-none sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:max-h-none sm:w-[480px] sm:rounded-none sm:border-t-0 sm:border-l sm:[animation:slide-in-from-right_0.25s_ease_both]"
         >
           {/* Header */}
           {(title || onClose) && (

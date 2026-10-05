@@ -179,7 +179,7 @@ export default function ShareDialog({
           <div className="h-px bg-border/12 my-5 shrink-0" />
 
           <section>
-            <h3 className="m-0 mb-3.5 text-[13px] font-bold tracking-[0.01em] text-text-primary">
+            <h3 className="m-0 mb-3.5 font-sans text-[13px] font-semibold tracking-normal text-text-primary">
               Existing Share Links
             </h3>
 

@@ -21,7 +21,10 @@ vi.mock("../app/components/theme/ThemeToggle", () => ({ default: () => null }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ token: "share-token-12" }) }));
 vi.mock("next/dynamic", () => ({ default: () => function DynamicStub() { return null; } }));
 vi.mock("../app/itinerary/view/[token]/components/ProposalRating.jsx", () => ({ default: () => null }));
-vi.mock("../app/lib/pdfExport.js", () => ({ generateItineraryPdf: vi.fn(), titleToFilename: vi.fn((s) => s) }));
+vi.mock("../app/lib/pdfExport.js", () => ({
+  generateItineraryPdf: vi.fn(async () => ({ output: () => new Blob([]) })),
+  titleToFilename: vi.fn((s) => s),
+}));
 
 import PublicItineraryPage from "../app/itinerary/view/[token]/page.jsx";
 
@@ -72,6 +75,14 @@ describe("public share weather", () => {
     expect(await screen.findByText("16–24°C · 20% rain")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Weather data by Open-Meteo.com" })).toBeInTheDocument();
     expect(api.fetchSharedItineraryWeather).toHaveBeenCalledWith("share-token-12");
+  });
+
+  it("keeps the weather chip pill-sized: justify-self-start in the day header's grid, not the vertical-only self-start", async () => {
+    render(<PublicItineraryPage />);
+
+    const chip = (await screen.findByText("16–24°C · 20% rain")).closest("span[title]");
+    expect(chip.className).toContain("justify-self-start");
+    expect(chip.className).not.toMatch(/(^|\s)self-start(\s|$)/);
   });
 
   it("shows no credit when every entry is past, undated or unlocated", async () => {

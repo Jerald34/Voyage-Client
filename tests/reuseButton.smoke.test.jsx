@@ -101,4 +101,41 @@ describe("ReuseButton", () => {
 
     expect(screen.getByLabelText(/rated history picker/i)).toBeInTheDocument();
   });
+
+  it("lets the itinerary header's width decide whether the label shows", () => {
+    render(<ReuseButton onClick={vi.fn()} count={4} mode="clientItinerary" />);
+    const label = screen.getByText("Reuse");
+
+    expect(label.className).toContain("hidden");
+    expect(label.className).toContain("@min-[720px]:inline");
+  });
+
+  it("presses like its neighbours in the itinerary header", () => {
+    render(<ReuseButton onClick={vi.fn()} count={4} mode="clientItinerary" />);
+    const { className } = screen.getByRole("button", { name: /rated history picker/i });
+
+    expect(className).toContain("gap-1.5");
+    expect(className).toContain("transition-[background-color,border-color,color,scale]");
+    expect(className).toContain("duration-150");
+    expect(className).toContain("ease-out");
+    expect(className).toContain("active:scale-[0.97]");
+    expect(className).toContain("motion-reduce:transition-none");
+    expect(className).not.toContain("transition-all");
+  });
+
+  it("leaves the editor's button as it was", () => {
+    render(<ReuseButton onClick={vi.fn()} count={4} mode="editor" />);
+    const { className } = screen.getByRole("button", { name: /rated history picker/i });
+
+    expect(className).toContain("gap-2");
+    expect(className).toContain("transition-all");
+    expect(className).toContain("duration-200");
+    expect(className).not.toContain("active:scale");
+  });
+
+  it("keeps the viewport rule in the editor", () => {
+    render(<ReuseButton onClick={vi.fn()} count={4} mode="editor" />);
+
+    expect(screen.getByText("Reuse").className).toContain("sm:inline");
+  });
 });

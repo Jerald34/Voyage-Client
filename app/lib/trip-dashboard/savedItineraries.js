@@ -31,6 +31,11 @@ export function getStableItineraryId(trip) {
   return normalizeText(id);
 }
 
+/** "1 saved itinerary", "2 saved itineraries". */
+export function formatSavedItineraryCount(count) {
+  return `${count} saved ${count === 1 ? "itinerary" : "itineraries"}`;
+}
+
 export function getSavedStatusLabel(trip) {
   const approvalStatus = normalizeText(trip?.approvalStatus);
   if (approvalStatus && isAcceptedSavedStatus(approvalStatus)) return approvalStatus;

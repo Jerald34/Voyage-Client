@@ -46,7 +46,7 @@ vi.mock("../app/components/trip-dashboard/pages/ItineraryDayView.jsx", () => ({
 }));
 vi.mock("../app/components/trip-dashboard/mobile/MobileGlassSheet.jsx", () => ({ default: ({ children }) => <div>{children}</div> }));
 vi.mock("../app/components/trip-dashboard/mobile/CompactPlaceCard.jsx", () => ({ default: () => null }));
-vi.mock("../app/lib/pdfExport.js", () => ({ generateItineraryPdf: vi.fn(), titleToFilename: vi.fn((s) => s) }));
+vi.mock("../app/lib/pdfExport.js", () => ({ generateItineraryPdf: vi.fn(async () => ({ output: () => new Blob([]) })), titleToFilename: vi.fn((s) => s) }));
 vi.mock("../app/components/theme/ThemeProvider.jsx", () => ({ useTheme: () => ({ theme: "light" }) }));
 vi.mock("../app/lib/formatters.js", () => ({
   formatDayCardDate: () => "Oct 10, 2026 - Oct 11, 2026",

@@ -272,6 +272,28 @@ describe("ReuseSlashCommand — autocomplete edge cases", () => {
     expect(message.metadata?.kind).toBe("reuse_error");
   });
 
+  it("6b. approved itinerary (409 itinerary_locked) → says to reopen it", async () => {
+    const onSystemVisibleMessage = vi.fn();
+    global.fetch = vi.fn().mockResolvedValue({ status: 409, json: async () => ({ error: "itinerary_locked" }) });
+
+    renderSlash({
+      composerInput: "/reuse",
+      onSystemVisibleMessage,
+      targetItinerary: { id: "itin-1", days: [] },
+    });
+
+    fireEvent.click(screen.getByTestId("reuse-slash-option-reuse"));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-picker-confirm-no-note"));
+    });
+
+    await waitFor(() => {
+      expect(onSystemVisibleMessage).toHaveBeenCalledTimes(1);
+    });
+    expect(onSystemVisibleMessage.mock.calls[0][0].content).toMatch(/approved.*reopen/i);
+  });
+
   it("7. pickerOpen flips to false after successful insertion (picker unmounts)", async () => {
     const onSystemVisibleMessage = vi.fn();
     global.fetch = vi.fn().mockResolvedValue({

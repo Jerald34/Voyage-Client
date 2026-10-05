@@ -419,3 +419,22 @@ export function SortIcon({ active, direction, ...props }) {
     </svg>
   );
 }
+
+export function MoreIcon(props) {
+  return (
+    <svg {...iconProps(props)}>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </svg>
+  );
+}
+
+export function PencilIcon(props) {
+  return (
+    <svg {...iconProps(props)}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+}

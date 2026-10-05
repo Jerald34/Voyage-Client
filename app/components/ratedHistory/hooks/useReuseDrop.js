@@ -484,6 +484,15 @@ export function useReuseDrop({
           return;
         }
         case 409: {
+          // Approved: reloading won't help until someone reopens the trip.
+          if (data?.error === "itinerary_locked" || data?.error?.code === "itinerary_locked") {
+            emitToast(
+              "This itinerary is approved. Reopen it to add stops.",
+              "itinerary_locked",
+              cbError
+            );
+            return;
+          }
           emitToast(
             "Itinerary changed elsewhere — refreshing.",
             "stale_version",

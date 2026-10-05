@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useTheme } from "../../theme/ThemeProvider.jsx";
 import { getPlaceStatusLabel, mergePlaceStatus, normalizeBusinessStatus } from "../../../lib/trip-dashboard/placeStatus.js";
 import {
   APIProvider,
@@ -25,6 +26,15 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "a1950eb4eae71842fa9590f9";
 
 const EMPTY_MAP_CENTER = { lat: 0, lng: 0 };
+
+/**
+ * One cloud map ID for both themes; only the colour scheme changes. Dark mode
+ * used to swap in a placeholder map ID, which dropped the cloud styling.
+ */
+export function getMapAppearance(theme) {
+  const isDark = theme === "dark";
+  return { isDark, mapId: MAP_ID, colorScheme: isDark ? "DARK" : "LIGHT" };
+}
 
 export function normalizeAgencyFallbackLocation(agencyLocation) {
   if (!agencyLocation) return null;
@@ -372,7 +382,7 @@ export default function ItineraryLiveMap({
   selectedPlaceId = "",
   selectedPlace = null,
   onSelectPlace,
-  theme = "light",
+  theme: themeProp,
   sidebarWidth = 520,
   mapBottomPadding = 0,
 }) {
@@ -380,7 +390,9 @@ export default function ItineraryLiveMap({
   const [agencyFallbackPoint, setAgencyFallbackPoint] = useState(null);
   const [clientRoutePolyline, setClientRoutePolyline] = useState([]);
   const [clientRouteStatus, setClientRouteStatus] = useState("idle");
-  const isDark = theme === "dark";
+  // Pages that pass no theme (the public share link) follow the app theme.
+  const { theme: appTheme } = useTheme();
+  const { isDark, mapId, colorScheme } = getMapAppearance(themeProp ?? appTheme);
 
   const points = useMemo(() => items.map((item, index) => mapItemToPoint(item, index)).filter(Boolean), [items]);
   // Current authenticated status per snapshot, used to reconcile historical live
@@ -465,8 +477,8 @@ export default function ItineraryLiveMap({
         <GoogleMap
           defaultCenter={center}
           defaultZoom={center.lat !== 0 ? 13 : 2}
-          mapId={isDark ? "dark_map_id_placeholder" : MAP_ID}
-          colorScheme={isDark ? "DARK" : "LIGHT"}
+          mapId={mapId}
+          colorScheme={colorScheme}
           style={{ width: "100%", height: "100%" }}
           disableDefaultUI={false}
           gestureHandling="greedy"

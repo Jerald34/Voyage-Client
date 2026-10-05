@@ -134,7 +134,7 @@ export default function FunnelStageDetailPanel({ stage, agencyId, onClose }) {
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary/10 border border-secondary/20 text-secondary text-[0.7rem] font-extrabold uppercase tracking-[0.05em] mb-1">FUNNEL STAGE</span>
             <h2
               id={headingId}
-              className="text-base font-extrabold text-text-primary"
+              className="font-sans text-base font-semibold tracking-normal text-text-primary"
             >
               {label}
             </h2>
