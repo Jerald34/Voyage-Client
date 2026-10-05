@@ -2,7 +2,7 @@
 
 import { SortIcon } from "../icons/index.js";
 import { AccountTypePill, AccountStatusPill, SuperAdminChip } from "./AccountPills.jsx";
-import { MEMBERSHIP_ROLE_LABELS, formatDate } from "./accountLabels.js";
+import { MEMBERSHIP_ROLE_LABELS, displayName, formatDate } from "./accountLabels.js";
 
 const roleLabel = (r) => MEMBERSHIP_ROLE_LABELS[r] || r;
 
@@ -23,12 +23,15 @@ function AccountCard({ a, selected, onRowClick }) {
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="min-w-0 break-words font-semibold text-text-primary">{a.displayName}</span>
-        <span className="flex-none">
-          <AccountStatusPill status={a.status} />
-        </span>
+        <span className="min-w-0 break-words font-semibold text-text-primary">{displayName(a)}</span>
+        {/* Status is shown by exception: an active account says nothing. */}
+        {a.status === "DISABLED" && (
+          <span className="flex-none">
+            <AccountStatusPill status={a.status} />
+          </span>
+        )}
       </div>
-      <span className="break-all text-sm text-text-muted">{a.email}</span>
+      {a.displayName && <span className="break-all text-sm text-text-muted">{a.email}</span>}
       <div className="flex flex-wrap items-center gap-1.5">
         <AccountTypePill type={a.accountType} />
         {a.role === "SUPER_ADMIN" && <SuperAdminChip />}
@@ -101,19 +104,20 @@ function AgencyCell({ memberships }) {
 export default function AccountTable({ accounts, sorted, sortField, sortDir, onSort, selectedAccountId, onRowClick }) {
   return (
     // The detail pane takes a fixed 440px from the list, so the table / card switch follows the
-    // list pane's own width (a container query), not the viewport: five columns do not fit a
-    // list narrower than 40rem without clipping Joined.
+    // list pane's own width (a container query), not the viewport. Four columns (Name, Type,
+    // Agency, Joined) fit from 34rem (544px), which leaves room for a Windows scrollbar on a
+    // 1280px laptop, where the list is about 635-652px. Below that: cards, which cannot sort.
     <div className="@container">
       {/* Cards (narrow list, and every phone) */}
-      <div className="grid gap-3 @lg:grid-cols-2 @[40rem]:hidden">
+      <div className="grid gap-3 @lg:grid-cols-2 @[34rem]:hidden">
         {sorted.map((a) => (
           <AccountCard key={a.id} a={a} selected={selectedAccountId === a.id} onRowClick={onRowClick} />
         ))}
-        <p aria-live="polite" className="px-1 pt-1 text-xs text-text-muted @lg:col-span-2">Showing {sorted.length} of {accounts.length} accounts</p>
+        <p className="px-1 pt-1 text-xs text-text-muted @lg:col-span-2">Showing {sorted.length} of {accounts.length} accounts</p>
       </div>
 
-      {/* Table (list pane at least 40rem wide) */}
-      <div className="hidden overflow-hidden rounded-md border border-border/12 bg-surface-elevated shadow-soft @[40rem]:block">
+      {/* Table (list pane at least 34rem wide) */}
+      <div className="hidden overflow-hidden rounded-md border border-border/12 bg-surface-elevated shadow-soft @[34rem]:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-surface-elevated">
@@ -121,7 +125,6 @@ export default function AccountTable({ accounts, sorted, sortField, sortDir, onS
                 <SortableHeader label="Name" field="name" currentField={sortField} direction={sortDir} onSort={onSort} className="w-[55%] min-w-[7rem]" />
                 <SortableHeader label="Type" field="type" currentField={sortField} direction={sortDir} onSort={onSort} className="w-px whitespace-nowrap" />
                 <PlainHeader label="Agency" className="w-[45%] min-w-[7rem]" />
-                <PlainHeader label="Status" className="w-px whitespace-nowrap" />
                 <SortableHeader label="Joined" field="joined" currentField={sortField} direction={sortDir} onSort={onSort} className="w-px whitespace-nowrap" />
               </tr>
             </thead>
@@ -143,30 +146,29 @@ export default function AccountTable({ accounts, sorted, sortField, sortDir, onS
                         <button
                           type="button"
                           aria-current={selected ? "true" : undefined}
-                          title={a.displayName}
+                          title={displayName(a)}
                           className={`max-w-full truncate rounded-sm text-left font-semibold text-text-primary ${FOCUS_RING}`}
                         >
-                          {a.displayName}
+                          {displayName(a)}
                         </button>
-                        <span className="max-w-full truncate text-xs text-text-muted" title={a.email}>
-                          {a.email}
-                        </span>
+                        {a.displayName && (
+                          <span className="max-w-full truncate text-xs text-text-muted" title={a.email}>
+                            {a.email}
+                          </span>
+                        )}
+                        {!a.emailVerified && <span className="max-w-full truncate text-xs text-text-muted">Email not verified</span>}
                       </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-col items-start gap-1">
                         <AccountTypePill type={a.accountType} />
                         {a.role === "SUPER_ADMIN" && <SuperAdminChip />}
+                        {/* Status is shown by exception: an active account says nothing. */}
+                        {a.status === "DISABLED" && <AccountStatusPill status={a.status} />}
                       </div>
                     </td>
                     <td className="max-w-0 min-w-[7rem] px-3 py-2.5">
                       <AgencyCell memberships={a.memberships} />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-col items-start gap-1">
-                        <AccountStatusPill status={a.status} />
-                        {!a.emailVerified && <span className="whitespace-nowrap text-xs text-text-muted">Email not verified</span>}
-                      </div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-text-muted">{formatDate(a.createdAt)}</td>
                   </tr>
@@ -175,7 +177,7 @@ export default function AccountTable({ accounts, sorted, sortField, sortDir, onS
             </tbody>
           </table>
         </div>
-        <div aria-live="polite" className="border-t border-border/10 bg-surface-elevated px-3 py-2.5 text-xs text-text-muted">
+        <div className="border-t border-border/10 bg-surface-elevated px-3 py-2.5 text-xs text-text-muted">
           Showing {sorted.length} of {accounts.length} accounts
         </div>
       </div>

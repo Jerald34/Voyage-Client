@@ -80,6 +80,9 @@ const ACCOUNTS = [
   }),
 ];
 
+// The one always-mounted polite live region (the table footers are not live).
+const statusRegion = () => document.querySelector("p.sr-only[role='status']");
+
 const rowIds = () =>
   screen.getAllByTestId(/^account-row-/).map((el) => el.getAttribute("data-testid").replace("account-row-", ""));
 
@@ -88,6 +91,8 @@ async function renderLoaded(accounts = ACCOUNTS) {
   render(<AdminAccountsPage />);
   await waitFor(() => expect(screen.queryByText("Loading accounts…")).not.toBeInTheDocument());
 }
+
+const fetchAccountsNever = () => fetchAllAccounts.mockReturnValue(new Promise(() => {}));
 
 beforeEach(() => {
   fetchAllAccounts.mockReset();
@@ -127,7 +132,8 @@ describe("AdminAccountsPage", () => {
 
     it("says so when there are no accounts at all", async () => {
       await renderLoaded([]);
-      expect(screen.getByText("No accounts found.")).toBeInTheDocument();
+      expect(screen.getAllByText("No accounts found.").length).toBeGreaterThan(0);
+      expect(statusRegion()).toHaveTextContent("No accounts found.");
     });
   });
 
@@ -224,8 +230,52 @@ describe("AdminAccountsPage", () => {
     it("says nothing matches when the search finds no one", async () => {
       await renderLoaded();
       search("nobody here");
-      expect(screen.getByText("No accounts match your search.")).toBeInTheDocument();
+      expect(screen.getAllByText("No accounts match your search.").length).toBeGreaterThan(0);
+      expect(statusRegion()).toHaveTextContent("No accounts match your search.");
       expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("live region", () => {
+    const search = (value) =>
+      fireEvent.change(screen.getByPlaceholderText("Search accounts…"), { target: { value } });
+
+    it("is mounted from the first render, before the accounts have loaded, and empty", () => {
+      fetchAccountsNever();
+      render(<AdminAccountsPage />);
+      const region = statusRegion();
+      expect(region).toBeInTheDocument();
+      expect(region).toBeEmptyDOMElement();
+    });
+
+    it("keeps the same element and announces the count once loaded", async () => {
+      fetchAllAccounts.mockResolvedValue({ users: ACCOUNTS });
+      render(<AdminAccountsPage />);
+      const region = statusRegion();
+      await waitFor(() => expect(region).toHaveTextContent("Showing 5 of 5 accounts"));
+      expect(statusRegion()).toBe(region);
+    });
+
+    it("announces the count after a filter and after a search", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByRole("radio", { name: "Personal 2" }));
+      expect(statusRegion()).toHaveTextContent("Showing 2 of 2 accounts");
+      search("lia@");
+      expect(statusRegion()).toHaveTextContent("Showing 1 of 2 accounts");
+    });
+
+    it("announces the no-match message, and the count again when the search is cleared", async () => {
+      await renderLoaded();
+      search("nobody here");
+      expect(statusRegion()).toHaveTextContent("No accounts match your search.");
+      search("");
+      expect(statusRegion()).toHaveTextContent("Showing 5 of 5 accounts");
+    });
+
+    it("is the only live region: neither table footer has aria-live", async () => {
+      await renderLoaded();
+      expect(document.querySelectorAll("[aria-live]")).toHaveLength(0);
+      expect(document.querySelectorAll("[role='status']:not(.sr-only)")).toHaveLength(0);
     });
   });
 
@@ -267,6 +317,12 @@ describe("AdminAccountsPage", () => {
       expect(screen.getByText("Select an account")).toBeInTheDocument();
       expect(screen.getByText("Pick an account from the list to see its details.")).toBeInTheDocument();
       expect(screen.queryByTestId("account-detail")).not.toBeInTheDocument();
+    });
+
+    it("titles the pane with the email when the account has no display name", async () => {
+      await renderLoaded([account({ id: "u9", displayName: "", email: "nameless@example.com" })]);
+      fireEvent.click(screen.getByTestId("account-row-u9"));
+      expect(within(screen.getByRole("dialog")).getByRole("heading", { name: "nameless@example.com" })).toBeInTheDocument();
     });
 
     it("opens the selected account, titled with its name", async () => {

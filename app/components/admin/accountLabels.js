@@ -22,6 +22,9 @@ export const SIGN_IN_LABELS = {
   APPLE: "Apple",
 };
 
+/** How an account is named in lists and titles: its display name, else its email. */
+export const displayName = (a) => a.displayName || a.email || "";
+
 /** Same output as the agency table's date column. */
 export function formatDate(dateStr) {
   if (!dateStr) return "—";

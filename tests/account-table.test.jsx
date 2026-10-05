@@ -94,10 +94,20 @@ describe("AccountTable", () => {
     }
   });
 
-  it("names the five columns", () => {
+  it("names the four columns: status is not one of them", () => {
     renderTable();
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent.trim());
-    expect(headers).toEqual(["Name", "Type", "Agency", "Status", "Joined"]);
+    expect(headers).toEqual(["Name", "Type", "Agency", "Joined"]);
+  });
+
+  it("switches from cards to the table when the list pane is 34rem wide, not at a viewport size", () => {
+    renderTable();
+    const cards = screen.getByTestId("account-card-u1").parentElement;
+    const tableBox = screen.getByRole("table").closest("div.hidden");
+    expect(cards.className).toContain("@[34rem]:hidden");
+    expect(tableBox.className).toContain("@[34rem]:block");
+    expect(cards.className).not.toContain("40rem");
+    expect(tableBox.className).not.toContain("40rem");
   });
 
   describe("name cell", () => {
@@ -106,6 +116,24 @@ describe("AccountTable", () => {
       const r = within(row("u1"));
       expect(r.getByText("Pia Santos")).toBeInTheDocument();
       expect(r.getByText("pia@example.com")).toBeInTheDocument();
+    });
+
+    it("notes an unverified email as a third line under the name, and only then", () => {
+      renderTable();
+      const note = within(row("u3")).getByText("Email not verified");
+      const nameCell = within(row("u3")).getByRole("button", { name: "Root Admin" }).closest("td");
+      expect(nameCell).toContainElement(note);
+      expect(within(row("u1")).queryByText("Email not verified")).not.toBeInTheDocument();
+    });
+
+    it("falls back to the email when the account has no display name, without repeating it", () => {
+      const nameless = account({ id: "u9", displayName: "", email: "nameless@example.com" });
+      renderTable({ accounts: [nameless], sorted: [nameless] });
+      const r = within(row("u9"));
+      expect(r.getByRole("button", { name: "nameless@example.com" })).toBeInTheDocument();
+      expect(r.getAllByText("nameless@example.com")).toHaveLength(1);
+      const c = within(screen.getByTestId("account-card-u9"));
+      expect(c.getAllByText("nameless@example.com")).toHaveLength(1);
     });
   });
 
@@ -148,17 +176,22 @@ describe("AccountTable", () => {
     });
   });
 
-  describe("status cell", () => {
-    it("shows Active or Disabled", () => {
+  describe("status", () => {
+    it("shows a Disabled pill in the type cell, stacked with the type, for a disabled account", () => {
       renderTable();
-      expect(within(row("u1")).getByText("Active")).toBeInTheDocument();
-      expect(within(row("u4")).getByText("Disabled")).toBeInTheDocument();
+      const disabledPill = within(row("u4")).getByText("Disabled");
+      const typeCell = disabledPill.closest("td");
+      expect(within(typeCell).getByText("Personal")).toBeInTheDocument();
     });
 
-    it("notes an unverified email, and only then", () => {
+    it("shows only the exception: no Active pill anywhere, and Disabled only on disabled accounts", () => {
       renderTable();
-      expect(within(row("u3")).getByText("Email not verified")).toBeInTheDocument();
-      expect(within(row("u1")).queryByText("Email not verified")).not.toBeInTheDocument();
+      expect(screen.queryByText("Active")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Disabled")).toHaveLength(2); // row + card of the one disabled account
+      for (const id of ["u1", "u2", "u3", "u5"]) {
+        expect(within(row(id)).queryByText("Disabled")).not.toBeInTheDocument();
+        expect(within(screen.getByTestId(`account-card-${id}`)).queryByText("Disabled")).not.toBeInTheDocument();
+      }
     });
   });
 
@@ -174,7 +207,6 @@ describe("AccountTable", () => {
       expect(c.getByText("Ana Reyes")).toBeInTheDocument();
       expect(c.getByText("ana@alpha.com")).toBeInTheDocument();
       expect(c.getByText("Agency")).toBeInTheDocument();
-      expect(c.getByText("Active")).toBeInTheDocument();
       expect(c.getByText(/Alpha Travel/)).toBeInTheDocument();
       expect(c.getByText("+1 more")).toBeInTheDocument();
       expect(c.getByText(/Apr 10, 2026/)).toBeInTheDocument();
@@ -185,6 +217,11 @@ describe("AccountTable", () => {
       const c = within(screen.getByTestId("account-card-u3"));
       expect(c.getByText("Super admin")).toBeInTheDocument();
       expect(c.getByText("Email not verified")).toBeInTheDocument();
+    });
+
+    it("flag a disabled account", () => {
+      renderTable();
+      expect(within(screen.getByTestId("account-card-u4")).getByText("Disabled")).toBeInTheDocument();
     });
 
     it("say so when the account has no agency", () => {
@@ -256,6 +293,11 @@ describe("AccountTable", () => {
     renderTable({ accounts: everyone, sorted: [personal, superAdmin] });
     // one footer in the card list, one under the table
     expect(screen.getAllByText("Showing 2 of 5 accounts")).toHaveLength(2);
+  });
+
+  it("leaves announcing the count to the page's status region, not the footers", () => {
+    renderTable();
+    expect(document.querySelector("[aria-live]")).toBeNull();
   });
 
   it("respects reduced motion on pressable cards", () => {

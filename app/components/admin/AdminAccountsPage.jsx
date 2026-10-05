@@ -8,7 +8,7 @@ import AccountTable from "./AccountTable.jsx";
 import AccountDetail from "./AccountDetail.jsx";
 import MasterDetailLayout from "./MasterDetailLayout.jsx";
 import SegmentedControl from "./SegmentedControl.jsx";
-import { ACCOUNT_TYPE_LABELS } from "./accountLabels.js";
+import { ACCOUNT_TYPE_LABELS, displayName } from "./accountLabels.js";
 
 const TYPE_OPTIONS = [
   { value: "ALL", label: "All" },
@@ -30,8 +30,6 @@ function withCount(label, count) {
     </>
   );
 }
-
-const displayName = (a) => a.displayName || a.email || "";
 
 export default function AdminAccountsPage() {
   const [accounts, setAccounts] = useState([]);
@@ -118,6 +116,15 @@ export default function AdminAccountsPage() {
 
   const selected = accounts.find((a) => a.id === selectedAccountId) || null;
 
+  // What a screen reader hears as the list changes: the one polite live region on the page. It is
+  // always mounted (a region added with its content is not announced reliably) and stays empty
+  // while loading, since the spinner and the error alert already speak for those states.
+  const emptyMessage = q ? "No accounts match your search." : "No accounts found.";
+  let announcement = "";
+  if (!loading && !error) {
+    announcement = sorted.length === 0 ? emptyMessage : `Showing ${sorted.length} of ${ofType.length} accounts`;
+  }
+
   const list = (
     <>
       {loading && (
@@ -135,8 +142,9 @@ export default function AdminAccountsPage() {
         </div>
       )}
       {!loading && !error && sorted.length === 0 && (
-        <div className="py-16 text-center text-sm text-text-muted">
-          {q ? "No accounts match your search." : "No accounts found."}
+        // aria-hidden: the live region below carries this message for assistive tech.
+        <div aria-hidden="true" className="py-16 text-center text-sm text-text-muted">
+          {emptyMessage}
         </div>
       )}
       {!loading && !error && sorted.length > 0 && (
@@ -155,6 +163,10 @@ export default function AdminAccountsPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
+
       {/* Slim toolbar sub-row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative">
