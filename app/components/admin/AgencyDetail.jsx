@@ -8,17 +8,7 @@ import {
   adminSuspendAgency,
   adminUnsuspendAgency,
 } from "../../lib/api/index.js";
-
-const statusLabel = (s) =>
-  ({ PENDING_REVIEW: "Pending", VERIFIED: "Approved", REJECTED: "Rejected", SUSPENDED: "Suspended" }[s] || s);
-
-const statusPillClasses = (s) =>
-  ({
-    PENDING_REVIEW: "bg-accent/10 text-accent",
-    VERIFIED: "bg-status-success/10 text-status-success",
-    REJECTED: "bg-status-danger/10 text-status-danger",
-    SUSPENDED: "bg-status-warning/10 text-status-warning",
-  }[s] || "bg-surface text-text-muted");
+import AgencyStatusPill from "./AgencyStatusPill.jsx";
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";
@@ -88,9 +78,7 @@ export default function AgencyDetail({ agencyId, onAction }) {
   return (
     <>
       <div className="mb-6">
-        <span className={`inline-block rounded-pill px-3 py-1 text-xs font-semibold tracking-wide ${statusPillClasses(agency.status)}`}>
-          {statusLabel(agency.status)}
-        </span>
+        <AgencyStatusPill status={agency.status} />
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-5 sm:grid-cols-2">

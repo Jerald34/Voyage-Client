@@ -25,6 +25,13 @@ describe("AgencyDetail", () => {
     expect(screen.getByText("Pending")).toBeInTheDocument();
   });
 
+  it("shows the status with the same pill the agency table uses", async () => {
+    render(<AgencyDetail agencyId="a1" onAction={() => {}} />);
+    const pill = await screen.findByText("Pending");
+    expect(pill.className).toContain("bg-accent/20");
+    expect(pill.querySelector("[aria-hidden='true']")).not.toBeNull(); // the leading dot
+  });
+
   it("approves a pending agency", async () => {
     render(<AgencyDetail agencyId="a1" onAction={vi.fn()} />);
     await waitFor(() => expect(screen.getByRole("button", { name: /approve/i })).toBeInTheDocument());

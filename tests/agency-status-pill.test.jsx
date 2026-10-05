@@ -4,7 +4,7 @@ import AgencyStatusPill from "../app/components/admin/AgencyStatusPill.jsx";
 
 describe("AgencyStatusPill", () => {
   it.each([
-    ["PENDING_REVIEW", "Pending", "text-secondary-strong"],
+    ["PENDING_REVIEW", "Pending", "text-text-primary"],
     ["VERIFIED", "Approved", "text-status-success"],
     ["REJECTED", "Rejected", "text-status-danger"],
     ["SUSPENDED", "Suspended", "text-status-warning"],
@@ -12,6 +12,16 @@ describe("AgencyStatusPill", () => {
     render(<AgencyStatusPill status={status} />);
     const pill = screen.getByText(label);
     expect(pill.className).toContain(tone);
+  });
+
+  it("draws Pending as a peach tint with primary text and a terracotta dot, not peach-on-peach", () => {
+    render(<AgencyStatusPill status="PENDING_REVIEW" />);
+    const pill = screen.getByText("Pending");
+    expect(pill.className).toContain("bg-accent/20");
+    expect(pill.className).not.toContain("text-accent");
+    const dot = pill.querySelector("[aria-hidden='true']");
+    expect(dot.className).toContain("bg-secondary");
+    expect(dot.className).not.toContain("bg-secondary-strong");
   });
 
   it("falls back to the raw status with a neutral tone", () => {
