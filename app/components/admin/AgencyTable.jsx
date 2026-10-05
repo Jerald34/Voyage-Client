@@ -1,38 +1,11 @@
 "use client";
 
 import { SortIcon } from "../icons/index.js";
-
-const statusLabel = (s) =>
-  ({ PENDING_REVIEW: "Pending", VERIFIED: "Approved", REJECTED: "Rejected", SUSPENDED: "Suspended" }[s] || s);
-
-const statusPillClasses = (s) =>
-  ({
-    PENDING_REVIEW: "bg-accent/10 text-accent",
-    VERIFIED: "bg-status-success/10 text-status-success",
-    REJECTED: "bg-status-danger/10 text-status-danger",
-    SUSPENDED: "bg-status-warning/10 text-status-warning",
-  }[s] || "bg-surface text-text-muted");
-
-const statusDot = (s) =>
-  ({
-    PENDING_REVIEW: "bg-accent",
-    VERIFIED: "bg-status-success",
-    REJECTED: "bg-status-danger",
-    SUSPENDED: "bg-status-warning",
-  }[s] || "bg-text-soft");
+import AgencyStatusPill from "./AgencyStatusPill.jsx";
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function StatusPill({ status }) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-0.5 text-xs font-semibold tracking-wide ${statusPillClasses(status)}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${statusDot(status)}`} aria-hidden="true" />
-      {statusLabel(status)}
-    </span>
-  );
 }
 
 function AgencyCard({ a, selected, onRowClick }) {
@@ -47,7 +20,7 @@ function AgencyCard({ a, selected, onRowClick }) {
     >
       <div className="flex items-center justify-between gap-3">
         <span className="font-semibold text-text-primary">{a.name}</span>
-        <StatusPill status={a.status} />
+        <AgencyStatusPill status={a.status} />
       </div>
       <span className="text-sm text-text-muted">{a.ownerUser?.displayName || "—"}</span>
       {a.ownerUser?.email && <span className="text-xs text-text-soft">{a.ownerUser.email}</span>}
@@ -108,7 +81,7 @@ export default function AgencyTable({ agencies, sorted, sortField, sortDir, onSo
                       {a.ownerUser?.email && <span className="text-xs text-text-soft">{a.ownerUser.email}</span>}
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5"><StatusPill status={a.status} /></td>
+                  <td className="whitespace-nowrap px-3 py-2.5"><AgencyStatusPill status={a.status} /></td>
                   <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-text-muted">{formatDate(a.submittedAt)}</td>
                 </tr>
               ))}
