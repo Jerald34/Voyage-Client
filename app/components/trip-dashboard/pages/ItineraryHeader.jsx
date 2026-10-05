@@ -74,7 +74,7 @@ export default function ItineraryHeader({
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-text-muted">
               {statusLabel ? (
                 <>
-                  <span className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
+                  <span role="status" className="inline-flex items-center gap-1.5 font-semibold text-text-primary">
                     <span aria-hidden="true" className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${statusDotClass(statusLabel)}`} />
                     {statusLabel}
                   </span>
@@ -90,7 +90,7 @@ export default function ItineraryHeader({
                     onClick={() => onAddTripForClient(selectedClient.name)}
                     aria-label={`New trip for ${selectedClient.name}`}
                     title={`Start a new trip for ${selectedClient.name}`}
-                    className="inline-flex min-h-[28px] items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline"
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline"
                   >
                     <PlusIcon width={12} height={12} strokeWidth={2.5} aria-hidden="true" />
                     New trip
@@ -163,7 +163,7 @@ export default function ItineraryHeader({
                 type="button"
                 onClick={onApprove}
                 disabled={isApproving}
-                className="inline-flex min-h-[40px] items-center justify-center rounded-lg bg-secondary-strong px-4 text-[0.85rem] font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+                className="inline-flex min-h-[40px] cursor-pointer items-center justify-center rounded-lg bg-secondary-strong px-4 text-[0.85rem] font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
               >
                 {isApproving ? "Approving…" : "Approve"}
               </button>

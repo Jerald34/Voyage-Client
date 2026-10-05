@@ -83,6 +83,23 @@ describe("ItineraryHeader", () => {
     expect(dot.className).toContain(dotClass);
   });
 
+  it("announces the status politely, so In review becoming Approved is heard", () => {
+    renderHeader();
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("In review");
+    expect(screen.getByText("In review")).toBe(status);
+  });
+
+  it("uses pointer cursors on New trip and Approve, and keeps the wait cursor while approving", () => {
+    renderHeader({ onApprove: vi.fn() });
+
+    expect(screen.getByRole("button", { name: "New trip for Danang" }).className).toContain("cursor-pointer");
+    const approve = screen.getByRole("button", { name: "Approve" });
+    expect(approve.className).toContain("cursor-pointer");
+    expect(approve.className).toContain("disabled:cursor-wait");
+  });
+
   it("offers Approve as the one filled action, inside the actions group", () => {
     const onApprove = vi.fn();
     const { container } = renderHeader({ onApprove });
