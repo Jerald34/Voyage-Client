@@ -7,12 +7,13 @@ import { fetchPublicItinerary, postPublicComment, listPublicComments } from "../
 import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import PdfDownloadButton from "./components/PdfDownloadButton.jsx";
+import ShareStopCard from "./components/ShareStopCard.jsx";
+import SegmentedControl from "../../../components/admin/SegmentedControl.jsx";
 import WeatherChip from "../../../components/weather/WeatherChip.jsx";
 import WeatherAttribution from "../../../components/weather/WeatherAttribution.jsx";
 import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
 import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import ShareHeader, { PoweredByVoyage } from "./components/ShareHeader.jsx";
-import AccessibilityBadges from "../../../components/accessibility/AccessibilityBadges.jsx";
 import Spinner from "../../../components/ui/Spinner";
 import {
   PlaneIcon,
@@ -25,8 +26,6 @@ import {
   CheckIcon,
   CalendarIcon,
   UsersIcon,
-  ListIcon,
-  MapIcon,
   CloseIcon,
 } from "../../../components/icons/index.js";
 
@@ -71,6 +70,18 @@ function formatTime(timeStr) {
   const displayHour = hour % 12 || 12;
   return `${displayHour}:${m} ${ampm}`;
 }
+
+function formatTimeRange(start, end) {
+  if (start && end) return `${formatTime(start)} – ${formatTime(end)}`;
+  if (start) return formatTime(start);
+  if (end) return `Until ${formatTime(end)}`;
+  return "";
+}
+
+const MOBILE_VIEWS = [
+  { value: "itinerary", label: "Itinerary" },
+  { value: "map", label: "Map" },
+];
 
 function buildGoogleMapsUrl(placeSnapshot) {
   if (!placeSnapshot) return null;
@@ -597,22 +608,15 @@ export default function PublicItineraryPage() {
       {/* ── top branding bar ── */}
       <ShareHeader brand={brand} />
 
-      {/* ── mobile tab toggle (hidden on desktop) ── */}
-      <div className="hidden max-sm:flex gap-0 bg-surface border-b border-border flex-shrink-0 z-[15]">
-        <button
-          className={`flex-1 inline-flex items-center justify-center gap-[6px] py-3 border-none bg-none text-[13px] font-semibold cursor-pointer transition-all duration-150 relative after:content-[''] after:absolute after:bottom-0 after:left-4 after:right-4 after:h-[2px] after:rounded-sm after:transition-colors after:duration-200 ${mobileTab === "itinerary" ? "text-primary after:bg-secondary" : "text-text-soft after:bg-transparent"}`}
-          onClick={() => setMobileTab("itinerary")}
-        >
-          <ListIcon width={16} height={16} className="flex-shrink-0" />
-          Itinerary
-        </button>
-        <button
-          className={`flex-1 inline-flex items-center justify-center gap-[6px] py-3 border-none bg-none text-[13px] font-semibold cursor-pointer transition-all duration-150 relative after:content-[''] after:absolute after:bottom-0 after:left-4 after:right-4 after:h-[2px] after:rounded-sm after:transition-colors after:duration-200 ${mobileTab === "map" ? "text-primary after:bg-secondary" : "text-text-soft after:bg-transparent"}`}
-          onClick={() => setMobileTab("map")}
-        >
-          <MapIcon width={16} height={16} className="flex-shrink-0" />
-          Map
-        </button>
+      {/* ── mobile view switcher (hidden on desktop) ── */}
+      <div className="hidden flex-shrink-0 justify-center px-4 py-2 max-sm:flex">
+        <SegmentedControl
+          ariaLabel="Itinerary view"
+          options={MOBILE_VIEWS}
+          value={mobileTab}
+          onChange={setMobileTab}
+          size="sm"
+        />
       </div>
 
       {/* ── main split layout ── */}
@@ -627,12 +631,13 @@ export default function PublicItineraryPage() {
           )}
 
           {/* trip header */}
-          <div className="mb-8 pb-6 border-b border-border max-sm:mb-6 max-sm:pb-5">
-            <h1 className="font-serif text-[28px] font-normal leading-[1.2] m-0 mb-[6px] text-primary max-sm:text-[22px] max-[400px]:text-[20px]">
+          <div className="mb-8 pb-6 border-b border-border/10 max-sm:mb-6 max-sm:pb-5">
+            {/* max-w-none: globals.css caps every h1 at 12ch for the landing hero. */}
+            <h1 className="font-serif text-[30px] font-normal leading-[1.15] m-0 mb-[6px] max-w-none text-text-primary max-sm:text-[24px] max-[400px]:text-[22px]">
               {trip.title || itinerary.title}
             </h1>
             {trip.destinationSummary && (
-              <p className="text-[15px] text-secondary font-semibold m-0 mb-3">{trip.destinationSummary}</p>
+              <p className="text-[15px] text-secondary-strong font-semibold m-0 mb-3">{trip.destinationSummary}</p>
             )}
             <div className="flex flex-wrap gap-4 mb-2 max-sm:gap-3">
               {(trip.startDate || trip.endDate) && (
@@ -659,23 +664,21 @@ export default function PublicItineraryPage() {
             {itinerary.days?.map((day) => (
               <section key={day.id} className="grid gap-3">
                 <div className="flex items-start gap-3">
-                  <span className="inline-flex items-center justify-center flex-shrink-0 w-14 h-7 bg-secondary text-white rounded-pill text-[11px] font-bold tracking-[0.04em] uppercase max-[400px]:w-12 max-[400px]:h-6 max-[400px]:text-[10px]">
-                    Day {day.dayNumber}
-                  </span>
-                  <div className="flex flex-col gap-[2px] pt-[2px]">
-                    <h2 className="font-serif text-[19px] font-normal leading-[1.3] m-0 text-primary max-[400px]:text-[17px]">{day.title}</h2>
-                    {day.date && (
-                      <span className="text-[12px] text-text-soft font-medium">{formatDate(day.date)}</span>
-                    )}
+                  <div className="grid min-w-0 flex-1 gap-1">
+                    <span className="text-[0.78rem] font-extrabold uppercase tracking-wider text-secondary-strong">
+                      Day {day.dayNumber}
+                      {day.date ? (
+                        <span className="font-semibold normal-case tracking-normal text-text-muted"> · {formatDate(day.date)}</span>
+                      ) : null}
+                    </span>
+                    <h2 className="m-0 font-sans text-[22px] font-semibold leading-snug tracking-[-0.015em] text-text-primary max-[400px]:text-[19px]">{day.title}</h2>
                     <WeatherChip entry={shareWeather.byDayId.get(day.id)} className="mt-1 self-start" />
                   </div>
-                  <div className="ml-auto">
-                    <CommentTriggerBtn
-                      label={`Comment on Day ${day.dayNumber}`}
-                      compact
-                      onClick={() => openForm({ type: "day", dayNumber: day.dayNumber, itemId: undefined })}
-                    />
-                  </div>
+                  <CommentTriggerBtn
+                    label={`Comment on Day ${day.dayNumber}`}
+                    compact
+                    onClick={() => openForm({ type: "day", dayNumber: day.dayNumber, itemId: undefined })}
+                  />
                 </div>
 
                 {/* inline day-level comment form */}
@@ -702,102 +705,51 @@ export default function PublicItineraryPage() {
                 ))}
 
                 {day.summary && (
-                  <p className="m-0 pl-[68px] text-[13px] leading-[1.55] text-text-soft max-sm:pl-0">{day.summary}</p>
+                  <p className="m-0 text-[13px] leading-[1.55] text-text-muted">{day.summary}</p>
                 )}
 
-                <div className="grid gap-0 pl-6 max-sm:pl-3 max-[400px]:pl-1">
+                <div className="grid gap-3">
                   {day.items.map((item, idx) => {
                     const globalIdx = mapItems.findIndex(
-                      (mi) =>
-                        mi.__dayNumber === day.dayNumber &&
-                        mi.__itemIndex === idx
+                      (mi) => mi.__dayNumber === day.dayNumber && mi.__itemIndex === idx
                     );
-                    const isActive = activeIndex === globalIdx;
-
                     const itemFormDescriptor = { type: "item", dayNumber: day.dayNumber, itemId: item.id };
 
                     return (
-                      <div
+                      <ShareStopCard
                         key={item.id}
-                        className={`grid grid-cols-[24px_1fr] gap-3 py-2 transition-colors duration-150 rounded-sm ${isActive ? "bg-secondary/[0.08]" : ""}`}
-                        onMouseEnter={() => handleHoverItem(globalIdx)}
-                        onMouseLeave={() => handleHoverItem(-1)}
-                      >
-                        {/* connector: dot + vertical line */}
-                        <div className="flex flex-col items-center pt-[6px]">
-                          <span className={`w-[10px] h-[10px] rounded-full flex-shrink-0 ${isActive ? "bg-secondary shadow-[0_0_0_3px_rgba(215,122,97,0.18)]" : "bg-secondary shadow-[0_0_0_3px_rgba(215,122,97,0.15)]"}`} />
-                          {idx < day.items.length - 1 && (
-                            <span className="w-[2px] flex-1 min-h-4 bg-border" />
-                          )}
-                        </div>
-
-                        <div className="grid gap-[6px] pb-3">
-                          <div className="flex items-start gap-2">
-                            <div className={`flex items-center justify-center flex-shrink-0 w-7 h-7 rounded-lg text-primary ${isActive ? "bg-primary/10" : "bg-primary/[0.06]"}`}>
-                              {itemTypeIcon(item.type)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-[15px] font-semibold leading-[1.3] m-0 text-text-primary max-[400px]:text-[14px]">{item.title}</h3>
-                              {(item.startTime || item.endTime) && (
-                                <span className="text-[12px] text-text-soft font-medium">
-                                  {item.startTime && formatTime(item.startTime)}
-                                  {item.startTime && item.endTime && " – "}
-                                  {item.endTime && formatTime(item.endTime)}
-                                </span>
-                              )}
-                            </div>
+                        item={item}
+                        isActive={activeIndex === globalIdx}
+                        timeLabel={formatTimeRange(item.startTime, item.endTime)}
+                        icon={itemTypeIcon(item.type)}
+                        onHoverChange={(hovering) => handleHoverItem(hovering ? globalIdx : -1)}
+                        actions={
+                          <>
                             <MapPinLink placeSnapshot={item.placeSnapshot} />
                             <CommentTriggerBtn
                               label={`Comment on ${item.title}`}
                               compact
                               onClick={() => openForm(itemFormDescriptor)}
                             />
-                          </div>
-
-                          {item.description && (
-                            <p className="m-0 text-[13px] leading-[1.55] text-text-muted pl-9">{item.description}</p>
-                          )}
-
-                          {item.placeSnapshot?.name && (
-                            <div className="flex items-start gap-[6px] pl-9 text-[12px] text-text-soft leading-[1.4]">
-                              <MapPinIcon width={12} height={12} className="flex-shrink-0 mt-[1px]" />
-                              <span>{item.placeSnapshot.name}</span>
-                              {item.placeSnapshot.formattedAddress && (
-                                <span className="block mt-px text-text-soft opacity-80">
-                                  {item.placeSnapshot.formattedAddress}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          <AccessibilityBadges snapshot={item.placeSnapshot} className="pl-9" />
-
-                          {item.clientNotes && (
-                            <div className="flex items-start gap-[6px] px-3 py-2 ml-9 mt-[2px] bg-secondary/[0.06] rounded-sm border-l-[3px] border-secondary text-[12px] text-text-muted leading-[1.5]">
-                              <ChatIcon width={12} height={12} className="flex-shrink-0 mt-[1px] text-secondary" />
-                              <span>{item.clientNotes}</span>
-                            </div>
-                          )}
-
-                          {/* inline item comment form */}
-                          {isFormActive(itemFormDescriptor) && (
-                            <CommentForm
-                              token={token}
-                              dayNumber={day.dayNumber}
-                              itemId={item.id}
-                              commenterName={commenterName}
-                              commenterEmail={commenterEmail}
-                              onCancel={closeForm}
-                              onPosted={handlePosted}
-                      onRefresh={refreshComments}
-                            />
-                          )}
-
-                          {/* pending item-level comments */}
-                          {getItemComments(day.dayNumber, item.id).map((c, i) => (
-                            <CommentChip key={i} comment={c} />
-                          ))}
-                        </div>
-                      </div>
+                          </>
+                        }
+                      >
+                        {isFormActive(itemFormDescriptor) && (
+                          <CommentForm
+                            token={token}
+                            dayNumber={day.dayNumber}
+                            itemId={item.id}
+                            commenterName={commenterName}
+                            commenterEmail={commenterEmail}
+                            onCancel={closeForm}
+                            onPosted={handlePosted}
+                            onRefresh={refreshComments}
+                          />
+                        )}
+                        {getItemComments(day.dayNumber, item.id).map((c, i) => (
+                          <CommentChip key={i} comment={c} />
+                        ))}
+                      </ShareStopCard>
                     );
                   })}
                 </div>
@@ -859,21 +811,23 @@ export default function PublicItineraryPage() {
           </footer>
         </div>
 
-        {/* ── right: map panel ── */}
+        {/* ── right: map panel, inset like the in-app day view ── */}
         <div
-          className={`relative border-l border-border min-h-0 max-sm:border-l-0 max-sm:border-t max-sm:border-border ${mobileTab === "map" ? "max-sm:flex max-sm:flex-col max-sm:flex-1 max-sm:min-h-0" : "max-sm:hidden"}`}
+          className={`relative min-h-0 p-3 max-sm:p-0 ${mobileTab === "map" ? "max-sm:flex max-sm:flex-col max-sm:flex-1 max-sm:min-h-0" : "max-sm:hidden"}`}
         >
-          <ItineraryLiveMap
-            items={mapItems}
-            liveMarkers={[]}
-            routeEstimates={[]}
-            activeIndex={activeIndex}
-            onHoverItem={handleHoverItem}
-            selectedPlaceId={selectedPlaceId}
-            selectedPlace={selectedPlace}
-            onSelectPlace={handleSelectPlace}
-            sidebarWidth={0}
-          />
+          <div className="relative h-full w-full overflow-hidden rounded-[18px] border border-border/10 shadow-soft max-sm:flex-1 max-sm:rounded-none max-sm:border-0 max-sm:shadow-none">
+            <ItineraryLiveMap
+              items={mapItems}
+              liveMarkers={[]}
+              routeEstimates={[]}
+              activeIndex={activeIndex}
+              onHoverItem={handleHoverItem}
+              selectedPlaceId={selectedPlaceId}
+              selectedPlace={selectedPlace}
+              onSelectPlace={handleSelectPlace}
+              sidebarWidth={0}
+            />
+          </div>
         </div>
       </div>
     </div>
