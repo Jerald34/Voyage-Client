@@ -195,7 +195,7 @@ export default function ChatMessage({
                 {Array.isArray(itinerary.days) && itinerary.days.map((day) => (
                   <div key={day.dayNumber || day.id} className="flex flex-col gap-2">
                     <span className="text-[0.65rem] font-extrabold uppercase tracking-[0.06em] text-text-soft">
-                      Day {day.dayNumber}{day.title ? ` â€” ${day.title}` : ""}
+                      Day {day.dayNumber}{day.title ? ` — ${day.title}` : ""}
                     </span>
                     {(day.items || []).map((item, iIdx) => {
                       const entityId = getItineraryPlaceEntityId(item, day, iIdx);
