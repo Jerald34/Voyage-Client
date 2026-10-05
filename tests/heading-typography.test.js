@@ -42,7 +42,8 @@ const EXPECTED = [
   [`${SHARE_DIR}/components/ProposalRating.jsx`, "Rate this proposal", "sans"],
 ];
 
-const BOLD = /\bfont-(semibold|bold|extrabold|black)\b/;
+// Includes arbitrary weights (font-[600]); `\b` can't end the pattern there, as "]" is not a word character.
+const BOLD = /\bfont-(?:(?:semibold|bold|extrabold|black)\b|\[[6-9]00\])/;
 
 function sourceFiles(dir) {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
@@ -79,6 +80,17 @@ describe("heading typography", () => {
     const offenders = SCOPED_FILES.flatMap((rel) =>
       headings(rel)
         .filter(({ tag, attrs }) => /^h[1-4]$/.test(tag) && BOLD.test(attrs) && !/\bfont-sans\b/.test(attrs))
+        .map(({ tag, text }) => `${rel} <${tag}> ${text}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  // A className expression (className={...}) is invisible to the checks above unless it
+  // spells its font out, so one that doesn't could hide a bold serif heading.
+  it("makes every h1–h4 with a computed className spell font-sans or font-serif", () => {
+    const offenders = SCOPED_FILES.flatMap((rel) =>
+      headings(rel)
+        .filter(({ tag, attrs }) => /^h[1-4]$/.test(tag) && /\bclassName=\{/.test(attrs) && !/\bfont-(sans|serif)\b/.test(attrs))
         .map(({ tag, text }) => `${rel} <${tag}> ${text}`),
     );
     expect(offenders).toEqual([]);

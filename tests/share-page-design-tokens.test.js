@@ -23,12 +23,15 @@ function shareLines() {
   });
 }
 
-const hasClass = (text, name) => new RegExp(`(^|[\\s"'\`])${name}($|[\\s"'\`])`).test(text);
+// A Tailwind class with any variants in front ("hover:", "max-sm:", "@min-[720px]:") and an
+// optional opacity ("/90") after it, so `hover:bg-secondary` and `bg-secondary/90` still
+// count as `bg-secondary`. `bg-secondary-strong` is a different token and does not.
+const hasClass = (text, name) => new RegExp(`(^|[\\s"'\`])(?:[^\\s"'\`:]+:)*${name}(?:/\\d+)?($|[\\s"'\`])`).test(text);
 
 describe("public share page colours", () => {
   it("uses theme tokens instead of raw hex or rgba colours", () => {
     const offenders = shareLines()
-      .filter(({ text }) => /#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(text))
+      .filter(({ text }) => /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|oklch\(/.test(text))
       .map(({ where, text }) => `${where}  ${text.trim()}`);
     expect(offenders).toEqual([]);
   });
@@ -40,9 +43,16 @@ describe("public share page colours", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("never puts white text on the contrast-safe terracotta, which has its own on-colour", () => {
+    const offenders = shareLines()
+      .filter(({ text }) => hasClass(text, "bg-secondary-strong") && (!hasClass(text, "text-on-secondary-strong") || hasClass(text, "text-white")))
+      .map(({ where }) => where);
+    expect(offenders).toEqual([]);
+  });
+
   it("uses status tokens instead of raw red for errors", () => {
     const offenders = shareLines()
-      .filter(({ text }) => /\b(text|border|ring)-red-\d{3}\b/.test(text))
+      .filter(({ text }) => /\b(text|bg|border|ring|fill|stroke)-red-\d{2,3}\b/.test(text))
       .map(({ where }) => where);
     expect(offenders).toEqual([]);
   });
