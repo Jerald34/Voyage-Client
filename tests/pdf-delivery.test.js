@@ -86,6 +86,9 @@ describe("deliverPdf", () => {
 
     expect(env.navigator.share).toHaveBeenCalledWith({ files: [file], title: "Kyoto" });
     await expect(pending).resolves.toBe("shared");
+    // Sharing hands the File itself over: no blob URL to make or free.
+    expect(env.URL.createObjectURL).not.toHaveBeenCalled();
+    expect(env.window.setTimeout).not.toHaveBeenCalled();
   });
 
   it("reports a dismissed share sheet as cancelled and a refused one as failed", async () => {
@@ -115,6 +118,7 @@ describe("deliverPdf", () => {
     const { env } = fakeEnv({ userAgent: IPHONE, platform: "iPhone", maxTouchPoints: 5 });
     await expect(deliverPdf(file, {}, env)).resolves.toBe("opened");
     expect(env.window.open).toHaveBeenCalledWith("blob:pdf", "_blank");
+    expect(env.window.setTimeout).toHaveBeenCalledWith(expect.any(Function), 60_000);
 
     const blocked = fakeEnv({ userAgent: IPHONE, platform: "iPhone", maxTouchPoints: 5, openResult: null });
     await expect(deliverPdf(file, {}, blocked.env)).resolves.toBe("failed");

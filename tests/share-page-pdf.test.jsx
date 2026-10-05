@@ -95,6 +95,16 @@ describe("public share PDF", () => {
     expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ agencyName: "Voyage" }));
   });
 
+  it("builds a personal share's PDF from the itinerary when there is no trip, as the server sends it", async () => {
+    api.fetchPublicItinerary.mockResolvedValue({ ...share({ type: "personal", displayName: "Ana" }), trip: null });
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(
+      expect.objectContaining({ agencyName: "Voyage", title: "Baguio Weekend" }),
+    );
+  });
+
   it("offers a tappable link when the device blocks the hand-off", async () => {
     delivery.deliverPdf.mockResolvedValueOnce("failed");
     render(<PublicItineraryPage />);

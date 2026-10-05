@@ -240,7 +240,6 @@ describe("DashboardHeader", () => {
     render(
       <DashboardHeader
         variant="full"
-        activeTab="command-center"
         isSidebarOpen={false}
         setIsSidebarOpen={() => {}}
         isClientMenuOpen={false}
