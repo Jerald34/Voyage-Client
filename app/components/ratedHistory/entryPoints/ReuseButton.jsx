@@ -20,7 +20,7 @@ export default function ReuseButton({
       disabled={isDisabled}
       title={isDisabled ? "No rated trips yet" : "Open rated trips picker"}
       aria-label="Open rated history picker"
-      className={`inline-flex items-center justify-center gap-2 min-w-[40px] min-h-[40px] ${inHeader ? "px-2 @min-[720px]:px-3.5" : "px-2 sm:px-3.5"} rounded-lg border border-border/20 bg-surface-elevated text-text-primary text-[0.85rem] font-bold cursor-pointer transition-all duration-200 ${
+      className={`inline-flex items-center justify-center gap-2 min-w-[40px] min-h-[40px] ${inHeader ? "px-2 @min-[720px]:px-3" : "px-2 sm:px-3.5"} rounded-lg border border-border/20 bg-surface-elevated text-text-primary text-[0.85rem] font-bold cursor-pointer transition-all duration-200 ${
         isDisabled
           ? "opacity-50 cursor-not-allowed pointer-events-none"
           : "hover:bg-surface hover:border-border/40"

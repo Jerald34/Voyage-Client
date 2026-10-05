@@ -15,9 +15,11 @@ import ReuseLauncher from "../../ratedHistory/entryPoints/ReuseLauncher.jsx";
 // The header is a size container (`@container`). Under 720px of its own width the
 // actions drop their visible label but keep the icon, tooltip and aria-label, so the
 // row never wraps or cuts the client's name off. ReuseButton follows the same rule
-// in its "clientItinerary" mode.
+// in its "clientItinerary" mode. Padding and gaps stay tight (px-3, gap-1.5) so that,
+// at 1280px with Reuse and Approve showing, the name column still fits the status
+// line on one row.
 const ACTION_BUTTON =
-  "inline-flex items-center justify-center gap-2 min-w-[40px] min-h-[40px] px-2 @min-[720px]:px-3.5 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
+  "inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 @min-[720px]:px-3 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
 const ACTION_IDLE = "bg-surface-elevated text-text-primary border-border/20 hover:bg-surface hover:border-border/40";
 const ACTION_LABEL = "hidden @min-[720px]:inline";
 
@@ -100,7 +102,7 @@ export default function ItineraryHeader({
             </div>
           </div>
 
-          <div data-tour-target="cip-actions" className="flex flex-shrink-0 items-center gap-2">
+          <div data-tour-target="cip-actions" className="flex flex-shrink-0 items-center gap-1.5">
             {selectedItineraryId && (
               <>
                 {/* Reuse from rated trips — optional launcher for Stage 6A */}
