@@ -2,15 +2,23 @@ import React from "react";
 import ClientSwitcher from "../command-center/ClientSwitcher.jsx";
 import { NAV_DRAWER_ID } from "./DashboardSidebar.jsx";
 
+// Tabs whose page draws its own title row. Their bar only shows on phones,
+// where it holds the menu button and the logo.
+const COMPACT_TABS = new Set(["dashboard", "itineraries"]);
+
+export function headerVariantForTab(tab) {
+  return COMPACT_TABS.has(tab) ? "compact" : "full";
+}
+
 /**
- * Top bar for the Command Center, Itineraries, Settings and Admin tabs:
- * New Itinerary, the client/trip switcher, "Save to Client" and the agent's
- * live status. The brand and the account live in the rail.
+ * Top bar for the Command Center, Settings and Admin tabs: New Itinerary, the
+ * client/trip switcher, "Save to Client" and the agent's live status. The brand
+ * and the account live in the rail.
  *
- * `variant="compact"` (Dashboard tab) keeps only the menu button and the
- * logo. It is always rendered and hidden on desktop with CSS, so phones never
- * wait on JS to show the menu button (no pop-in); the Dashboard has its own
- * greeting row there.
+ * `variant="compact"` (the Dashboard and Itineraries tabs, see
+ * `headerVariantForTab`) keeps only the menu button and the logo. It is always
+ * rendered and hidden on desktop with CSS, so phones never wait on JS to show
+ * the menu button (no pop-in); those pages have their own title row there.
  */
 export default function DashboardHeader({
   variant = "full",
@@ -21,7 +29,6 @@ export default function DashboardHeader({
   scopedStreamError,
   scopedIsStreaming,
   getInitials,
-  activeTab,
   // Trip management props
   onNewItinerary,
   isCreatingDraftThread,
@@ -44,7 +51,6 @@ export default function DashboardHeader({
   onApproveDraft
 }) {
   const isFull = variant === "full";
-  const showCenterActions = isFull && activeTab !== "itineraries";
   return (
     <header className={`flex h-[84px] flex-shrink-0 items-center justify-between gap-5 border-b border-[color:var(--frame-border)] px-7 max-[900px]:h-[48px] max-[900px]:gap-2 max-[900px]:px-3 ${isFull ? "" : "min-[900px]:hidden"}`}>
       <div className="flex items-center gap-2">
@@ -67,7 +73,7 @@ export default function DashboardHeader({
         {!isFull ? <img src="/icon.svg" alt="Voyage" className="h-7 w-7" /> : null}
       </div>
 
-      {showCenterActions && (
+      {isFull && (
         <div className="flex items-center gap-3 flex-1 justify-center min-w-0 max-[900px]:gap-1.5">
           <button
             data-tour-target="new-itinerary"
