@@ -124,7 +124,7 @@ function MapPinLink({ placeSnapshot }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center justify-center flex-shrink-0 w-7 h-7 rounded-lg bg-secondary/10 text-secondary no-underline transition-all duration-150 hover:bg-secondary/20 hover:scale-105 active:scale-95"
+      className="inline-flex items-center justify-center flex-shrink-0 w-7 h-7 rounded-lg bg-secondary/10 text-secondary-strong no-underline transition-all duration-150 hover:bg-secondary/20 hover:scale-105 active:scale-95"
       title="Open in Google Maps"
       aria-label={`Open ${placeSnapshot.name || "location"} in Google Maps`}
     >
@@ -163,8 +163,8 @@ function NamePromptBanner({ onComplete }) {
   }
 
   return (
-    <div className="flex items-start gap-3 px-[18px] py-4 mb-6 bg-primary/[0.04] border border-border border-l-[3px] border-l-secondary rounded-sm">
-      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full bg-secondary/[0.12] text-secondary mt-px hidden sm:flex">
+    <div className="flex items-start gap-3 px-[18px] py-4 mb-6 bg-primary/[0.04] border border-border/15 border-l-[3px] border-l-secondary rounded-sm">
+      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full bg-secondary/[0.12] text-secondary-strong mt-px hidden sm:flex">
         <UserIcon width={18} height={18} />
       </div>
       <div className="flex-1 min-w-0 grid gap-[10px]">
@@ -177,17 +177,17 @@ function NamePromptBanner({ onComplete }) {
               <input
                 ref={inputRef}
                 type="text"
-                className={`px-[11px] py-[7px] border rounded-sm bg-background text-[13px] text-text-primary outline-none w-full box-border transition-all duration-150 focus:border-secondary focus:shadow-[0_0_0_3px_rgba(215,122,97,0.12)] ${nameError ? "border-red-500 shadow-[0_0_0_3px_rgba(224,92,92,0.1)]" : "border-border/40"}`}
+                className={`px-[11px] py-[7px] border rounded-sm bg-background text-[13px] text-text-primary outline-none w-full box-border transition-all duration-150 focus:border-secondary focus:ring-[3px] focus:ring-secondary/15 ${nameError ? "border-status-danger ring-[3px] ring-status-danger/10" : "border-border/40"}`}
                 placeholder="Your name *"
                 value={name}
                 onChange={(e) => { setName(e.target.value); setNameError(false); }}
                 maxLength={80}
               />
-              {nameError && <span className="text-[11px] text-red-500 font-medium">Please enter your name</span>}
+              {nameError && <span className="text-[11px] text-status-danger font-medium">Please enter your name</span>}
             </div>
             <input
               type="email"
-              className="px-[11px] py-[7px] border border-border/40 rounded-sm bg-background text-[13px] text-text-primary outline-none flex-1 min-w-[130px] max-sm:min-w-0 box-border transition-all duration-150 focus:border-secondary focus:shadow-[0_0_0_3px_rgba(215,122,97,0.12)]"
+              className="px-[11px] py-[7px] border border-border/40 rounded-sm bg-background text-[13px] text-text-primary outline-none flex-1 min-w-[130px] max-sm:min-w-0 box-border transition-all duration-150 focus:border-secondary focus:ring-[3px] focus:ring-secondary/15"
               placeholder="Email (optional)"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -195,7 +195,7 @@ function NamePromptBanner({ onComplete }) {
           </div>
           <button
             type="submit"
-            className="px-4 py-[7px] bg-secondary text-white border-none rounded-sm text-[13px] font-semibold cursor-pointer whitespace-nowrap flex-shrink-0 transition-all duration-150 hover:bg-[#c46a51] active:scale-97 max-sm:self-start"
+            className="px-4 py-[7px] bg-secondary-strong text-on-secondary-strong border-none rounded-sm text-[13px] font-semibold cursor-pointer whitespace-nowrap flex-shrink-0 transition-all duration-150 hover:opacity-90 active:scale-97 max-sm:self-start"
           >
             Continue
           </button>
@@ -240,17 +240,17 @@ function CommentForm({ token, dayNumber, itemId, commenterName, commenterEmail, 
   }
 
   return (
-    <form className="grid gap-2 p-3 bg-primary/[0.03] border border-border rounded-sm mt-1" onSubmit={handleSubmit}>
+    <form className="grid gap-2 p-3 bg-primary/[0.03] border border-border/15 rounded-sm mt-1" onSubmit={handleSubmit}>
       {status === "success" ? (
-        <div className="inline-flex items-center gap-[7px] py-[10px] text-[13px] font-semibold text-[#2a7a4f]">
-          <CheckIcon width={14} height={14} strokeWidth={2.5} className="text-[#2a7a4f] flex-shrink-0" />
+        <div className="inline-flex items-center gap-[7px] py-[10px] text-[13px] font-semibold text-status-success">
+          <CheckIcon width={14} height={14} strokeWidth={2.5} className="text-status-success flex-shrink-0" />
           Comment sent!
         </div>
       ) : (
         <>
           <textarea
             ref={textareaRef}
-            className="w-full box-border px-3 py-[9px] border border-border/40 rounded-sm bg-background text-[13px] leading-[1.55] text-text-primary resize-y outline-none font-[inherit] transition-all duration-150 min-h-[72px] focus:border-secondary focus:shadow-[0_0_0_3px_rgba(215,122,97,0.1)] disabled:opacity-60 disabled:cursor-not-allowed max-sm:p-[10px]"
+            className="w-full box-border px-3 py-[9px] border border-border/40 rounded-sm bg-background text-[13px] leading-[1.55] text-text-primary resize-y outline-none font-[inherit] transition-all duration-150 min-h-[72px] focus:border-secondary focus:ring-[3px] focus:ring-secondary/10 disabled:opacity-60 disabled:cursor-not-allowed max-sm:p-[10px]"
             placeholder="Write a comment…"
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -259,12 +259,12 @@ function CommentForm({ token, dayNumber, itemId, commenterName, commenterEmail, 
             disabled={status === "submitting"}
           />
           {status === "error" && (
-            <p className="m-0 text-[12px] text-red-500 font-medium">Something went wrong. Please try again.</p>
+            <p className="m-0 text-[12px] text-status-danger font-medium">Something went wrong. Please try again.</p>
           )}
           <div className="flex items-center justify-end gap-2 max-[400px]:flex-col-reverse max-[400px]:items-stretch">
             <button
               type="button"
-              className="px-[14px] py-[6px] border border-border rounded-sm bg-transparent text-text-soft text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50 disabled:cursor-not-allowed max-[400px]:text-center max-[400px]:w-full"
+              className="px-[14px] py-[6px] border border-border/20 rounded-sm bg-transparent text-text-muted text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50 disabled:cursor-not-allowed max-[400px]:text-center max-[400px]:w-full"
               onClick={onCancel}
               disabled={status === "submitting"}
             >
@@ -272,7 +272,7 @@ function CommentForm({ token, dayNumber, itemId, commenterName, commenterEmail, 
             </button>
             <button
               type="submit"
-              className="px-4 py-[6px] bg-secondary text-white border-none rounded-sm text-[12px] font-semibold cursor-pointer transition-all duration-150 hover:enabled:bg-[#c46a51] active:enabled:scale-97 disabled:opacity-45 disabled:cursor-not-allowed max-[400px]:text-center max-[400px]:w-full"
+              className="px-4 py-[6px] bg-secondary-strong text-on-secondary-strong border-none rounded-sm text-[12px] font-semibold cursor-pointer transition-all duration-150 hover:enabled:opacity-90 active:enabled:scale-97 disabled:opacity-45 disabled:cursor-not-allowed max-[400px]:text-center max-[400px]:w-full"
               disabled={!text.trim() || status === "submitting"}
             >
               {status === "submitting" ? "Sending…" : "Send"}
@@ -289,11 +289,11 @@ function CommentForm({ token, dayNumber, itemId, commenterName, commenterEmail, 
 function CommentChip({ comment }) {
   const isAddressed = comment.status === "ADDRESSED" && comment.agencyReply;
   const wrapperCls = isAddressed
-    ? "grid gap-1 px-[14px] py-[10px] mt-[6px] bg-surface-elevated border border-border border-l-[3px] border-l-[#16a34a] rounded-sm"
-    : "grid gap-1 px-[14px] py-[10px] mt-[6px] bg-secondary/[0.06] border border-dashed border-secondary/30 rounded-sm";
+    ? "grid gap-1 px-[14px] py-[10px] mt-[6px] bg-surface-elevated border border-border/15 border-l-[3px] border-l-status-success rounded-sm"
+    : "grid gap-1 px-[14px] py-[10px] mt-[6px] bg-secondary/[0.06] border border-dashed border-secondary/40 rounded-sm";
   const badgeCls = isAddressed
-    ? "inline-flex items-center px-[7px] py-px bg-[#16a34a]/15 text-[#16a34a] rounded-pill text-[10px] font-bold tracking-[0.04em] uppercase"
-    : "inline-flex items-center px-[7px] py-px bg-secondary/[0.12] text-secondary rounded-pill text-[10px] font-bold tracking-[0.04em] uppercase";
+    ? "inline-flex items-center px-[7px] py-px bg-status-success/15 text-status-success rounded-pill text-[10px] font-bold tracking-[0.04em] uppercase"
+    : "inline-flex items-center px-[7px] py-px bg-secondary/[0.12] text-secondary-strong rounded-pill text-[10px] font-bold tracking-[0.04em] uppercase";
   return (
     <div className={wrapperCls}>
       <div className="flex items-center gap-2">
@@ -302,8 +302,8 @@ function CommentChip({ comment }) {
       </div>
       <p className="m-0 text-[13px] leading-[1.5] text-text-primary whitespace-pre-wrap">{comment.content}</p>
       {isAddressed && (
-        <div className="mt-2 bg-background border-l-[3px] border-[#16a34a] rounded-sm px-3 py-2 flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.04em] text-[#16a34a]">
+        <div className="mt-2 bg-background border-l-[3px] border-status-success rounded-sm px-3 py-2 flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.04em] text-status-success">
             Agency reply
           </div>
           <p className="m-0 text-[13px] leading-[1.5] text-text-primary whitespace-pre-wrap">{comment.agencyReply}</p>
@@ -322,7 +322,7 @@ function CommentTriggerBtn({ label, compact, onClick }) {
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-[5px] border border-border rounded-sm bg-transparent text-text-soft text-[12px] font-medium cursor-pointer flex-shrink-0 transition-all duration-150 hover:bg-secondary/[0.08] hover:text-secondary hover:border-secondary/30 active:bg-secondary/[0.14] ${compact ? "px-[6px] py-1 w-[26px] h-[26px] justify-center" : "px-[10px] py-[5px]"}`}
+      className={`inline-flex items-center gap-[5px] border border-border/20 rounded-sm bg-transparent text-text-muted text-[12px] font-medium cursor-pointer flex-shrink-0 transition-all duration-150 hover:bg-secondary/[0.08] hover:text-secondary-strong hover:border-secondary/30 active:bg-secondary/[0.14] ${compact ? "px-[6px] py-1 w-[26px] h-[26px] justify-center" : "px-[10px] py-[5px]"}`}
       onClick={onClick}
       aria-label={label}
       title={label}
@@ -773,7 +773,7 @@ export default function PublicItineraryPage() {
           </div>
 
           {/* ── general feedback section ── */}
-          <div className="grid gap-3 mt-6 px-5 py-[22px] bg-primary/[0.03] border border-border rounded-md max-sm:mt-5 max-sm:p-4">
+          <div className="grid gap-3 mt-6 px-5 py-[22px] bg-primary/[0.03] border border-border/15 rounded-md max-sm:mt-5 max-sm:p-4">
             <div className="flex items-center gap-2 text-primary">
               <ChatBubbleIcon size={16} />
               <h3 className="font-serif text-[17px] font-normal m-0 text-primary">General Feedback</h3>
