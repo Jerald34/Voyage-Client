@@ -1,5 +1,6 @@
 // ItineraryHeader — the workspace's page header: client name, a status and count line, and the trip's actions. Extracted from ClientItineraryPage.jsx.
 
+import { useRef } from "react";
 import { Spinner } from "../../ui/index.js";
 import {
   ArrowLeftIcon,
@@ -59,6 +60,13 @@ export default function ItineraryHeader({
   currentVersion = null,
   onReuseInserted = null,
 }) {
+  const nameRef = useRef(null);
+  // Approving hides the button at once (the trip leaves review), which would drop
+  // keyboard focus to the page. The name is the nearest stable place to leave it.
+  const handleApprove = () => {
+    nameRef.current?.focus();
+    onApprove();
+  };
   const rawStatus = selectedTrip ? getSavedStatusLabel(selectedTrip) : "";
   // Tutorial data stores lowercase labels ("client approved").
   const statusLabel = rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "";
@@ -77,7 +85,12 @@ export default function ItineraryHeader({
       <header className="@container flex-shrink-0 border-b border-border/10 px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="m-0 truncate font-serif text-[28px] leading-tight" title={selectedClient.name}>
+            <h2
+              ref={nameRef}
+              tabIndex={-1}
+              className="m-0 truncate rounded-sm font-serif text-[28px] leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+              title={selectedClient.name}
+            >
               {selectedClient.name}
             </h2>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-text-muted">
@@ -171,7 +184,7 @@ export default function ItineraryHeader({
             {onApprove ? (
               <button
                 type="button"
-                onClick={onApprove}
+                onClick={handleApprove}
                 disabled={isApproving}
                 className="inline-flex min-h-[40px] cursor-pointer items-center justify-center rounded-lg bg-secondary-strong px-4 text-[0.85rem] font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
               >

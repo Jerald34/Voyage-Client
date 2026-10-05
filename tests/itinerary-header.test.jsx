@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -23,6 +24,16 @@ import ItineraryHeader from "../app/components/trip-dashboard/pages/ItineraryHea
 const inReview = { id: "t1", approvalStatus: "In review" };
 const client = { id: "danang", name: "Danang", trips: [inReview] };
 
+const baseProps = {
+  selectedClient: client,
+  selectedTrip: inReview,
+  selectedItineraryId: "iter-1",
+  fullItinerary: { id: "iter-1", days: [] },
+  unreadCommentCount: 0,
+  pdfLoading: false,
+  showCommentsPanel: false,
+};
+
 function renderHeader(props = {}) {
   const handlers = {
     onBackToList: vi.fn(),
@@ -31,19 +42,7 @@ function renderHeader(props = {}) {
     onShare: vi.fn(),
     onDownloadPdf: vi.fn(),
   };
-  const utils = render(
-    <ItineraryHeader
-      selectedClient={client}
-      selectedTrip={inReview}
-      selectedItineraryId="iter-1"
-      fullItinerary={{ id: "iter-1", days: [] }}
-      unreadCommentCount={0}
-      pdfLoading={false}
-      showCommentsPanel={false}
-      {...handlers}
-      {...props}
-    />,
-  );
+  const utils = render(<ItineraryHeader {...baseProps} {...handlers} {...props} />);
   return { ...utils, handlers };
 }
 
@@ -110,6 +109,32 @@ describe("ItineraryHeader", () => {
     expect(approve.className).toContain("text-on-secondary-strong");
     fireEvent.click(approve);
     expect(onApprove).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves focus to the client's name when Approve is clicked, since the button unmounts once approved", () => {
+    // A stand-in for the page: approving hides the button (the trip is no longer in review).
+    function Page() {
+      const [approved, setApproved] = useState(false);
+      return <ItineraryHeader {...baseProps} onApprove={approved ? null : () => setApproved(true)} />;
+    }
+    render(<Page />);
+    const approve = screen.getByRole("button", { name: "Approve" });
+    approve.focus();
+
+    fireEvent.click(approve);
+
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Danang" })).toHaveFocus();
+  });
+
+  it("makes the name a focus target that rings for keyboard users only", () => {
+    renderHeader();
+    const title = screen.getByRole("heading", { level: 2, name: "Danang" });
+
+    expect(title).toHaveAttribute("tabindex", "-1");
+    expect(title.className).toContain("focus-visible:ring-2");
+    // A plain `focus:` ring would also show after a mouse click.
+    expect(title.className).not.toMatch(/(^|s)focus:(ring|outline)/);
   });
 
   it("disables Approve while the request runs", () => {

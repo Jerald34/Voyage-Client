@@ -155,6 +155,22 @@ describe("Approve button on ClientItineraryPage", () => {
     expect(approveClientTripMock).toHaveBeenCalledWith("agency-1", "t1");
   });
 
+  it("rolls the status back to In review when the request fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    approveClientTripMock.mockRejectedValueOnce(new Error("approve failed"));
+    const onTripStatusChange = vi.fn();
+
+    render(
+      <ClientItineraryPage agencyTrips={[inReviewTrip]} agencyId="agency-1" onTripStatusChange={onTripStatusChange} />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /^approve$/i }));
+
+    await waitFor(() => expect(onTripStatusChange).toHaveBeenCalledTimes(2));
+    expect(onTripStatusChange).toHaveBeenNthCalledWith(1, "t1", "Approved");
+    expect(onTripStatusChange).toHaveBeenNthCalledWith(2, "t1", "In review");
+  });
+
   it("puts Approve in the header's actions instead of a separate status row", async () => {
     const { container } = render(
       <ClientItineraryPage agencyTrips={[inReviewTrip]} agencyId="agency-1" onTripStatusChange={vi.fn()} />
