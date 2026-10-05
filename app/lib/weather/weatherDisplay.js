@@ -272,7 +272,8 @@ function describeTimedDay(weather, hourly) {
   else if (isNumber(first) && first >= 12) details.push("dry morning");
   else if (isNumber(first) && first > DAYTIME_START_HOUR) details.push(`dry until ${formatHour(first)}`);
   if (isNumber(weather.precipitationMm) && weather.precipitationMm >= 1) {
-    details.push(`about ${Math.round(weather.precipitationMm)} mm of rain`);
+    // Snow's millimetres are water equivalent, so don't call them rain.
+    details.push(`about ${Math.round(weather.precipitationMm)} mm of ${window.condition === "SNOW" ? "precipitation" : "rain"}`);
   }
   const atRisk = countStopsInWindow(hourly);
   const stopsText =
@@ -304,7 +305,7 @@ export function describeStopWeather(entry, itemId) {
 
   const chance =
     stop.outlook !== "DRY" && isNumber(stop.maxPrecipitationProbabilityPct)
-      ? `up to ${stop.maxPrecipitationProbabilityPct}% chance of rain`
+      ? `up to ${stop.maxPrecipitationProbabilityPct}% chance of ${stop.outlook === "SNOW" ? "snow" : "rain"}`
       : "";
   return {
     outlook: stop.outlook,

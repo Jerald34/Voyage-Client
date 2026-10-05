@@ -226,6 +226,23 @@ describe("describeDayWeather with hourly timing", () => {
     });
   });
 
+  it("measures snow as precipitation, not rain", () => {
+    const hourly = (condition) => ({
+      firstWetHour: 14,
+      wetWindow: { condition, fromHour: 14, toHour: 17 },
+      stops: [],
+    });
+    const snow = describeDayWeather(timed({ ...baguio, condition: "SNOW", precipitationMm: 6.2 }, hourly("SNOW")));
+    const rain = describeDayWeather(timed({ ...baguio, precipitationMm: 6.2 }, hourly("RAIN")));
+
+    expect(snow.rain).toBe("Dry morning · about 6 mm of precipitation");
+    expect(snow.ariaLabel).toBe("Forecast: Afternoon snow, 2–5 PM, 16–24°C, dry morning, about 6 mm of precipitation");
+    expect(snow.pdfText).toBe("Weather forecast: Afternoon snow, 2–5 PM, 16–24°C, dry morning, about 6 mm of precipitation");
+    // Rain windows keep "of rain".
+    expect(rain.rain).toBe("Dry morning · about 6 mm of rain");
+    expect(rain.ariaLabel).toMatch(/about 6 mm of rain$/);
+  });
+
   it("counts the stops that may see the window's weather, by band", () => {
     const withStops = (condition, outlooks) =>
       describeDayWeather(
@@ -450,9 +467,11 @@ describe("describeStopWeather", () => {
       label: "Snow likely",
       condition: "SNOW",
       tone: "wet",
-      ariaLabel: "Weather during this stop: Snow likely, up to 80% chance of rain",
-      pdfText: "Snow likely (up to 80% chance of rain)",
+      ariaLabel: "Weather during this stop: Snow likely, up to 80% chance of snow",
+      pdfText: "Snow likely (up to 80% chance of snow)",
     });
+    // Every other outlook keeps "chance of rain".
+    expect(describeStopWeather(timed(baguio, baguioHourly), "s2").pdfText).toBe("Light rain possible (up to 79% chance of rain)");
   });
 
   it("returns null without hourly data, for an unknown stop, or for a day that is not OK", () => {

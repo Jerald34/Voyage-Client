@@ -74,7 +74,7 @@ describe("StopWeatherTag", () => {
     render(<StopWeatherTag entry={snowy} itemId="s9" />);
 
     expect(screen.getByText("Snow likely")).toBeInTheDocument();
-    expect(screen.getByText("Weather during this stop: Snow likely, up to 80% chance of rain")).toHaveClass("sr-only");
+    expect(screen.getByText("Weather during this stop: Snow likely, up to 80% chance of snow")).toHaveClass("sr-only");
   });
 
   it("renders nothing without hourly data for the stop", () => {
