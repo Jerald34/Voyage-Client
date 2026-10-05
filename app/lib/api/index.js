@@ -36,6 +36,16 @@ export {
   approveClientTrip,
 } from "./agency.js";
 
+// Hand edits to a saved itinerary, and reopening an approved trip
+export {
+  renameItineraryDay,
+  addItineraryStop,
+  updateItineraryStop,
+  deleteItineraryStop,
+  moveItineraryStop,
+  reopenClientTrip,
+} from "./itineraryEditing.js";
+
 // Agent threads & runs
 export {
   createAgentThread,

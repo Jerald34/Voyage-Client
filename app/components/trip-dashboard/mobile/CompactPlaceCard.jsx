@@ -7,6 +7,9 @@ export default function CompactPlaceCard({
   item,
   isSelected = false,
   onSelect,
+  // Optional controls (the stop menu). They sit beside the card's button, never
+  // inside it: a button can't contain another button.
+  actions = null,
 }) {
   const snapshot = item?.placeSnapshot ?? null;
   const photoUrl = getSnapshotPhotoUrl(snapshot);
@@ -18,7 +21,7 @@ export default function CompactPlaceCard({
       ? `${item.startTime} - ${item.endTime}`
       : item?.startTime || "";
 
-  return (
+  const card = (
     <button
       type="button"
       onClick={() => onSelect?.(item)}
@@ -26,7 +29,7 @@ export default function CompactPlaceCard({
         isSelected
           ? "ring-2 ring-secondary/35 border-secondary/30 bg-[rgba(255,255,255,0.10)] shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
           : "border-white/10 bg-[rgba(255,255,255,0.06)] shadow-[0_14px_30px_rgba(15,23,42,0.12)] hover:border-white/15 hover:bg-[rgba(255,255,255,0.09)]"
-      }`}
+      } ${actions ? "pr-12" : ""}`}
     >
       {/* Thumbnail */}
       {photoUrl ? (
@@ -59,5 +62,12 @@ export default function CompactPlaceCard({
         )}
       </div>
     </button>
+  );
+  if (!actions) return card;
+  return (
+    <div className="relative">
+      {card}
+      <div className="absolute right-2 top-2">{actions}</div>
+    </div>
   );
 }

@@ -47,6 +47,21 @@ function renderHeader(props = {}) {
 }
 
 describe("ItineraryHeader", () => {
+  it("offers Reopen for edits when the page passes a handler", () => {
+    const approved = { id: "t1", approvalStatus: "Approved" };
+    const onReopen = vi.fn();
+    renderHeader({ selectedTrip: approved, onReopen });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reopen for edits" }));
+
+    expect(onReopen).toHaveBeenCalledOnce();
+  });
+
+  it("has no Reopen for edits button for a trip in review", () => {
+    renderHeader();
+    expect(screen.queryByRole("button", { name: "Reopen for edits" })).toBeNull();
+  });
+
   it("shows the client's full name as the page's serif title, at the font's real weight", () => {
     renderHeader();
     const title = screen.getByRole("heading", { level: 2, name: "Danang" });

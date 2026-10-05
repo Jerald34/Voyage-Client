@@ -2,7 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { Spinner } from "../../ui/index.js";
-import { BuildingIcon } from "../../icons/index.js";
+import { BuildingIcon, PencilIcon } from "../../icons/index.js";
+import StopActionsMenu from "../itinerary-edit/StopActionsMenu.jsx";
+import DayEditActions from "../itinerary-edit/DayEditActions.jsx";
+import { stopMoveOptions } from "../../../lib/trip-dashboard/itineraryEditing.js";
 import { getSnapshotPhotoUrl, getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
 import { formatDayDate, getItemTimeLabel, getAccommodationLabel } from "../../../lib/formatters.js";
 import CommentsPanel from "./CommentsPanel.jsx";
@@ -14,6 +17,9 @@ const ItineraryLiveMap = dynamic(
   () => import("../itinerary/ItineraryLiveMap.jsx"),
   { ssr: false }
 );
+
+const ICON_BUTTON =
+  "inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-border/20 bg-surface-elevated text-text-soft transition-colors duration-150 hover:border-border/40 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
 
 export default function ItineraryDayView({
   agencyId,
@@ -33,6 +39,7 @@ export default function ItineraryDayView({
   setShowCommentsPanel,
   theme,
   dayWeather = null,
+  editor = null,
 }) {
   if (isLoadingItinerary) {
     return (
@@ -58,6 +65,8 @@ export default function ItineraryDayView({
   }
 
   if (fullItinerary && safeDays.length > 0) {
+    // Hand edits: the page passes an editor, and it says whether this trip is unlocked.
+    const canEdit = Boolean(editor?.canEdit);
     const dayAccommodation = selectedDay ? getAccommodationLabel(selectedDay) : "";
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 h-full bg-surface/20 backdrop-blur-sm">
@@ -77,7 +86,20 @@ export default function ItineraryDayView({
                 <span className="text-secondary/80 text-[0.85rem] font-extrabold uppercase tracking-wider">Day {selectedDay.dayNumber}</span>
                 <span className="text-[0.85rem] text-text-soft font-semibold">{formatDayDate(selectedDay, tripStart)}</span>
               </div>
-              <h4 className="m-0 font-sans text-[22px] font-semibold leading-snug tracking-[-0.015em] text-text-primary">{selectedDay.title}</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="m-0 font-sans text-[22px] font-semibold leading-snug tracking-[-0.015em] text-text-primary">{selectedDay.title}</h4>
+                {canEdit && (
+                  <button
+                    type="button"
+                    className={ICON_BUTTON}
+                    onClick={() => editor.openRenameDay(selectedDay)}
+                    aria-label={`Rename day ${selectedDay.dayNumber}`}
+                    title="Rename day"
+                  >
+                    <PencilIcon width={14} height={14} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
               {dayAccommodation && (
                 <div className="flex items-center gap-2 text-[0.85rem] text-text-soft font-semibold">
                   <BuildingIcon width={14} height={14} />
@@ -102,10 +124,11 @@ export default function ItineraryDayView({
                     : Array.isArray(item.metadata?.highlights) ? item.metadata.highlights : [];
                   const placeName = snapshot?.name || item.placeName || item.title || "Untitled";
                   const isActive = activeStopIndex === dayItemIdx;
+                  const moves = canEdit ? stopMoveOptions(safeDays, selectedDayIndex, iIdx) : null;
 
                   return (
                     <div
-                      key={`${selectedDay.dayNumber}-${iIdx}`}
+                      key={item.id ?? `${selectedDay.dayNumber}-${iIdx}`}
                       className={`flex flex-col gap-3 border rounded-xl p-4 cursor-default transition-all duration-200 ${isActive
                         ? "border-secondary/40 bg-secondary/5 shadow-soft"
                         : "border-border/20 bg-surface-elevated hover:border-secondary/20 hover:shadow-soft"
@@ -117,11 +140,26 @@ export default function ItineraryDayView({
                         <span className="px-2.5 py-1 rounded-full bg-secondary/10 text-secondary text-[0.7rem] font-black tracking-tight">
                           {timeLabel || "Time pending"}
                         </span>
-                        {placeType && (
-                          <span className="text-[0.65rem] font-bold tracking-widest uppercase text-text-soft">
-                            {placeType}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {placeType && (
+                            <span className="text-[0.65rem] font-bold tracking-widest uppercase text-text-soft">
+                              {placeType}
+                            </span>
+                          )}
+                          {moves && (
+                            <StopActionsMenu
+                              stopTitle={item.title || placeName}
+                              canMoveUp={moves.canMoveUp}
+                              canMoveDown={moves.canMoveDown}
+                              canMoveToDay={moves.otherDays.length > 0}
+                              onEdit={() => editor.openEditStop(selectedDay, item)}
+                              onMoveUp={() => editor.moveStopBy(selectedDay, iIdx, -1)}
+                              onMoveDown={() => editor.moveStopBy(selectedDay, iIdx, 1)}
+                              onMoveToDay={() => editor.openMoveStop(selectedDay, item)}
+                              onDelete={() => editor.openDeleteStop(selectedDay, item)}
+                            />
+                          )}
+                        </div>
                       </div>
 
                       {/* Image + title + rating */}
@@ -173,6 +211,9 @@ export default function ItineraryDayView({
                   );
                 })}
               </div>
+              {canEdit && (
+                <DayEditActions dayNumber={selectedDay.dayNumber} onAddStop={() => editor.openAddStop(selectedDay)} />
+              )}
             </>
           )}
         </div>

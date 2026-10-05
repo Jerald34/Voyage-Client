@@ -32,6 +32,17 @@ import CommentsPanel from "./CommentsPanel.jsx";
 import ClientList from "./ClientList.jsx";
 import ItineraryHeader from "./ItineraryHeader.jsx";
 import ItineraryDayView from "./ItineraryDayView.jsx";
+import ItineraryEditDialogs from "../itinerary-edit/ItineraryEditDialogs.jsx";
+import ConfirmActionDialog from "../itinerary-edit/ConfirmActionDialog.jsx";
+import StopActionsMenu from "../itinerary-edit/StopActionsMenu.jsx";
+import DayEditActions from "../itinerary-edit/DayEditActions.jsx";
+import { useItineraryEditor } from "../../../hooks/useItineraryEditor.js";
+import { reopenClientTrip } from "../../../lib/api/itineraryEditing.js";
+import {
+  isItineraryLocked,
+  stopDisplayTitle,
+  stopMoveOptions,
+} from "../../../lib/trip-dashboard/itineraryEditing.js";
 import WeatherChip from "../../weather/WeatherChip.jsx";
 import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
 import WeatherAttribution from "../../weather/WeatherAttribution.jsx";
@@ -73,6 +84,7 @@ export default function ClientItineraryPage({
   const { theme } = useTheme();
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [approvingTripId, setApprovingTripId] = useState(null);
+  const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [fullItinerary, setFullItinerary] = useState(null);
@@ -192,19 +204,12 @@ export default function ClientItineraryPage({
     return () => { cancelled = true; };
   }, [agencyId, selectedTrip, selectedItineraryId]);
 
-  // A Reuse insert returns the server's insert result, not an itinerary: it names itself
-  // `itineraryId` and carries no `version`. Show its days at once but keep this itinerary's id and
-  // version (the PDF gate, the Reuse launcher and the weather all key off them), then reload the
-  // canonical itinerary. The load effect bumps requestSequenceRef on every selection change, so a
-  // reload that lands after the selection moved on is dropped the same way a stale load is.
-  const handleReuseInserted = (updatedItinerary) => {
-    if (!updatedItinerary) return;
-    setFullItinerary((prev) => ({
-      ...prev,
-      ...updatedItinerary,
-      id: prev?.id ?? updatedItinerary.id ?? updatedItinerary.itineraryId,
-    }));
-    if (!agencyId || !selectedItineraryId) return;
+  // Re-read the stored itinerary: after a Reuse insert, or after an edit the server
+  // refused (the trip was approved meanwhile, or the stop is gone). The load effect
+  // bumps requestSequenceRef on every selection change, so a reload that lands after
+  // the selection moved on is dropped the same way a stale load is.
+  const reloadItinerary = useCallback(() => {
+    if (!agencyId || !selectedItineraryId || isTutorialItinerary) return;
     const requestId = requestSequenceRef.current;
     fetchItineraryDraft(agencyId, selectedItineraryId)
       .then((res) => {
@@ -212,9 +217,23 @@ export default function ClientItineraryPage({
         setFullItinerary(normalizeItineraryResponse(res));
       })
       .catch((err) => {
-        // Keep the inserted days on screen; the next load of this trip corrects them.
+        // Keep what is on screen; the next load of this trip corrects it.
         console.error(err);
       });
+  }, [agencyId, selectedItineraryId, isTutorialItinerary]);
+
+  // A Reuse insert returns the server's insert result, not an itinerary: it names itself
+  // `itineraryId` and carries no `version`. Show its days at once but keep this itinerary's id and
+  // version (the PDF gate, the Reuse launcher and the weather all key off them), then reload the
+  // canonical itinerary.
+  const handleReuseInserted = (updatedItinerary) => {
+    if (!updatedItinerary) return;
+    setFullItinerary((prev) => ({
+      ...prev,
+      ...updatedItinerary,
+      id: prev?.id ?? updatedItinerary.id ?? updatedItinerary.itineraryId,
+    }));
+    reloadItinerary();
   };
 
   // Fetch unread comment count when a trip with a valid agencyId is selected
@@ -275,6 +294,7 @@ export default function ClientItineraryPage({
     setShowCommentsPanel(false);
     setSelectedDayIndex(0);
     setSelectedPlaceId("");
+    setReopenConfirmOpen(false);
   }, [selectedTripId]);
 
   const safeDays = useMemo(
@@ -423,6 +443,48 @@ export default function ClientItineraryPage({
   // sits idle), and a failed build stops the spinner, leaves the button disabled and
   // shows the notice beside it (the error is logged).
   const pdfLoading = Boolean(pdfInput) && !itineraryPdf.canDownload && itineraryPdf.status !== "error";
+  // Hand edits need this trip's own itinerary on screen, a real agency (not the
+  // tour's sample data) and an unlocked trip. The server enforces the same lock.
+  const isLocked = isItineraryLocked({
+    approvalStatus: selectedTrip?.approvalStatus,
+    itineraryStatus: fullItinerary?.status,
+  });
+  const canEditItinerary = Boolean(agencyId && fullItinerary && itineraryIsCurrent && !isTutorialItinerary && !isLocked);
+  // An edit's response replaces the itinerary, unless the user moved to another trip meanwhile.
+  const handleEditedItinerary = useCallback(
+    (response) => {
+      const next = normalizeItineraryResponse(response);
+      if (next && String(next.id) === String(selectedItineraryId)) setFullItinerary(next);
+    },
+    [selectedItineraryId],
+  );
+  const editor = useItineraryEditor({
+    agencyId,
+    itineraryId: selectedItineraryId,
+    canEdit: canEditItinerary,
+    onItineraryChange: handleEditedItinerary,
+    reload: reloadItinerary,
+  });
+
+  const closeReopenConfirm = useCallback(() => setReopenConfirmOpen(false), []);
+  // Not optimistic: the trip only unlocks once the server has reopened it.
+  const handleReopenTrip = useCallback(async () => {
+    if (!selectedTrip || !agencyId) return { ok: false, message: "" };
+    const trip = selectedTrip;
+    const itineraryId = selectedItineraryId;
+    try {
+      await reopenClientTrip(agencyId, trip.id);
+    } catch (err) {
+      console.error(err);
+      return { ok: false, message: "Couldn't reopen this trip. Try again." };
+    }
+    onTripStatusChange?.(trip.id, "In review");
+    setFullItinerary((prev) =>
+      prev && String(prev.id) === String(itineraryId) ? { ...prev, status: "NEEDS_REVIEW" } : prev,
+    );
+    setReopenConfirmOpen(false);
+    return { ok: true };
+  }, [agencyId, onTripStatusChange, selectedItineraryId, selectedTrip]);
   const handleDownloadPdf = itineraryPdf.download;
 
   const handleCipSnapChange = useCallback((snap) => {
@@ -662,18 +724,41 @@ export default function ClientItineraryPage({
                       <>
                         <DayWeatherSummary entry={itineraryWeather.byDayId.get(selectedDay.id) ?? null} />
                         {(selectedDay.items || []).map((item, iIdx) => {
+                          const moves = editor.canEdit ? stopMoveOptions(safeDays, selectedDayIndex, iIdx) : null;
                           return (
                             <CompactPlaceCard
-                              key={`${selectedDay.dayNumber}-${iIdx}`}
+                              key={item.id ?? `${selectedDay.dayNumber}-${iIdx}`}
                               item={item}
                               isSelected={activeStopIndex === iIdx}
                               onSelect={() => {
                                 setActiveStopIndex(iIdx);
                                 setSelectedPlaceId(item.__placeEntityId);
                               }}
+                              actions={
+                                moves ? (
+                                  <StopActionsMenu
+                                    stopTitle={stopDisplayTitle(item)}
+                                    canMoveUp={moves.canMoveUp}
+                                    canMoveDown={moves.canMoveDown}
+                                    canMoveToDay={moves.otherDays.length > 0}
+                                    onEdit={() => editor.openEditStop(selectedDay, item)}
+                                    onMoveUp={() => editor.moveStopBy(selectedDay, iIdx, -1)}
+                                    onMoveDown={() => editor.moveStopBy(selectedDay, iIdx, 1)}
+                                    onMoveToDay={() => editor.openMoveStop(selectedDay, item)}
+                                    onDelete={() => editor.openDeleteStop(selectedDay, item)}
+                                  />
+                                ) : null
+                              }
                             />
                           );
                         })}
+                        {editor.canEdit ? (
+                          <DayEditActions
+                            dayNumber={selectedDay.dayNumber}
+                            onAddStop={() => editor.openAddStop(selectedDay)}
+                            onRenameDay={() => editor.openRenameDay(selectedDay)}
+                          />
+                        ) : null}
                       </>
                     ) : (
                       <div className="text-center text-text-soft py-10 text-sm">Select a day to view stops.</div>
@@ -697,6 +782,7 @@ export default function ClientItineraryPage({
           tripId={selectedTripId}
           tripTitle={tripTitle}
         />
+        <ItineraryEditDialogs editor={editor} days={safeDays} />
       </div>
     );
   }
@@ -746,6 +832,8 @@ export default function ClientItineraryPage({
               onDownloadPdf={handleDownloadPdf}
               onApprove={selectedTrip?.approvalStatus === "In review" ? handleApproveTrip : null}
               isApproving={Boolean(selectedTrip) && approvingTripId === selectedTrip.id}
+              onReopen={selectedTrip?.approvalStatus === "Approved" && !isTutorialItinerary ? () => setReopenConfirmOpen(true) : null}
+              canReuse={!isLocked}
               agencyId={agencyId}
               currentTrip={
                 selectedTrip
@@ -840,6 +928,7 @@ export default function ClientItineraryPage({
                   setShowCommentsPanel={setShowCommentsPanel}
                   theme={theme}
                   dayWeather={selectedDay ? itineraryWeather.byDayId.get(selectedDay.id) ?? null : null}
+                  editor={editor}
                 />
               </div>
             </div>
@@ -862,6 +951,16 @@ export default function ClientItineraryPage({
         itineraryId={selectedItineraryId}
         tripId={selectedTripId}
         tripTitle={tripTitle}
+      />
+      <ItineraryEditDialogs editor={editor} days={safeDays} />
+      <ConfirmActionDialog
+        open={reopenConfirmOpen}
+        title="Reopen this trip for edits?"
+        body="It goes back to In review and needs approval again. Share links show each change as soon as you save it."
+        confirmLabel="Reopen for edits"
+        busyLabel="Reopening…"
+        onConfirm={handleReopenTrip}
+        onClose={closeReopenConfirm}
       />
 
       <style>{`

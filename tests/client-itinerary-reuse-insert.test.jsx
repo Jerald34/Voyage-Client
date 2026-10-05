@@ -69,7 +69,8 @@ vi.mock("../app/lib/formatters.js", () => ({
 
 import ClientItineraryPage from "../app/components/trip-dashboard/pages/ClientItineraryPage.jsx";
 
-const trip = { id: "t1", clientName: "Garcia", approvalStatus: "Approved", destination: "Baguio", itineraryId: "iter-1", isSaved: true };
+// In review: Reuse is hidden on approved trips, which are locked until reopened.
+const trip = { id: "t1", clientName: "Garcia", approvalStatus: "In review", destination: "Baguio", itineraryId: "iter-1", isSaved: true };
 
 const draftOf = (id, title, version = 1) => ({
   itinerary: { id, version, title, days: [{ id: `${id}-day-1`, dayNumber: 1, title: "Arrival", date: "2026-10-10", items: [] }] },

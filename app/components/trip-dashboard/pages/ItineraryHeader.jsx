@@ -53,6 +53,10 @@ export default function ItineraryHeader({
   // Approve shows only when the page passes a handler (the trip is in review).
   onApprove = null,
   isApproving = false,
+  // Reopen shows only when the page passes a handler (the trip is approved).
+  onReopen = null,
+  // Approved trips are locked, so the page hides Reuse for them.
+  canReuse = true,
   // Reuse launcher props (optional for Stage 6A)
   agencyId = null,
   currentTrip = null,
@@ -127,7 +131,7 @@ export default function ItineraryHeader({
             {selectedItineraryId && (
               <>
                 {/* Reuse from rated trips — optional launcher for Stage 6A */}
-                {agencyId && currentTrip && targetItineraryId && currentVersion !== null && (
+                {canReuse && agencyId && currentTrip && targetItineraryId && currentVersion !== null && (
                   <ReuseLauncher
                     agencyId={agencyId}
                     currentTrip={currentTrip}
@@ -189,6 +193,15 @@ export default function ItineraryHeader({
                 className="inline-flex min-h-[40px] cursor-pointer items-center justify-center rounded-lg bg-secondary-strong px-4 text-[0.85rem] font-semibold text-on-secondary-strong transition-[opacity,scale] duration-150 ease-out hover:opacity-90 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
               >
                 {isApproving ? "Approving…" : "Approve"}
+              </button>
+            ) : null}
+            {onReopen ? (
+              <button
+                type="button"
+                onClick={onReopen}
+                className="inline-flex min-h-[40px] cursor-pointer items-center justify-center rounded-lg border border-border/30 bg-surface-elevated px-4 text-[0.85rem] font-semibold text-text-primary transition-[background-color,border-color,scale] duration-150 ease-out hover:border-border/50 hover:bg-surface active:scale-[0.97] motion-reduce:transition-none"
+              >
+                Reopen for edits
               </button>
             ) : null}
           </div>
