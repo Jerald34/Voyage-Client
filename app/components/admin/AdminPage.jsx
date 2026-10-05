@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AdminAgenciesPage from "./AdminAgenciesPage.jsx";
+import AdminAccountsPage from "./AdminAccountsPage.jsx";
 import UsageSection from "./usage/UsageSection.jsx";
 import ReportsSection from "./reports/ReportsSection.jsx";
 import AdminTopBar from "./AdminTopBar.jsx";
@@ -9,6 +10,7 @@ import SegmentedControl from "./SegmentedControl.jsx";
 
 const SECTIONS = [
   { id: "agencies", label: "Agencies", title: "Agencies" },
+  { id: "accounts", label: "Accounts", title: "Accounts" },
   { id: "usage", label: "Usage", title: "Usage" },
   { id: "reports", label: "Reports", title: "Reports" },
 ];
@@ -37,6 +39,7 @@ export default function AdminPage({ onPendingCountChange, reportsBadge = 0 }) {
       <AdminTopBar title={active?.title} tabs={tabs} />
       <div className="flex min-h-0 flex-1 flex-col">
         {section === "agencies" && <AdminAgenciesPage onPendingCountChange={onPendingCountChange} />}
+        {section === "accounts" && <AdminAccountsPage />}
         {section === "usage" && <UsageSection />}
         {section === "reports" && <ReportsSection onBadgeChange={setBadge} />}
       </div>

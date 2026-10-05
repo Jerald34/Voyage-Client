@@ -14,6 +14,14 @@ export async function fetchAllAgencies(status) {
   return fetchApi(`/admin/agencies${params}`);
 }
 
+export async function fetchAllAccounts() {
+  return fetchApi("/admin/users");
+}
+
+export async function fetchAccountDetail(userId) {
+  return fetchApi(`/admin/users/${userId}`);
+}
+
 export async function fetchPendingCount() {
   return fetchApi("/admin/agencies/pending-count");
 }
