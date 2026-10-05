@@ -36,7 +36,7 @@ export default function CompactPlaceCard({
           className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm"
         />
       ) : (
-        <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center bg-[rgba(255,255,255,0.08)] text-text-soft text-lg font-serif font-bold border border-white/10 backdrop-blur-md">
+        <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center bg-[rgba(255,255,255,0.08)] text-text-soft text-lg font-semibold border border-white/10 backdrop-blur-md">
           {placeName.slice(0, 1).toUpperCase()}
         </div>
       )}

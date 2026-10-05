@@ -435,7 +435,7 @@ export default function ClientItineraryPage({
           {mobilePane === "list" ? (
             <div className="flex flex-col h-full" data-tour-target="cip-client-directory">
               <div className="px-4 py-3 border-b border-border/5">
-                <h3 className="font-serif text-[1.3rem] text-text-primary m-0 tracking-tight mb-2">Client Directory</h3>
+                <h3 className="m-0 mb-2 font-sans text-[15px] font-semibold tracking-normal text-text-primary">Client Directory</h3>
                 <div className="relative flex items-center">
                   <SearchIcon width={16} height={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-soft pointer-events-none z-[1]" />
                   <input

@@ -776,7 +776,7 @@ export default function PublicItineraryPage() {
           <div className="grid gap-3 mt-6 px-5 py-[22px] bg-primary/[0.03] border border-border/15 rounded-md max-sm:mt-5 max-sm:p-4">
             <div className="flex items-center gap-2 text-primary">
               <ChatBubbleIcon size={16} />
-              <h3 className="font-serif text-[17px] font-normal m-0 text-primary">General Feedback</h3>
+              <h3 className="m-0 font-sans text-[15px] font-semibold tracking-normal text-primary">General Feedback</h3>
             </div>
             <p className="m-0 text-[13px] leading-[1.5] text-text-soft">
               Have overall thoughts about this itinerary? Share them here.

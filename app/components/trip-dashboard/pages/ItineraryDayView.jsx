@@ -77,7 +77,7 @@ export default function ItineraryDayView({
                 <span className="text-secondary/80 text-[0.85rem] font-extrabold uppercase tracking-wider">Day {selectedDay.dayNumber}</span>
                 <span className="text-[0.85rem] text-text-soft font-semibold">{formatDayDate(selectedDay, tripStart)}</span>
               </div>
-              <h4 className="text-[1.5rem] font-extrabold m-0 text-text-primary tracking-tight">{selectedDay.title}</h4>
+              <h4 className="m-0 font-sans text-[22px] font-semibold leading-snug tracking-[-0.015em] text-text-primary">{selectedDay.title}</h4>
               {dayAccommodation && (
                 <div className="flex items-center gap-2 text-[0.85rem] text-text-soft font-semibold">
                   <BuildingIcon width={14} height={14} />
@@ -133,12 +133,12 @@ export default function ItineraryDayView({
                             className="w-20 h-20 rounded-xl object-cover shadow-md flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-20 h-20 rounded-xl flex-shrink-0 flex items-center justify-center bg-background text-text-soft text-2xl font-serif font-bold border border-border/10 shadow-inner">
+                          <div className="w-20 h-20 rounded-xl flex-shrink-0 flex items-center justify-center bg-background text-text-soft text-2xl font-semibold border border-border/10 shadow-inner">
                             {placeName.slice(0, 1).toUpperCase()}
                           </div>
                         )}
                         <div className="flex flex-col gap-1 flex-1 min-w-0">
-                          <h5 className="m-0 text-text-primary text-[1rem] font-serif leading-tight tracking-tight">
+                          <h5 className="m-0 font-sans text-[15px] font-semibold leading-snug tracking-normal text-text-primary">
                             {item.title || placeName}
                           </h5>
                           {rating && (

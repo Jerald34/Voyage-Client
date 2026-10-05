@@ -210,7 +210,7 @@ export default function ProposalRating({
 
       {/* header */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-serif text-[17px] font-normal m-0 text-primary">
+        <h3 className="m-0 font-sans text-[15px] font-semibold tracking-normal text-primary">
           Rate this proposal
         </h3>
         {savedRating !== null && !editing && !errorInfo?.lock && !windowClosed && (
