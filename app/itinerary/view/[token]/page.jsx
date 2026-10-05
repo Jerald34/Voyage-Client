@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { fetchPublicItinerary, postPublicComment, listPublicComments } from "../../../lib/api/index.js";
 import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
-import { generateItineraryPdf, titleToFilename } from "../../../lib/pdfExport.js";
+import PdfDownloadButton from "./components/PdfDownloadButton.jsx";
 import WeatherChip from "../../../components/weather/WeatherChip.jsx";
 import WeatherAttribution from "../../../components/weather/WeatherAttribution.jsx";
 import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
@@ -330,7 +330,6 @@ export default function PublicItineraryPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
 
   /* mobile tab toggle */
   const [mobileTab, setMobileTab] = useState("itinerary");
@@ -441,6 +440,22 @@ export default function PublicItineraryPage() {
     () => Array.from(shareWeather.byDayId.values()).some((entry) => Boolean(describeDayWeather(entry))),
     [shareWeather.byDayId],
   );
+
+  /* ── PDF content (built ahead of the tap by PdfDownloadButton) ── */
+  const pdfInput = useMemo(() => {
+    if (!data?.itinerary) return null;
+    const pdfTrip = data.trip ?? {};
+    const agencyBrand = data.brand?.type === "agency" ? data.brand.name : null;
+    return {
+      title: pdfTrip.title || data.itinerary.title,
+      summary: data.itinerary.summary,
+      dateRange: formatDateRange(pdfTrip.startDate, pdfTrip.endDate),
+      travelerCount: pdfTrip.travelerCount,
+      days: attachWeatherToDays(data.itinerary.days, shareWeather.byDayId),
+      // The PDF carries the brand the page header shows.
+      agencyName: agencyBrand || "Voyage",
+    };
+  }, [data, shareWeather.byDayId]);
 
   /* ── map callbacks ── */
   const handleHoverItem = useCallback((index) => {
@@ -571,29 +586,6 @@ export default function PublicItineraryPage() {
     );
   }
 
-  /* ── PDF export ── */
-  async function handleDownloadPdf() {
-    if (!data || pdfLoading) return;
-    setPdfLoading(true);
-    try {
-      const { trip, itinerary } = data;
-      const dateRange = formatDateRange(trip.startDate, trip.endDate);
-      const doc = await generateItineraryPdf({
-        title:         trip.title || itinerary.title,
-        summary:       itinerary.summary,
-        dateRange,
-        travelerCount: trip.travelerCount,
-        days:          attachWeatherToDays(itinerary.days, shareWeather.byDayId),
-        agencyName:    "Voyage",
-      });
-      doc.save(titleToFilename(trip.title || itinerary.title));
-    } catch (err) {
-      console.error("PDF export failed:", err);
-    } finally {
-      setPdfLoading(false);
-    }
-  }
-
   /* ── success ── */
   const { trip: rawTrip, itinerary, brand, share } = data;
   // Personal shares have no bound trip; fall back to an empty object so the
@@ -695,28 +687,7 @@ export default function PublicItineraryPage() {
                 </span>
               )}
             </div>
-            <button
-              className={`inline-flex items-center gap-[7px] mt-[14px] px-4 py-2 rounded-pill border border-border bg-surface text-primary text-[13px] font-semibold cursor-pointer transition-all duration-150 whitespace-nowrap hover:enabled:bg-background hover:enabled:border-secondary hover:enabled:shadow-[0_2px_8px_rgba(215,122,97,0.12)] active:enabled:scale-97 disabled:opacity-65 disabled:cursor-not-allowed`}
-              onClick={handleDownloadPdf}
-              disabled={pdfLoading}
-              aria-label="Download itinerary as PDF"
-            >
-              {pdfLoading ? (
-                <>
-                  <Spinner size="sm" />
-                  Generating PDF...
-                </>
-              ) : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  Download PDF
-                </>
-              )}
-            </button>
+            <PdfDownloadButton input={pdfInput} className="mt-[14px]" />
             {itinerary.summary && (
               <p className="mt-3 mb-0 text-[14px] leading-[1.6] text-text-muted">{itinerary.summary}</p>
             )}
