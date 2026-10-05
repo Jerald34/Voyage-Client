@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Modal from "../../ui/Modal.jsx";
 
 const INPUT =
@@ -11,6 +12,7 @@ const SAVE =
 
 export default function RenameDayDialog({ open, day, onSubmit, onClose }) {
   const inputId = useId();
+  const inputRef = useRef(null);
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -22,31 +24,38 @@ export default function RenameDayDialog({ open, day, onSubmit, onClose }) {
     setBusy(false);
   }, [open, day]);
 
+  // Render the message first, so the field it describes is read with it, then go there.
+  const showError = (message) => {
+    flushSync(() => {
+      setBusy(false);
+      setError(message);
+    });
+    inputRef.current?.focus();
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) {
-      setError("Add a title.");
+      showError("Add a title.");
       return;
     }
     if (trimmed.length > 200) {
-      setError("Keep this under 200 characters.");
+      showError("Keep this under 200 characters.");
       return;
     }
     setBusy(true);
     setError("");
     const result = await onSubmit(trimmed);
-    if (!result?.ok) {
-      setBusy(false);
-      setError(result?.message || "Couldn't save your change. Try again.");
-    }
+    if (!result?.ok) showError(result?.message || "Couldn't save your change. Try again.");
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Rename day ${day?.dayNumber ?? ""}`} size="sm">
+    <Modal open={open} onClose={onClose} title={`Rename day ${day?.dayNumber ?? ""}`} size="sm" initialFocusRef={inputRef}>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-1.5">
         <label htmlFor={inputId} className="text-[0.8rem] font-semibold text-text-primary">Day title</label>
         <input
+          ref={inputRef}
           id={inputId}
           type="text"
           className={INPUT}

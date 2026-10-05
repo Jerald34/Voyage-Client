@@ -66,10 +66,15 @@ describe("RenameDayDialog", () => {
     const input = screen.getByLabelText("Day title");
     expect(screen.getByRole("heading", { name: "Rename day 1" })).toBeInTheDocument();
     expect(input).toHaveValue("Arrival");
+    // The dialog opens on the field, not on its close button.
+    expect(input).toHaveFocus();
 
     fireEvent.change(input, { target: { value: "  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const save = screen.getByRole("button", { name: "Save" });
+    save.focus();
+    fireEvent.click(save);
     expect(await screen.findByText("Add a title.")).toBeInTheDocument();
+    expect(input).toHaveFocus();
     expect(onSubmit).not.toHaveBeenCalled();
 
     fireEvent.change(input, { target: { value: "Old town walk" } });
@@ -90,6 +95,11 @@ describe("DayEditActions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Rename day 2" }));
     expect(onAddStop).toHaveBeenCalledOnce();
     expect(onRenameDay).toHaveBeenCalledOnce();
+  });
+
+  it("marks Add stop with its day, so focus can land there when the day empties", () => {
+    render(<DayEditActions dayNumber={2} dayId="day-2" onAddStop={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Add stop" })).toHaveAttribute("data-add-stop", "day-2");
   });
 });
 

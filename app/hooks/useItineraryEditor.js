@@ -18,10 +18,35 @@ import {
 
 const NOTHING_OPEN = { ok: false, message: "" };
 
+// Where focus goes when `item` leaves `day`: the next stop's ⋯ button, else the
+// previous stop's, else the day's Add stop. The day view marks those buttons with
+// data-stop-menu and data-add-stop.
+function focusTargetAfterLeaving(day, item) {
+  const items = day?.items ?? [];
+  const index = items.findIndex((stop) => stop.id === item?.id);
+  const neighbour = index === -1 ? null : items[index + 1] ?? items[index - 1] ?? null;
+  return neighbour ? { attribute: "stopMenu", value: neighbour.id } : { attribute: "addStop", value: day?.id };
+}
+
+function findMarked({ attribute, value }) {
+  const selector = attribute === "stopMenu" ? "[data-stop-menu]" : "[data-add-stop]";
+  return Array.from(document.querySelectorAll(selector)).find((element) => element.dataset[attribute] === value);
+}
+
 export function useItineraryEditor({ agencyId, itineraryId, canEdit, onItineraryChange, reload }) {
   // null, or { kind: "editStop" | "addStop" | "moveStop" | "deleteStop" | "renameDay", day, item? }
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
+  // A deleted stop, or one moved to another day, takes its ⋯ button with it, and the
+  // dialog hands focus back to that missing button. This puts it somewhere nearby
+  // once the page shows the change.
+  const [focusAfterEdit, setFocusAfterEdit] = useState(null);
+
+  useEffect(() => {
+    if (!focusAfterEdit) return;
+    findMarked(focusAfterEdit)?.focus();
+    setFocusAfterEdit(null);
+  }, [focusAfterEdit]);
 
   // Another trip starts with nothing open.
   useEffect(() => {
@@ -93,14 +118,20 @@ export function useItineraryEditor({ agencyId, itineraryId, canEdit, onItinerary
   const submitMove = useCallback(
     async (toDayId) => {
       if (dialog?.kind !== "moveStop") return NOTHING_OPEN;
-      return sendAndClose(() => moveItineraryStop(agencyId, itineraryId, dialog.item.id, { toDayId }));
+      const focusTarget = focusTargetAfterLeaving(dialog.day, dialog.item);
+      const result = await sendAndClose(() => moveItineraryStop(agencyId, itineraryId, dialog.item.id, { toDayId }));
+      if (result.ok) setFocusAfterEdit(focusTarget);
+      return result;
     },
     [agencyId, itineraryId, dialog, sendAndClose],
   );
 
   const confirmDelete = useCallback(async () => {
     if (dialog?.kind !== "deleteStop") return NOTHING_OPEN;
-    return sendAndClose(() => deleteItineraryStop(agencyId, itineraryId, dialog.item.id));
+    const focusTarget = focusTargetAfterLeaving(dialog.day, dialog.item);
+    const result = await sendAndClose(() => deleteItineraryStop(agencyId, itineraryId, dialog.item.id));
+    if (result.ok) setFocusAfterEdit(focusTarget);
+    return result;
   }, [agencyId, itineraryId, dialog, sendAndClose]);
 
   const submitRenameDay = useCallback(

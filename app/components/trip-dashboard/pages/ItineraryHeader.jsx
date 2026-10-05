@@ -1,6 +1,6 @@
 // ItineraryHeader — the workspace's page header: client name, a status and count line, and the trip's actions. Extracted from ClientItineraryPage.jsx.
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Spinner } from "../../ui/index.js";
 import {
   ArrowLeftIcon,
@@ -71,6 +71,17 @@ export default function ItineraryHeader({
     nameRef.current?.focus();
     onApprove();
   };
+  // Reopen asks first, in a dialog. Once the trip unlocks, the button is gone and the
+  // dialog hands focus back to it, so focus falls to the page; leave it on the name
+  // too. Focus the user moved somewhere else stays where it is.
+  const canReopen = Boolean(onReopen);
+  const couldReopen = useRef(canReopen);
+  useEffect(() => {
+    const reopenWentAway = couldReopen.current && !canReopen;
+    couldReopen.current = canReopen;
+    const focusIsLost = !document.activeElement || document.activeElement === document.body;
+    if (reopenWentAway && focusIsLost) nameRef.current?.focus();
+  }, [canReopen]);
   const rawStatus = selectedTrip ? getSavedStatusLabel(selectedTrip) : "";
   // Tutorial data stores lowercase labels ("client approved").
   const statusLabel = rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "";

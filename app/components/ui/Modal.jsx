@@ -35,6 +35,8 @@ export default function Modal({
   variant = "center",
   children,
   footer,
+  // A form names the field to start on; otherwise focus goes to the first control.
+  initialFocusRef = null,
 }) {
   const panelRef = useRef(null);
   const previousFocus = useRef(null);
@@ -84,9 +86,9 @@ export default function Modal({
     // Move focus into panel
     const panel = panelRef.current;
     if (panel) {
-      const first = panel.querySelector(
-        'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])'
-      );
+      const first =
+        initialFocusRef?.current ??
+        panel.querySelector('a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])');
       (first ?? panel).focus();
     }
 
@@ -94,7 +96,7 @@ export default function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocus.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open, onClose, initialFocusRef]);
 
   // Prevent body scroll while open
   useEffect(() => {

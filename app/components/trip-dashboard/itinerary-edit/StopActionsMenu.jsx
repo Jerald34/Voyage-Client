@@ -12,6 +12,8 @@ const ITEM =
 
 export default function StopActionsMenu({
   stopTitle,
+  // Marks the button, so the editor can put focus here when a neighbouring stop leaves.
+  stopId = undefined,
   canMoveUp = false,
   canMoveDown = false,
   canMoveToDay = false,
@@ -80,6 +82,7 @@ export default function StopActionsMenu({
         type="button"
         className={TRIGGER}
         aria-label={`Actions for ${stopTitle}`}
+        data-stop-menu={stopId}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}

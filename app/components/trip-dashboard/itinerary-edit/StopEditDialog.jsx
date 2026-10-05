@@ -1,7 +1,8 @@
 "use client";
 // The form behind "Edit details" and "Add stop". The place a stop points to isn't
 // editable here: swapping places stays with the agent, which checks the new place.
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Modal from "../../ui/Modal.jsx";
 import {
   STOP_TYPE_OPTIONS,
@@ -17,6 +18,8 @@ const CANCEL =
   "rounded-lg border border-border/20 px-4 py-2 text-sm font-semibold text-text-muted hover:bg-border/10 disabled:opacity-60";
 const SAVE =
   "rounded-lg bg-secondary-strong px-4 py-2 text-sm font-semibold text-on-secondary-strong hover:opacity-90 disabled:cursor-wait disabled:opacity-60";
+// The order the fields appear in, so a failed check goes to the first one with a problem.
+const FIELD_ORDER = ["title", "startTime", "endTime", "description", "clientNotes", "staffNotes"];
 
 function Field({ id, label, hint, error, children }) {
   return (
@@ -36,6 +39,7 @@ function Field({ id, label, hint, error, children }) {
 
 export default function StopEditDialog({ open, mode = "edit", item = null, dayLabel = "", onSubmit, onClose }) {
   const baseId = useId();
+  const titleRef = useRef(null);
   const [form, setForm] = useState(() => (item ? stopFormFromItem(item) : emptyStopForm()));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -57,13 +61,14 @@ export default function StopEditDialog({ open, mode = "edit", item = null, dayLa
     setErrors((prev) => (prev[name] ? { ...prev, [name]: undefined } : prev));
   };
 
-  const textField = (name, label, { hint, multiline = false, placeholder } = {}) => {
+  const textField = (name, label, { hint, multiline = false, placeholder, inputRef } = {}) => {
     const id = fieldId(name);
     const Tag = multiline ? "textarea" : "input";
     const describedBy = errors[name] ? `${id}-error` : hint ? `${id}-hint` : undefined;
     return (
       <Field id={id} label={label} hint={hint} error={errors[name]}>
         <Tag
+          ref={inputRef}
           id={id}
           className={INPUT}
           value={form[name]}
@@ -80,8 +85,13 @@ export default function StopEditDialog({ open, mode = "edit", item = null, dayLa
   const handleSubmit = async (event) => {
     event.preventDefault();
     const found = validateStopForm(form);
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    // Render the messages first, so the field is read with its message, then go there.
+    flushSync(() => setErrors(found));
+    const firstProblem = FIELD_ORDER.find((name) => found[name]);
+    if (firstProblem) {
+      document.getElementById(fieldId(firstProblem))?.focus();
+      return;
+    }
     setSaving(true);
     setSubmitError("");
     const result = await onSubmit(form);
@@ -92,9 +102,15 @@ export default function StopEditDialog({ open, mode = "edit", item = null, dayLa
   };
 
   return (
-    <Modal open={open} onClose={onClose} variant="side" title={mode === "add" ? `Add a stop to ${dayLabel}` : "Edit stop"}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      variant="side"
+      title={mode === "add" ? `Add a stop to ${dayLabel}` : "Edit stop"}
+      initialFocusRef={titleRef}
+    >
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-        {textField("title", "Title")}
+        {textField("title", "Title", { inputRef: titleRef })}
         <Field id={fieldId("type")} label="Type">
           <select id={fieldId("type")} className={INPUT} value={form.type} onChange={setField("type")}>
             {STOP_TYPE_OPTIONS.map((option) => (

@@ -90,6 +90,13 @@ describe("ItineraryDayView edit controls", () => {
     expect(editor.moveStopBy).toHaveBeenCalledWith(days[0], 1, -1);
   });
 
+  it("marks each menu with its stop and Add stop with its day, for the editor's focus handling", () => {
+    renderDayView(editorStub());
+    expect(screen.getByRole("button", { name: "Actions for Museum" })).toHaveAttribute("data-stop-menu", "s1");
+    expect(screen.getByRole("button", { name: "Actions for Lunch" })).toHaveAttribute("data-stop-menu", "s2");
+    expect(screen.getByRole("button", { name: "Add stop" })).toHaveAttribute("data-add-stop", "day-1");
+  });
+
   it("adds a stop and renames the day", () => {
     const editor = editorStub();
     renderDayView(editor);

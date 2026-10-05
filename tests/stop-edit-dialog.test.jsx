@@ -27,15 +27,38 @@ describe("StopEditDialog", () => {
     expect(screen.getByLabelText("Staff notes")).toHaveValue("Call ahead");
   });
 
-  it("won't add a stop without a title", async () => {
+  it("opens with focus on the title, not the close button", () => {
+    render(<StopEditDialog open mode="edit" item={lunch} dayLabel="Day 1: Arrival" onSubmit={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByLabelText("Title")).toHaveFocus();
+  });
+
+  it("won't add a stop without a title, and takes focus to the title", async () => {
     const onSubmit = vi.fn();
     render(<StopEditDialog open mode="add" dayLabel="Day 1: Arrival" onSubmit={onSubmit} onClose={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "Add a stop to Day 1: Arrival" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Add stop" }));
+    const submit = screen.getByRole("button", { name: "Add stop" });
+    submit.focus();
+    fireEvent.click(submit);
 
     expect(await screen.findByText("Add a title.")).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Title")).toHaveFocus();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("takes focus to the first field with a problem", async () => {
+    const onSubmit = vi.fn();
+    render(<StopEditDialog open mode="edit" item={lunch} dayLabel="Day 1: Arrival" onSubmit={onSubmit} onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText("End time"), { target: { value: "x".repeat(21) } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "x".repeat(2001) } });
+    const save = screen.getByRole("button", { name: "Save" });
+    save.focus();
+    fireEvent.click(save);
+
+    await waitFor(() => expect(screen.getByLabelText("End time")).toHaveFocus());
+    expect(screen.getByLabelText("Description")).toHaveAttribute("aria-invalid", "true");
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

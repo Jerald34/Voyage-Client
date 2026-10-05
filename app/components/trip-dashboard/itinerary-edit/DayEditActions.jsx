@@ -6,10 +6,11 @@ import { PencilIcon, PlusIcon } from "../../icons/index.js";
 const BUTTON =
   "inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-dashed border-border/40 px-3 text-[0.85rem] font-semibold text-text-muted transition-colors duration-150 hover:border-secondary/50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
 
-export default function DayEditActions({ dayNumber, onAddStop, onRenameDay = null }) {
+// `dayId` marks Add stop, so the editor can put focus there when the day's last stop leaves.
+export default function DayEditActions({ dayNumber, dayId = undefined, onAddStop, onRenameDay = null }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <button type="button" className={BUTTON} onClick={onAddStop}>
+      <button type="button" className={BUTTON} onClick={onAddStop} data-add-stop={dayId}>
         <PlusIcon width={14} height={14} aria-hidden="true" />
         Add stop
       </button>

@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   addItineraryStop: vi.fn(),
@@ -157,5 +157,74 @@ describe("useItineraryEditor", () => {
     rerender({ agencyId: "ag-1", itineraryId: "itin-2", canEdit: true, onItineraryChange, reload });
 
     expect(result.current.dialog).toBeNull();
+  });
+});
+
+// A stop that is deleted, or moved to another day, takes its ⋯ button with it, so
+// the editor puts focus on the nearest stop's ⋯, or on Add stop once the day is empty.
+describe("useItineraryEditor focus after a stop leaves the day", () => {
+  const coffee = { id: "s3", type: "MEAL", title: "Coffee" };
+  const day = { id: "day-1", dayNumber: 1, title: "Arrival", items: [museum, lunch, coffee] };
+  let buttons;
+
+  // Stand-ins for the day view's controls, marked the way the real ones are.
+  beforeEach(() => {
+    buttons = {};
+    for (const stop of day.items) {
+      const button = document.createElement("button");
+      button.dataset.stopMenu = stop.id;
+      buttons[stop.id] = button;
+    }
+    buttons.addStop = document.createElement("button");
+    buttons.addStop.dataset.addStop = "day-1";
+    document.body.append(...Object.values(buttons));
+  });
+  afterEach(() => Object.values(buttons).forEach((button) => button.remove()));
+
+  it("moves to the next stop's menu after a delete", async () => {
+    const { result } = setup();
+    act(() => result.current.openDeleteStop(day, lunch));
+    await act(async () => {
+      await result.current.confirmDelete();
+    });
+    expect(buttons.s3).toHaveFocus();
+  });
+
+  it("moves to the previous stop's menu when the last stop goes", async () => {
+    const { result } = setup();
+    act(() => result.current.openDeleteStop(day, coffee));
+    await act(async () => {
+      await result.current.confirmDelete();
+    });
+    expect(buttons.s2).toHaveFocus();
+  });
+
+  it("moves to Add stop when the day's only stop goes", async () => {
+    const { result } = setup();
+    act(() => result.current.openDeleteStop({ ...day, items: [museum] }, museum));
+    await act(async () => {
+      await result.current.confirmDelete();
+    });
+    expect(buttons.addStop).toHaveFocus();
+  });
+
+  it("moves to the next stop's menu after a move to another day", async () => {
+    const { result } = setup();
+    act(() => result.current.openMoveStop(day, museum));
+    await act(async () => {
+      await result.current.submitMove("day-2");
+    });
+    expect(buttons.s2).toHaveFocus();
+  });
+
+  it("leaves focus alone when the request fails", async () => {
+    api.deleteItineraryStop.mockRejectedValue(Object.assign(new Error("boom"), { status: 500 }));
+    const { result } = setup();
+    buttons.s1.focus();
+    act(() => result.current.openDeleteStop(day, lunch));
+    await act(async () => {
+      await result.current.confirmDelete();
+    });
+    expect(buttons.s1).toHaveFocus();
   });
 });

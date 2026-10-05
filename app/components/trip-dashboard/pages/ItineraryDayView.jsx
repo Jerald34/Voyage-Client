@@ -149,6 +149,7 @@ export default function ItineraryDayView({
                           {moves && (
                             <StopActionsMenu
                               stopTitle={item.title || placeName}
+                              stopId={item.id}
                               canMoveUp={moves.canMoveUp}
                               canMoveDown={moves.canMoveDown}
                               canMoveToDay={moves.otherDays.length > 0}
@@ -212,7 +213,11 @@ export default function ItineraryDayView({
                 })}
               </div>
               {canEdit && (
-                <DayEditActions dayNumber={selectedDay.dayNumber} onAddStop={() => editor.openAddStop(selectedDay)} />
+                <DayEditActions
+                  dayNumber={selectedDay.dayNumber}
+                  dayId={selectedDay.id}
+                  onAddStop={() => editor.openAddStop(selectedDay)}
+                />
               )}
             </>
           )}

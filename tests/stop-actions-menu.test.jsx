@@ -30,6 +30,11 @@ describe("StopActionsMenu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  it("marks its button with the stop's id, so focus can land there after a neighbour leaves", () => {
+    const { trigger } = renderMenu({ stopId: "s1" });
+    expect(trigger).toHaveAttribute("data-stop-menu", "s1");
+  });
+
   it("lists only the moves that make sense", () => {
     const { trigger } = renderMenu({ canMoveUp: false, canMoveToDay: false });
     fireEvent.click(trigger);

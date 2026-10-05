@@ -749,6 +749,7 @@ export default function ClientItineraryPage({
                                 moves ? (
                                   <StopActionsMenu
                                     stopTitle={stopDisplayTitle(item)}
+                                    stopId={item.id}
                                     canMoveUp={moves.canMoveUp}
                                     canMoveDown={moves.canMoveDown}
                                     canMoveToDay={moves.otherDays.length > 0}
@@ -766,6 +767,7 @@ export default function ClientItineraryPage({
                         {editor.canEdit ? (
                           <DayEditActions
                             dayNumber={selectedDay.dayNumber}
+                            dayId={selectedDay.id}
                             onAddStop={() => editor.openAddStop(selectedDay)}
                             onRenameDay={() => editor.openRenameDay(selectedDay)}
                           />

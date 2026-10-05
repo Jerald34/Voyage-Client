@@ -62,6 +62,30 @@ describe("ItineraryHeader", () => {
     expect(screen.queryByRole("button", { name: "Reopen for edits" })).toBeNull();
   });
 
+  it("leaves focus on the client's name once a reopen takes its button away", () => {
+    const approved = { id: "t1", approvalStatus: "Approved" };
+    const { rerender, handlers } = renderHeader({ selectedTrip: approved, onReopen: vi.fn() });
+
+    // The confirm dialog had focus, and it closes as the trip unlocks.
+    document.activeElement?.blur();
+    rerender(<ItineraryHeader {...baseProps} {...handlers} selectedTrip={inReview} onApprove={vi.fn()} />);
+
+    expect(screen.getByRole("heading", { name: "Danang" })).toHaveFocus();
+  });
+
+  it("doesn't take focus from elsewhere when the Reopen button goes", () => {
+    const approved = { id: "t1", approvalStatus: "Approved" };
+    const { rerender, handlers } = renderHeader({ selectedTrip: approved, onReopen: vi.fn() });
+    const elsewhere = document.createElement("button");
+    document.body.append(elsewhere);
+    elsewhere.focus();
+
+    rerender(<ItineraryHeader {...baseProps} {...handlers} selectedTrip={inReview} onApprove={vi.fn()} />);
+
+    expect(elsewhere).toHaveFocus();
+    elsewhere.remove();
+  });
+
   it("shows the client's full name as the page's serif title, at the font's real weight", () => {
     renderHeader();
     const title = screen.getByRole("heading", { level: 2, name: "Danang" });
