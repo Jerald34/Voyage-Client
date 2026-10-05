@@ -4,7 +4,7 @@ import AgencyStatusPill from "../app/components/admin/AgencyStatusPill.jsx";
 
 describe("AgencyStatusPill", () => {
   it.each([
-    ["PENDING_REVIEW", "Pending", "text-accent"],
+    ["PENDING_REVIEW", "Pending", "text-secondary-strong"],
     ["VERIFIED", "Approved", "text-status-success"],
     ["REJECTED", "Rejected", "text-status-danger"],
     ["SUSPENDED", "Suspended", "text-status-warning"],

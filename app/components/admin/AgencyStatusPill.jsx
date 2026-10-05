@@ -5,7 +5,8 @@ const statusLabel = (s) =>
 
 const statusPillClasses = (s) =>
   ({
-    PENDING_REVIEW: "bg-accent/10 text-accent",
+    // text-secondary-strong, not text-accent: the peach accent is ~1.9:1 on white, the strong terracotta ~4.6:1.
+    PENDING_REVIEW: "bg-secondary/10 text-secondary-strong",
     VERIFIED: "bg-status-success/10 text-status-success",
     REJECTED: "bg-status-danger/10 text-status-danger",
     SUSPENDED: "bg-status-warning/10 text-status-warning",
@@ -13,7 +14,7 @@ const statusPillClasses = (s) =>
 
 const statusDot = (s) =>
   ({
-    PENDING_REVIEW: "bg-accent",
+    PENDING_REVIEW: "bg-secondary-strong",
     VERIFIED: "bg-status-success",
     REJECTED: "bg-status-danger",
     SUSPENDED: "bg-status-warning",
