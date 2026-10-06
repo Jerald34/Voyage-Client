@@ -60,6 +60,13 @@ describe("ShareStopCard", () => {
     expect(screen.getByText("A comment")).toBeInTheDocument();
   });
 
+  it("numbers the stop in its day's colour, matching its map pin", () => {
+    render(<ShareStopCard item={item} dayNumber={2} stopNumber={3} timeLabel="8:00 AM" />);
+
+    expect(screen.getByText("Stop 3")).toHaveClass("sr-only");
+    expect(screen.getByText("3").parentElement).toHaveStyle({ backgroundColor: "#0F766E" });
+  });
+
   it("shows the active stop by border and shadow, keeping the elevated background so the time pill stays readable", () => {
     render(<ShareStopCard item={item} isActive timeLabel="8:00 AM" />);
     const card = screen.getByRole("article");

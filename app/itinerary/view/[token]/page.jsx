@@ -8,6 +8,7 @@ import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import PdfDownloadButton from "./components/PdfDownloadButton.jsx";
 import ShareStopCard from "./components/ShareStopCard.jsx";
+import { getDayColor } from "../../../lib/trip-dashboard/dayColors.js";
 import SegmentedControl from "../../../components/admin/SegmentedControl.jsx";
 import WeatherChip from "../../../components/weather/WeatherChip.jsx";
 import WeatherAttribution from "../../../components/weather/WeatherAttribution.jsx";
@@ -661,6 +662,14 @@ export default function PublicItineraryPage() {
                 <div className="flex items-start gap-3">
                   <div className="grid min-w-0 flex-1 gap-1">
                     <span className="text-[0.78rem] font-extrabold uppercase tracking-wider text-secondary-strong">
+                      {/* The day's map colour, matching the map key and its pins. */}
+                      {getDayColor(day.dayNumber) ? (
+                        <span
+                          aria-hidden="true"
+                          className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-[0.05em]"
+                          style={{ backgroundColor: getDayColor(day.dayNumber).fill }}
+                        />
+                      ) : null}
                       Day {day.dayNumber}
                       {day.date ? (
                         <span className="font-semibold normal-case tracking-normal text-text-muted"> · {formatDate(day.date)}</span>
@@ -717,6 +726,8 @@ export default function PublicItineraryPage() {
                         isActive={activeIndex === globalIdx}
                         timeLabel={formatTimeRange(item.startTime, item.endTime)}
                         dayWeather={shareWeather.byDayId.get(day.id) ?? null}
+                        dayNumber={day.dayNumber}
+                        stopNumber={idx + 1}
                         icon={itemTypeIcon(item.type)}
                         onHoverChange={(hovering) => handleHoverItem(hovering ? globalIdx : -1)}
                         actions={

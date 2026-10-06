@@ -204,6 +204,8 @@ export default function ChatMessage({
                           key={`${day.dayNumber}-${iIdx}`}
                           item={item}
                           isSelected={selectedPlaceId === entityId}
+                          dayNumber={day.dayNumber}
+                          stopNumber={iIdx + 1}
                           onSelect={() => onPlaceSelect?.(entityId)}
                         />
                       );
