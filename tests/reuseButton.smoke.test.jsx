@@ -107,7 +107,7 @@ describe("ReuseButton", () => {
     const label = screen.getByText("Reuse");
 
     expect(label.className).toContain("hidden");
-    expect(label.className).toContain("@min-[720px]:inline");
+    expect(label.className).toContain("@min-[920px]:inline");
   });
 
   it("presses like its neighbours in the itinerary header", () => {

@@ -118,7 +118,7 @@ export const voyageTourSteps = [
       "Use the action bar to open client comments, send a share link, or export the itinerary as a polished PDF.",
     bullets: [
       "Comments shows replies from clients with an unread count.",
-      "Share opens a public link; PDF downloads a printable copy.",
+      "Share opens a public link; PDF downloads a copy and Print sends it to your printer.",
     ],
   },
   // ── Replay reminder ────────────────────────────────────────────────────────

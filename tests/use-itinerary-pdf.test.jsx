@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 
 const delivery = vi.hoisted(() => ({ deliverPdf: vi.fn() }));
+const printing = vi.hoisted(() => ({ printPdf: vi.fn() }));
 const pdfExport = vi.hoisted(() => ({
   generateItineraryPdf: vi.fn(async () => ({ output: () => new Blob(["%PDF-1.7"], { type: "application/pdf" }) })),
   titleToFilename: vi.fn((title) => `${title}.pdf`),
 }));
 
 vi.mock("../app/lib/pdfDelivery.js", () => delivery);
+vi.mock("../app/lib/pdfPrint.js", () => printing);
 vi.mock("../app/lib/pdfExport.js", () => pdfExport);
 
 import { useItineraryPdf } from "../app/hooks/useItineraryPdf.js";
@@ -21,6 +23,7 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => "blob:fallback");
   URL.revokeObjectURL = vi.fn();
   delivery.deliverPdf.mockReset();
+  printing.printPdf.mockReset();
   pdfExport.generateItineraryPdf.mockClear();
 });
 
@@ -110,6 +113,65 @@ describe("useItineraryPdf", () => {
     expect(result.current.fallbackUrl).toBeNull();
     expect(URL.createObjectURL).not.toHaveBeenCalled();
     await waitFor(() => expect(result.current.filename).toBe("Cebu.pdf"));
+    expect(result.current.fallbackUrl).toBeNull();
+  });
+
+  it("prints the same prepared file synchronously when tapped", async () => {
+    printing.printPdf.mockResolvedValue("printed");
+    const { result } = renderHook(() => useItineraryPdf(INPUT));
+    await waitFor(() => expect(result.current.canDownload).toBe(true));
+
+    act(() => result.current.print());
+
+    expect(printing.printPdf).toHaveBeenCalledTimes(1);
+    expect(delivery.deliverPdf).not.toHaveBeenCalled();
+    const [file, options] = printing.printPdf.mock.calls[0];
+    expect(file).toBeInstanceOf(File);
+    expect(file).toMatchObject({ name: "Kyoto.pdf", type: "application/pdf" });
+    expect(options).toEqual({ title: "Kyoto" });
+  });
+
+  it("does nothing on print until there is a file", () => {
+    const { result } = renderHook(() => useItineraryPdf(null));
+
+    act(() => result.current.print());
+
+    expect(printing.printPdf).not.toHaveBeenCalled();
+  });
+
+  it("offers a plain link when the device can neither print nor open the PDF", async () => {
+    printing.printPdf.mockResolvedValue("failed");
+    const { result } = renderHook(() => useItineraryPdf(INPUT));
+    await waitFor(() => expect(result.current.canDownload).toBe(true));
+
+    act(() => result.current.print());
+
+    await waitFor(() => expect(result.current.fallbackUrl).toBe("blob:fallback"));
+  });
+
+  it("offers no link when printing worked or the person cancelled", async () => {
+    const { result } = renderHook(() => useItineraryPdf(INPUT));
+    await waitFor(() => expect(result.current.canDownload).toBe(true));
+
+    for (const outcome of ["printed", "opened", "cancelled"]) {
+      printing.printPdf.mockResolvedValueOnce(outcome);
+      await act(async () => result.current.print());
+    }
+
+    expect(result.current.fallbackUrl).toBeNull();
+  });
+
+  it("does not make an object URL for a print that fails after the itinerary changed", async () => {
+    let settle;
+    printing.printPdf.mockReturnValue(new Promise((resolve) => { settle = resolve; }));
+    const { result, rerender } = renderHook(({ input }) => useItineraryPdf(input), { initialProps: { input: INPUT } });
+    await waitFor(() => expect(result.current.canDownload).toBe(true));
+    act(() => result.current.print());
+
+    rerender({ input: { title: "Cebu", days: [] } });
+    await act(async () => settle("failed"));
+
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
     expect(result.current.fallbackUrl).toBeNull();
   });
 

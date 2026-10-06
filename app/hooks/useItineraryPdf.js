@@ -3,17 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { generateItineraryPdf, titleToFilename } from "../lib/pdfExport.js";
 import { deliverPdf } from "../lib/pdfDelivery.js";
+import { printPdf } from "../lib/pdfPrint.js";
 
 /**
  * Builds the itinerary PDF as soon as its content is known, so a tap can hand
  * the file to the device synchronously (lib/pdfDelivery.js explains why iOS
- * needs that).
+ * needs that). `download` saves it and `print` sends it to a printer; both use
+ * the same file.
  *
  * @param {object|null} input generateItineraryPdf's argument; null until the
  *   itinerary has loaded. Memoize it: an unmemoized object rebuilds the PDF on
  *   every render, in an endless loop.
  * @returns {{ status: "idle"|"preparing"|"ready"|"error", canDownload: boolean,
- *   download: () => void, fallbackUrl: string|null, filename: string|null }}
+ *   download: () => void, print: () => void, fallbackUrl: string|null,
+ *   filename: string|null }}
  */
 export function useItineraryPdf(input) {
   const [file, setFile] = useState(null);
@@ -65,16 +68,19 @@ export function useItineraryPdf(input) {
     return () => URL.revokeObjectURL(fallbackUrl);
   }, [fallbackUrl]);
 
-  const download = useCallback(() => {
+  const handOff = useCallback((deliver) => {
     if (!file) return;
     setFallbackUrl(null);
     const generation = generationRef.current;
-    // No await before deliverPdf: the share sheet needs the tap's activation.
-    deliverPdf(file, { title: input?.title ?? "" }).then((outcome) => {
+    // No await before deliver: the share sheet and the fallback tab need the tap's activation.
+    deliver(file, { title: input?.title ?? "" }).then((outcome) => {
       if (generation !== generationRef.current) return;
       if (outcome === "failed") setFallbackUrl(URL.createObjectURL(file));
     });
   }, [file, input]);
 
-  return { status, canDownload: Boolean(file), download, fallbackUrl, filename: file?.name ?? null };
+  const download = useCallback(() => handOff(deliverPdf), [handOff]);
+  const print = useCallback(() => handOff(printPdf), [handOff]);
+
+  return { status, canDownload: Boolean(file), download, print, fallbackUrl, filename: file?.name ?? null };
 }

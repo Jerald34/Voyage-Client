@@ -22,7 +22,7 @@ vi.mock("../app/components/icons/index.js", () => {
   return {
     SearchIcon: stub, CloseIcon: stub, CheckIcon: stub, ReplyIcon: stub,
     ChatIcon: stub, MapPinIcon: stub, ArrowLeftIcon: stub, TrashIcon: stub,
-    DownloadIcon: stub, ShareIcon: stub, SettingsIcon: stub, UserIcon: stub,
+    DownloadIcon: stub, PrinterIcon: stub, ShareIcon: stub, SettingsIcon: stub, UserIcon: stub,
     MailIcon: stub, LockIcon: stub, ShieldIcon: stub, HomeIcon: stub,
     PhoneIcon: stub, GlobeIcon: stub, ChevronDownIcon: stub, EyeIcon: stub,
     EyeOffIcon: stub, BuildingIcon: stub, PlusIcon: stub, CalendarIcon: stub,

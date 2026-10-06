@@ -497,6 +497,7 @@ export default function ClientItineraryPage({
     return { ok: true };
   }, [agencyId, onTripStatusChange, selectedItineraryId, selectedTrip]);
   const handleDownloadPdf = itineraryPdf.download;
+  const handlePrintPdf = itineraryPdf.print;
 
   const handleCipSnapChange = useCallback((snap) => {
     const vh = window.visualViewport?.height ?? window.innerHeight;
@@ -846,6 +847,7 @@ export default function ClientItineraryPage({
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
               onDownloadPdf={handleDownloadPdf}
+              onPrintPdf={handlePrintPdf}
               onApprove={selectedTrip?.approvalStatus === "In review" ? handleApproveTrip : null}
               isApproving={Boolean(selectedTrip) && approvingTripId === selectedTrip.id}
               onReopen={selectedTrip?.approvalStatus === "Approved" && !isTutorialItinerary ? () => setReopenConfirmOpen(true) : null}

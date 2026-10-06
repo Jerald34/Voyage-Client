@@ -44,7 +44,7 @@ vi.mock("../app/components/ratedHistory/entryPoints/ReuseLauncher.jsx", () => ({
 vi.mock("../app/components/icons/index.js", () => ({
   SearchIcon: () => null, CloseIcon: () => null, CheckIcon: () => null, ReplyIcon: () => null,
   ArrowLeftIcon: () => null, ArrowRightIcon: () => null, PlusIcon: () => null, TrashIcon: () => null,
-  ChatIcon: () => null, ShareIcon: () => null, DownloadIcon: () => null, UsersIcon: () => null,
+  ChatIcon: () => null, ShareIcon: () => null, DownloadIcon: () => null, PrinterIcon: () => null, UsersIcon: () => null,
   PencilIcon: () => null, BookmarkIcon: () => null, MapPinIcon: () => null, ChevronDownIcon: () => null,
   ChevronRightIcon: () => null, CheckCircleIcon: () => null, XCircleIcon: () => null, RefreshIcon: () => null,
 }));
