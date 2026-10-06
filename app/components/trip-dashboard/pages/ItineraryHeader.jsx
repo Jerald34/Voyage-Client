@@ -8,6 +8,7 @@ import {
   ChatIcon,
   ShareIcon,
   DownloadIcon,
+  PrinterIcon,
 } from "../../icons/index.js";
 import { formatSavedItineraryCount, getSavedStatusLabel } from "../../../lib/trip-dashboard/savedItineraries.js";
 import { getSavedStatusClass } from "../../../lib/formatters.js";
@@ -15,16 +16,17 @@ import ReuseLauncher from "../../ratedHistory/entryPoints/ReuseLauncher.jsx";
 // By direct path: the page tests mock ui/index.js with a fixed export list.
 import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice.jsx";
 
-// The header is a size container (`@container`). Under 720px of its own width the
+// The header is a size container (`@container`). Under 920px of its own width the
 // actions drop their visible label but keep the icon, tooltip and aria-label, so the
 // row never wraps or cuts the client's name off. ReuseButton follows the same rule
-// in its "clientItinerary" mode. Padding and gaps stay tight (px-3, gap-1.5) so that,
-// at 1280px with Reuse and Approve showing, the name column still fits the status
-// line on one row.
+// in its "clientItinerary" mode. The 920 is measured: with Reuse, Comments, Share,
+// PDF, Print and Approve all labelled, the actions take 583px and the status line
+// 272px, plus the header's padding and gap. Padding and gaps stay tight (px-3,
+// gap-1.5) so that, at 1280px, the name column still fits the status line on one row.
 const ACTION_BUTTON =
-  "inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 @min-[720px]:px-3 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
+  "inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 @min-[920px]:px-3 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
 const ACTION_IDLE = "bg-surface-elevated text-text-primary border-border/20 hover:bg-surface hover:border-border/40";
-const ACTION_LABEL = "hidden @min-[720px]:inline";
+const ACTION_LABEL = "hidden @min-[920px]:inline";
 
 // In review waits on the agent, approved is done, anything else is neutral.
 function statusDotClass(label) {
@@ -50,6 +52,8 @@ export default function ItineraryHeader({
   onToggleComments,
   onShare,
   onDownloadPdf,
+  // Print shows only when the page passes a handler. It prints the PDF the page has built.
+  onPrintPdf = null,
   // Approve shows only when the page passes a handler (the trip is in review).
   onApprove = null,
   isApproving = false,
@@ -193,6 +197,20 @@ export default function ItineraryHeader({
                   {pdfLoading ? <Spinner size="sm" /> : <DownloadIcon width={14} height={14} aria-hidden="true" />}
                   <span className={ACTION_LABEL}>{pdfLoading ? "Generating..." : "PDF"}</span>
                 </button>
+
+                {onPrintPdf ? (
+                  <button
+                    type="button"
+                    className={`${ACTION_BUTTON} ${ACTION_IDLE} disabled:cursor-not-allowed disabled:opacity-60 ${pdfLoading ? "pointer-events-none" : ""}`}
+                    onClick={onPrintPdf}
+                    disabled={pdfLoading || !fullItinerary || !pdfReady}
+                    title="Print itinerary"
+                    aria-label="Print itinerary"
+                  >
+                    <PrinterIcon width={14} height={14} aria-hidden="true" />
+                    <span className={ACTION_LABEL}>Print</span>
+                  </button>
+                ) : null}
               </>
             )}
 

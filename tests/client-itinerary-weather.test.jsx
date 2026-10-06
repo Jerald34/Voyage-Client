@@ -22,6 +22,7 @@ vi.mock("../app/components/icons/index.js", () => ({
   ChatIcon: () => null,
   ShareIcon: () => null,
   DownloadIcon: () => null,
+  PrinterIcon: () => null,
   UsersIcon: () => null,
   PencilIcon: () => null,
   BookmarkIcon: () => null,

@@ -221,6 +221,49 @@ describe("ItineraryHeader", () => {
     expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled();
   });
 
+  it("puts Print right after the PDF button, and prints when tapped", () => {
+    const onPrintPdf = vi.fn();
+    renderHeader({ pdfReady: true, onPrintPdf });
+    const names = screen.getAllByRole("button").map((button) => button.getAttribute("aria-label"));
+
+    expect(names.indexOf("Print itinerary")).toBe(names.indexOf("Download PDF") + 1);
+    const print = screen.getByRole("button", { name: "Print itinerary" });
+    expect(print).toHaveAttribute("title", "Print itinerary");
+    fireEvent.click(print);
+    expect(onPrintPdf).toHaveBeenCalledTimes(1);
+  });
+
+  it("styles Print like the PDF button, as a quiet action beside it", () => {
+    renderHeader({ pdfReady: true, onPrintPdf: vi.fn() });
+    const pdf = screen.getByRole("button", { name: "Download PDF" });
+    const print = screen.getByRole("button", { name: "Print itinerary" });
+
+    expect(print.className).toContain("bg-surface-elevated");
+    expect(print.className).not.toContain("bg-secondary-strong");
+    expect(print.className).toContain("cursor-pointer");
+    expect(print.parentElement).toBe(pdf.parentElement);
+  });
+
+  it("disables Print with the PDF button: no file, no print", () => {
+    const { rerender, handlers } = renderHeader({ pdfReady: false, onPrintPdf: vi.fn() });
+    expect(screen.getByRole("button", { name: "Print itinerary" })).toBeDisabled();
+
+    rerender(<ItineraryHeader {...baseProps} {...handlers} pdfReady onPrintPdf={vi.fn()} pdfLoading />);
+    expect(screen.getByRole("button", { name: "Print itinerary" })).toBeDisabled();
+
+    rerender(<ItineraryHeader {...baseProps} {...handlers} pdfReady onPrintPdf={vi.fn()} fullItinerary={null} />);
+    expect(screen.getByRole("button", { name: "Print itinerary" })).toBeDisabled();
+
+    rerender(<ItineraryHeader {...baseProps} {...handlers} pdfReady onPrintPdf={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Print itinerary" })).toBeEnabled();
+  });
+
+  it("shows no Print button for a caller without a print handler", () => {
+    renderHeader();
+
+    expect(screen.queryByRole("button", { name: "Print itinerary" })).toBeNull();
+  });
+
   it("marks open Comments with the contrast-safe terracotta", () => {
     renderHeader({ showCommentsPanel: true });
     const comments = screen.getByRole("button", { name: "Comments" });
@@ -232,13 +275,13 @@ describe("ItineraryHeader", () => {
   });
 
   it("drops action labels when the header itself is narrow (container query)", () => {
-    const { container } = renderHeader();
+    const { container } = renderHeader({ onPrintPdf: vi.fn() });
 
     expect(container.querySelector("header").className).toContain("@container");
-    for (const label of ["Comments", "Share", "PDF"]) {
+    for (const label of ["Comments", "Share", "PDF", "Print"]) {
       const span = screen.getByText(label);
       expect(span.className).toContain("hidden");
-      expect(span.className).toContain("@min-[720px]:inline");
+      expect(span.className).toContain("@min-[920px]:inline");
     }
   });
 });

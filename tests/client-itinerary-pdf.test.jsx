@@ -17,6 +17,7 @@ const api = vi.hoisted(() => ({
   fetchItineraryWeather: vi.fn(() => new Promise(() => {})),
 }));
 const delivery = vi.hoisted(() => ({ deliverPdf: vi.fn(async () => "downloaded") }));
+const printing = vi.hoisted(() => ({ printPdf: vi.fn(async () => "printed") }));
 const pdfExport = vi.hoisted(() => ({
   generateItineraryPdf: vi.fn(async () => ({ output: () => new Blob(["%PDF-1.7"], { type: "application/pdf" }) })),
   titleToFilename: vi.fn((title) => `${title}.pdf`),
@@ -24,11 +25,12 @@ const pdfExport = vi.hoisted(() => ({
 
 vi.mock("../app/lib/api/index.js", () => api);
 vi.mock("../app/lib/pdfDelivery.js", () => delivery);
+vi.mock("../app/lib/pdfPrint.js", () => printing);
 vi.mock("../app/lib/pdfExport.js", () => pdfExport);
 vi.mock("../app/components/icons/index.js", () => ({
   SearchIcon: () => null, CloseIcon: () => null, CheckIcon: () => null, ReplyIcon: () => null,
   ArrowLeftIcon: () => null, ArrowRightIcon: () => null, PlusIcon: () => null, TrashIcon: () => null,
-  ChatIcon: () => null, ShareIcon: () => null, DownloadIcon: () => null, UsersIcon: () => null,
+  ChatIcon: () => null, ShareIcon: () => null, DownloadIcon: () => null, PrinterIcon: () => null, UsersIcon: () => null,
   PencilIcon: () => null, BookmarkIcon: () => null, MapPinIcon: () => null, ChevronDownIcon: () => null,
   ChevronRightIcon: () => null, CheckCircleIcon: () => null, XCircleIcon: () => null, RefreshIcon: () => null,
 }));
@@ -66,6 +68,7 @@ const originalRevoke = URL.revokeObjectURL;
 describe("dashboard itinerary PDF", () => {
   beforeEach(() => {
     delivery.deliverPdf.mockClear();
+    printing.printPdf.mockClear();
     // jsdom has no URL.createObjectURL; the fallback link needs one.
     URL.createObjectURL = vi.fn(() => "blob:fallback");
     URL.revokeObjectURL = vi.fn();
@@ -92,6 +95,40 @@ describe("dashboard itinerary PDF", () => {
     const [file, options] = delivery.deliverPdf.mock.calls[0];
     expect(file.name).toBe("Baguio weekend.pdf");
     expect(options).toEqual({ title: "Baguio weekend" });
+  });
+
+  it("prints the prepared PDF from the Print button, without saving it", async () => {
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Print itinerary" })).toBeEnabled(), { timeout: 5000 });
+    fireEvent.click(screen.getByRole("button", { name: "Print itinerary" }));
+
+    expect(printing.printPdf).toHaveBeenCalledTimes(1);
+    expect(delivery.deliverPdf).not.toHaveBeenCalled();
+    const [file, options] = printing.printPdf.mock.calls[0];
+    expect(file.name).toBe("Baguio weekend.pdf");
+    expect(options).toEqual({ title: "Baguio weekend" });
+  });
+
+  it("offers the PDF link when the browser could neither print nor open it", async () => {
+    printing.printPdf.mockResolvedValueOnce("failed");
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Print itinerary" })).toBeEnabled(), { timeout: 5000 });
+    fireEvent.click(screen.getByRole("button", { name: "Print itinerary" }));
+
+    expect(await screen.findByRole("link", { name: "Open the PDF" })).toHaveAttribute("href", "blob:fallback");
+  });
+
+  it("keeps Print disabled while the itinerary is missing or the PDF could not be built", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    pdfExport.generateItineraryPdf.mockRejectedValueOnce(new Error("pdf unavailable"));
+
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+    expect(await screen.findByText(/couldn.t build the PDF/, {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Print itinerary" })).toBeDisabled();
+    expect(printing.printPdf).not.toHaveBeenCalled();
   });
 
   it("does not claim to be generating a PDF when the itinerary failed to load", async () => {
