@@ -13,6 +13,7 @@ import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
 import StopWeatherTag from "../../weather/StopWeatherTag.jsx";
 import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
 import TripAccessibilitySummary from "../../accessibility/TripAccessibilitySummary.jsx";
+import StopNumberBadge from "../itinerary/StopNumberBadge.jsx";
 
 const ItineraryLiveMap = dynamic(
   () => import("../itinerary/ItineraryLiveMap.jsx"),
@@ -139,6 +140,7 @@ export default function ItineraryDayView({
                       {/* Time badge + type */}
                       <div className="flex items-center justify-between gap-2 border-b border-border/5 pb-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <StopNumberBadge dayNumber={selectedDay.dayNumber} stopNumber={iIdx + 1} />
                           <span className="px-2.5 py-1 rounded-full bg-secondary/10 text-secondary text-[0.7rem] font-black tracking-tight">
                             {timeLabel || "Time pending"}
                           </span>

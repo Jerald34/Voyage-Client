@@ -17,12 +17,14 @@ function latLngToPoint(latLng) {
   return { lat, lng };
 }
 
-export function ResolveClientRoute({ points, enabled, onRoute }) {
+// The map renders one of these per itinerary day; `routeKey` tells the parent
+// which day's route each result belongs to.
+export function ResolveClientRoute({ routeKey = "route", points, enabled, onRoute }) {
   const routes = useMapsLibrary("routes");
 
   useEffect(() => {
     if (!enabled || !Array.isArray(points) || points.length <= 1) {
-      onRoute([], "idle");
+      onRoute(routeKey, [], "idle");
       return;
     }
 
@@ -30,16 +32,16 @@ export function ResolveClientRoute({ points, enabled, onRoute }) {
     const TravelMode = routes?.TravelMode ?? globalThis.google?.maps?.TravelMode;
 
     if (!Route || !TravelMode) {
-      onRoute([], routes ? "unavailable" : "loading");
+      onRoute(routeKey, [], routes ? "unavailable" : "loading");
       return;
     }
 
     let cancelled = false;
-    onRoute([], "loading");
+    onRoute(routeKey, [], "loading");
 
     const request = buildClientRouteRequest(points, TravelMode.DRIVING ?? "DRIVING");
     if (!request) {
-      onRoute([], "failed");
+      onRoute(routeKey, [], "failed");
       return;
     }
 
@@ -50,21 +52,21 @@ export function ResolveClientRoute({ points, enabled, onRoute }) {
         const route = response?.routes?.[0];
         const routePath = route?.path;
         if (!Array.isArray(routePath) || routePath.length <= 1) {
-          onRoute([], "failed");
+          onRoute(routeKey, [], "failed");
           return;
         }
 
-        onRoute(routePath.map(latLngToPoint).filter(Boolean), "ready");
+        onRoute(routeKey, routePath.map(latLngToPoint).filter(Boolean), "ready");
       })
       .catch(() => {
         if (cancelled) return;
-        onRoute([], "failed");
+        onRoute(routeKey, [], "failed");
       });
 
     return () => {
       cancelled = true;
     };
-  }, [enabled, onRoute, points, routes]);
+  }, [enabled, onRoute, points, routeKey, routes]);
 
   return null;
 }

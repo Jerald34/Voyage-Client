@@ -2,10 +2,11 @@ import React, { useMemo } from "react";
 import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
 import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
 import TripAccessibilitySummary from "../../accessibility/TripAccessibilitySummary.jsx";
+import StopNumberBadge from "../itinerary/StopNumberBadge.jsx";
 import { buildRichItinerarySections } from "../../../lib/trip-dashboard/richItinerary.js";
 import { describeAccessibilityBadges } from "../../../lib/accessibility/placeAccessibility.js";
 
-function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
+function StopShell({ stop, dayNumber, stopNumber, selectedPlaceId, onPlaceSelect }) {
   const isSelected = stop.isSelectable && stop.placeId === selectedPlaceId;
   
   // Base Container Styles - Luxury Editorial Feel
@@ -23,6 +24,7 @@ function StopShell({ stop, selectedPlaceId, onPlaceSelect }) {
       {/* Top Meta Row - Time & Status */}
       <div className="flex items-center justify-between gap-3 border-b border-border/5 pb-3">
         <div className="flex items-center gap-2">
+          <StopNumberBadge dayNumber={dayNumber} stopNumber={stopNumber} />
           <span className="px-2.5 py-1 rounded-full bg-secondary/10 text-secondary text-[11px] font-black tracking-tight">
             {stop.timeLabel}
           </span>
@@ -150,10 +152,12 @@ export default function RichItineraryMessage({
               ) : null}
             </div>
             <div className="grid gap-4">
-              {day.stops.map((stop) => (
+              {day.stops.map((stop, stopIndex) => (
                 <StopShell
                   key={stop.id}
                   stop={stop}
+                  dayNumber={day.dayNumber}
+                  stopNumber={stopIndex + 1}
                   selectedPlaceId={selectedPlaceId}
                   onPlaceSelect={onPlaceSelect}
                 />

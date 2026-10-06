@@ -10,6 +10,7 @@ import {
   Pin,
 } from "@vis.gl/react-google-maps";
 import { getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
+import { getDayColor } from "../../../lib/trip-dashboard/dayColors.js";
 import Polyline from "./map/MapPolylineLayer.jsx";
 import {
   FitBounds,
@@ -65,6 +66,12 @@ export function mapItemToPoint(item, index) {
     const userRatingCount = Number(snapshot?.metadata?.userRatingCount);
     return {
       id: item?.__placeEntityId || `point-${index}`,
+      // `itemIndex` is the item's place in the list the map was given (what
+      // activeIndex/onHoverItem speak); `stopIndex` is its place in its own day,
+      // which the pin number shows. Both survive stops that have no location.
+      itemIndex: index,
+      stopIndex: Number.isInteger(item?.__itemIndex) ? item.__itemIndex : index,
+      dayNumber: item?.__dayNumber ?? null,
       lat: rawLat,
       lng: rawLng,
       title: snapshot?.name || item?.placeName || item?.title || `Itinerary item ${index + 1}`,
@@ -133,14 +140,81 @@ export function getClosedPinGlyph(index) {
   return `${index + 1}!`;
 }
 
-/** Accessible pin title: the place name plus its closure label when there is one. */
+/**
+ * Accessible pin title: the day and stop number when the pin belongs to a day,
+ * the place name, and its closure label when there is one.
+ */
 export function getPinTitle(point, index) {
   const name = point?.title || point?.name || `Stop ${index + 1}`;
   const label = getPlaceStatusLabel({
     businessStatus: point?.businessStatus,
     placeAdvisory: point?.placeAdvisory
   });
-  return label ? `${name} — ${label}` : name;
+  const place = label ? `${name} — ${label}` : name;
+  return getDayColor(point?.dayNumber) ? `Day ${point.dayNumber}, stop ${index + 1}: ${place}` : place;
+}
+
+/**
+ * A stop's pin takes its day's colour, so each day reads as one group on a
+ * multi-day map. The active pin keeps that colour and grows; a closed stop keeps
+ * the amber "needs attention" fill, edged in its day colour. Points with no day
+ * keep the original white pin with a blue active state.
+ */
+export function getItineraryPinStyle({ dayNumber, isActive = false, isClosed = false, isDark = false } = {}) {
+  const day = getDayColor(dayNumber);
+
+  if (isClosed) {
+    return {
+      background: isActive && !day ? "#2563eb" : "#fef3c7",
+      borderColor: day?.fill ?? (isActive ? "#1e3a8a" : "#92400e"),
+      glyphColor: isActive && !day ? "#ffffff" : "#92400e",
+      scale: isActive ? (day ? 1.25 : 1.2) : 1,
+    };
+  }
+
+  if (!day) {
+    return {
+      background: isActive ? "#2563eb" : "#ffffff",
+      borderColor: isActive ? "#1e3a8a" : "#1e293b",
+      glyphColor: isActive ? "#ffffff" : "#1e293b",
+      scale: isActive ? 1.2 : 1,
+    };
+  }
+
+  return {
+    background: day.fill,
+    borderColor: isActive ? (isDark ? "#ffffff" : "#0f172a") : day.border,
+    glyphColor: "#ffffff",
+    scale: isActive ? 1.25 : 1,
+  };
+}
+
+function getDayGroupKey(dayNumber) {
+  return dayNumber === null || dayNumber === undefined ? "day-none" : `day-${dayNumber}`;
+}
+
+/** Splits map points into one group per day, in itinerary order. */
+export function groupPointsByDay(points = []) {
+  const groups = [];
+  const groupsByKey = new Map();
+
+  for (const point of Array.isArray(points) ? points : []) {
+    const key = getDayGroupKey(point?.dayNumber);
+    let group = groupsByKey.get(key);
+    if (!group) {
+      group = { key, dayNumber: point?.dayNumber ?? null, points: [] };
+      groupsByKey.set(key, group);
+      groups.push(group);
+    }
+    group.points.push(point);
+  }
+
+  return groups;
+}
+
+/** A day's route line uses its pin colour; routes with no day keep the brand terracotta. */
+function getDayRouteColor(dayNumber) {
+  return getDayColor(dayNumber)?.fill ?? "#d77a61";
 }
 
 function getRouteCoordinate(point) {
@@ -317,6 +391,7 @@ export function buildRouteSegmentsFromItems(items = []) {
       return {
         id: `route-${item?.id || item?.__placeEntityId || index}`,
         points: polyline,
+        dayNumber: item?.__dayNumber,
       };
     })
     .filter(Boolean);
@@ -388,8 +463,8 @@ export default function ItineraryLiveMap({
 }) {
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [agencyFallbackPoint, setAgencyFallbackPoint] = useState(null);
-  const [clientRoutePolyline, setClientRoutePolyline] = useState([]);
-  const [clientRouteStatus, setClientRouteStatus] = useState("idle");
+  // Client-computed road routes, one per day group key.
+  const [clientRoutes, setClientRoutes] = useState({});
   // Pages that pass no theme (the public share link) follow the app theme.
   const { theme: appTheme } = useTheme();
   const { isDark, mapId, colorScheme } = getMapAppearance(themeProp ?? appTheme);
@@ -428,10 +503,37 @@ export default function ItineraryLiveMap({
   const latestRouteEndpointPoints = useMemo(() => buildRouteEndpointPoints(latestRouteEstimate), [latestRouteEstimate]);
   const routeSegments = useMemo(() => buildRouteSegmentsFromItems(items), [items]);
   const agencyFallback = useMemo(() => normalizeAgencyFallbackLocation(agencyLocation), [agencyLocation]);
-  const shouldResolveClientRoute = shouldRequestClientRoute({
-    pointCount: points.length,
-    routeSegmentCount: routeSegments.length,
-  });
+  // Each day is routed on its own, so no line runs from one day's last stop to
+  // the next day's first.
+  const dayGroups = useMemo(() => groupPointsByDay(points), [points]);
+  // Route requests are keyed on the stops' coordinates, not array identity: some
+  // pages rebuild `items` on every render, which would otherwise re-request each
+  // day's route every time.
+  const routeGroupsSignature = useMemo(
+    () => JSON.stringify(dayGroups.map((group) => [group.key, group.dayNumber, group.points.map((point) => [point.lat, point.lng])])),
+    [dayGroups],
+  );
+  const routeGroups = useMemo(
+    () =>
+      JSON.parse(routeGroupsSignature).map(([key, dayNumber, coordinates]) => ({
+        key,
+        dayNumber,
+        points: coordinates.map(([lat, lng]) => ({ lat, lng })),
+      })),
+    [routeGroupsSignature],
+  );
+  const storedSegmentCountByDay = useMemo(() => {
+    const counts = new Map();
+    for (const segment of routeSegments) {
+      const key = getDayGroupKey(segment.dayNumber);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [routeSegments]);
+  const legendDayNumbers = useMemo(
+    () => dayGroups.filter((group) => getDayColor(group.dayNumber)).map((group) => group.dayNumber),
+    [dayGroups],
+  );
 
   const resolvedViewportPoints = useMemo(
     () => [...points, ...liveMarkerPoints, ...latestRouteEndpointPoints],
@@ -466,9 +568,12 @@ export default function ItineraryLiveMap({
     setSelectedPoint(point);
     onSelectPlace?.(point.id);
   }, [onSelectPlace]);
-  const handleClientRoute = useCallback((polyline, status) => {
-    setClientRoutePolyline(polyline);
-    setClientRouteStatus(status);
+  const handleClientRoute = useCallback((routeKey, polyline) => {
+    const nextPolyline = Array.isArray(polyline) ? polyline : [];
+    setClientRoutes((current) => {
+      if (!current[routeKey]?.length && nextPolyline.length === 0) return current;
+      return { ...current, [routeKey]: nextPolyline };
+    });
   }, []);
 
   return (
@@ -499,11 +604,18 @@ export default function ItineraryLiveMap({
             enabled={resolvedViewportPoints.length === 0}
             onResolved={setAgencyFallbackPoint}
           />
-          <ResolveClientRoute
-            points={points}
-            enabled={shouldResolveClientRoute}
-            onRoute={handleClientRoute}
-          />
+          {routeGroups.map((group) => (
+            <ResolveClientRoute
+              key={group.key}
+              routeKey={group.key}
+              points={group.points}
+              enabled={shouldRequestClientRoute({
+                pointCount: group.points.length,
+                routeSegmentCount: storedSegmentCountByDay.get(group.key) ?? 0,
+              })}
+              onRoute={handleClientRoute}
+            />
+          ))}
           {shouldFitViewportBounds(viewportPoints, shouldUseAgencyFallback) && (
             <FitBounds points={viewportPoints} sidebarWidth={sidebarWidth} bottomPadding={mapBottomPadding} />
           )}
@@ -515,7 +627,6 @@ export default function ItineraryLiveMap({
           {shouldShowPlannedPathFallback({
             pointCount: points.length,
             routeSegmentCount: routeSegments.length,
-            clientRouteStatus,
           }) && (
             <Polyline
               points={points}
@@ -526,23 +637,28 @@ export default function ItineraryLiveMap({
             />
           )}
 
-          {/* Client-side road route fallback */}
-          {clientRoutePolyline.length > 1 && (
-            <Polyline
-              points={clientRoutePolyline}
-              color="#d77a61"
-              weight={5}
-              opacity={0.82}
-              zIndex={20}
-            />
-          )}
+          {/* Client-side road route fallback, one line per day */}
+          {routeGroups.map((group) => {
+            const polyline = clientRoutes[group.key] ?? [];
+            if (polyline.length <= 1) return null;
+            return (
+              <Polyline
+                key={`client-route-${group.key}`}
+                points={polyline}
+                color={getDayRouteColor(group.dayNumber)}
+                weight={5}
+                opacity={0.82}
+                zIndex={20}
+              />
+            );
+          })}
 
           {/* Stored per-stop route paths */}
           {routeSegments.map((segment) => (
             <Polyline
               key={segment.id}
               points={segment.points}
-              color="#d77a61"
+              color={getDayRouteColor(segment.dayNumber)}
               weight={5}
               opacity={0.82}
               zIndex={20}
@@ -560,9 +676,9 @@ export default function ItineraryLiveMap({
             />
           )}
 
-          {/* Itinerary Markers */}
-          {points.map((point, index) => {
-            const isActive = activeIndex === index || selectedPlaceId === point.id;
+          {/* Itinerary Markers — numbered within their day, coloured by day */}
+          {points.map((point) => {
+            const isActive = activeIndex === point.itemIndex || selectedPlaceId === point.id;
             // A closed stop stays visible and selectable; only its styling differs.
             const isClosed = Boolean(
               getPlaceStatusLabel({
@@ -570,23 +686,22 @@ export default function ItineraryLiveMap({
                 placeAdvisory: point.placeAdvisory
               })
             );
+            const pinStyle = getItineraryPinStyle({ dayNumber: point.dayNumber, isActive, isClosed, isDark });
             return (
               <AdvancedMarker
-                key={`point-${index}-${point.lat}-${point.lng}`}
+                key={`point-${point.itemIndex}-${point.lat}-${point.lng}`}
                 position={{ lat: point.lat, lng: point.lng }}
-                title={getPinTitle(point, index)}
-                onMouseEnter={() => onHoverItem?.(index)}
+                title={getPinTitle(point, point.stopIndex)}
+                zIndex={isActive ? 100 : undefined}
+                onMouseEnter={() => onHoverItem?.(point.itemIndex)}
                 onClick={() => {
                   handleMarkerClick(point);
-                  onHoverItem?.(index);
+                  onHoverItem?.(point.itemIndex);
                 }}
               >
                 <Pin
-                  background={isActive ? "#2563eb" : isClosed ? "#fef3c7" : "#ffffff"}
-                  borderColor={isActive ? "#1e3a8a" : isClosed ? "#92400e" : "#1e293b"}
-                  glyphColor={isActive ? "#ffffff" : isClosed ? "#92400e" : "#1e293b"}
-                  glyph={isClosed ? getClosedPinGlyph(index) : getMapPinGlyph(index)}
-                  scale={isActive ? 1.2 : 1.0}
+                  {...pinStyle}
+                  glyph={isClosed ? getClosedPinGlyph(point.stopIndex) : getMapPinGlyph(point.stopIndex)}
                 />
               </AdvancedMarker>
             );
@@ -658,8 +773,16 @@ export default function ItineraryLiveMap({
 
                   <div className="pr-8">
                     {selectedPoint.dayLabel ? (
-                      <span className={`text-[10px] font-extrabold tracking-[0.1em] uppercase block mb-0.5 ${isDark ? "text-white/45" : "text-[#1e293b]/50"}`}>
+                      <span className={`flex items-center gap-1.5 text-[10px] font-extrabold tracking-[0.1em] uppercase mb-0.5 ${isDark ? "text-white/45" : "text-[#1e293b]/50"}`}>
+                        {getDayColor(selectedPoint.dayNumber) ? (
+                          <span
+                            aria-hidden="true"
+                            className="h-2 w-2 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: getDayColor(selectedPoint.dayNumber).fill }}
+                          />
+                        ) : null}
                         {selectedPoint.dayLabel}
+                        {Number.isInteger(selectedPoint.stopIndex) ? ` · Stop ${selectedPoint.stopIndex + 1}` : ""}
                       </span>
                     ) : null}
                     <h4 className={`m-0 text-[15px] font-bold leading-snug ${isDark ? "text-white" : "text-[#1e293b]"}`}>
@@ -693,6 +816,33 @@ export default function ItineraryLiveMap({
 
         </GoogleMap>
       </APIProvider>
+
+      {/* Day key: only when more than one day shares the map */}
+      {legendDayNumbers.length > 1 ? (
+        <ul
+          aria-label="Map key"
+          className="absolute top-3 z-[510] m-0 flex list-none flex-wrap gap-1.5 p-0 pointer-events-none"
+          // Clear of the floating chat panel on the left and the map-type and
+          // fullscreen controls on the right.
+          style={{ left: sidebarWidth > 0 ? sidebarWidth + 16 : 12, right: 240 }}
+        >
+          {legendDayNumbers.map((dayNumber) => (
+            <li
+              key={dayNumber}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm backdrop-blur-md ${
+                isDark ? "border-white/10 bg-[#111827]/85 text-white" : "border-black/5 bg-white/90 text-[#1e293b]"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                style={{ backgroundColor: getDayColor(dayNumber).fill }}
+              />
+              Day {dayNumber}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {!viewportPoints.length ? (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 grid gap-1.5 w-[min(320px,calc(100%-48px))] text-center p-6 border border-[rgba(226,232,240,0.8)] rounded-[20px] bg-white/95 backdrop-blur-[8px] text-[#0f172a] z-[500] shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),_0_8px_10px_-6px_rgba(0,0,0,0.1)] pointer-events-none">
