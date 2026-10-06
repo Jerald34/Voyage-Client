@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { describeDayWeather } from "./weather/weatherDisplay.js";
+import { describeDayWeather, describeStopWeather } from "./weather/weatherDisplay.js";
 import { getAccessibilityBadges, getAccessibilityPdfText } from "./accessibility/placeAccessibility.js";
 
 /**
@@ -195,8 +195,11 @@ export async function generateItineraryPdf({
     for (let ii = 0; ii < safeItems.length; ii++) {
       const item = safeItems[ii];
 
-      // Time label
-      const timeStr = buildTimeLabel(item);
+      // Time label, followed by the weather during the stop when the day has hourly timing.
+      // WinAnsi-safe: "·", "–" and "%" all print in jsPDF's standard fonts.
+      const timeLabel = buildTimeLabel(item);
+      const stopWeatherText = timeLabel ? describeStopWeather(day.weatherEntry, item.id)?.pdfText ?? "" : "";
+      const timeStr = stopWeatherText ? `${timeLabel}  ·  ${stopWeatherText}` : timeLabel;
 
       // Estimate block height for page-break check
       const titleLines  = doc.splitTextToSize(item.title || "Activity", contentWidth - 4);

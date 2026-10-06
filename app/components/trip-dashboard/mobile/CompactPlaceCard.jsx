@@ -1,12 +1,19 @@
 import { getSnapshotPhotoUrl } from "../../../lib/trip-dashboard/richItinerary.js";
 import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
+import StopWeatherTag from "../../weather/StopWeatherTag.jsx";
 import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
 import { getPrimaryAccessibilityBadge } from "../../../lib/accessibility/placeAccessibility.js";
+import StopNumberBadge from "../itinerary/StopNumberBadge.jsx";
 
 export default function CompactPlaceCard({
   item,
   isSelected = false,
   onSelect,
+  // The stop's day and 1-based place in it; the badge matches its map pin.
+  dayNumber = null,
+  stopNumber = null,
+  // The day's weather entry; the card shows this stop's slice of it.
+  dayWeather = null,
   // Optional controls (the stop menu). They sit beside the card's button, never
   // inside it: a button can't contain another button.
   actions = null,
@@ -33,18 +40,25 @@ export default function CompactPlaceCard({
           : "border-white/10 bg-[rgba(255,255,255,0.06)] shadow-[0_14px_30px_rgba(15,23,42,0.12)] hover:border-white/15 hover:bg-[rgba(255,255,255,0.09)]"
       } ${actions ? "pr-12" : ""}`}
     >
-      {/* Thumbnail */}
-      {photoUrl ? (
-        <img
-          src={photoUrl}
-          alt={placeName}
-          className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm"
+      {/* Thumbnail, with the stop's pin number on its corner */}
+      <span className="relative flex-shrink-0">
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt={placeName}
+            className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm"
+          />
+        ) : (
+          <span className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center bg-[rgba(255,255,255,0.08)] text-text-soft text-lg font-semibold border border-white/10 backdrop-blur-md">
+            {stopTitle.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <StopNumberBadge
+          dayNumber={dayNumber}
+          stopNumber={stopNumber}
+          className="absolute -left-1.5 -top-1.5 ring-2 ring-white/85"
         />
-      ) : (
-        <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center bg-[rgba(255,255,255,0.08)] text-text-soft text-lg font-semibold border border-white/10 backdrop-blur-md">
-          {stopTitle.slice(0, 1).toUpperCase()}
-        </div>
-      )}
+      </span>
 
       {/* Info */}
       <div className="flex flex-col gap-0.5 min-w-0 flex-1">
@@ -62,6 +76,7 @@ export default function CompactPlaceCard({
             {timeLabel}
           </span>
         )}
+        <StopWeatherTag entry={dayWeather} itemId={item?.id} className="self-start" />
       </div>
     </button>
   );

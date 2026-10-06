@@ -164,4 +164,34 @@ describe("pdf export weather", () => {
     const printed = state.instance.texts.join("\n");
     expect(printed).not.toContain("Weather");
   });
+
+  it("prints the timed forecast and each stop's weather after its time", async () => {
+    await generateItineraryPdf({
+      title: "Trip",
+      summary: "",
+      days: [
+        {
+          ...dayWith({
+            status: "OK",
+            weather: { kind: "FORECAST", condition: "THUNDERSTORM", temperatureMinC: 15.5, temperatureMaxC: 23.6, precipitationProbabilityPct: 99, precipitationMm: 19.3 },
+            hourly: {
+              firstWetHour: 11,
+              wetWindow: { condition: "THUNDERSTORM", fromHour: 14, toHour: 20 },
+              stops: [{ itemId: "s3", outlook: "STORM", maxPrecipitationProbabilityPct: 99 }],
+            },
+          }),
+          items: [
+            { id: "s3", title: "Burnham Park", startTime: "14:00", endTime: "16:30" },
+            { id: "s9", title: "Dinner", startTime: "19:00" },
+          ],
+        },
+      ],
+    });
+
+    const printed = state.instance.texts.join("").replace(/\n/g, "");
+    expect(printed).toContain("Weather forecast: Afternoon thunderstorms, 2–8 PM, 16–24°C, dry until 11 AM, about 19 mm of rain");
+    expect(printed).toContain("2:00 PM – 4:30 PM  ·  Storms likely (up to 99% chance of rain)");
+    // A stop the summary does not cover prints its time alone.
+    expect(state.instance.texts).toContain("7:00 PM");
+  });
 });

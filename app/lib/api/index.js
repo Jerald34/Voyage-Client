@@ -78,6 +78,8 @@ export {
 export {
   fetchPendingAgencies,
   fetchAllAgencies,
+  fetchAllAccounts,
+  fetchAccountDetail,
   fetchPendingCount,
   fetchAgencyDetail,
   adminApproveAgency,

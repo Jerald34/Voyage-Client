@@ -79,6 +79,7 @@ export function buildRichItinerarySections({ itinerary, placeEntities } = {}) {
       const items = Array.isArray(day?.items) ? day.items : [];
       return {
         id: day?.id || `day-${dayIndex + 1}`,
+        dayNumber: day?.dayNumber ?? null,
         title: normalizeText(day?.title || ""),
         label: day?.dayNumber ? `Day ${day.dayNumber}` : `Day ${dayIndex + 1}`,
         stops: items.map((item, itemIndex) => {

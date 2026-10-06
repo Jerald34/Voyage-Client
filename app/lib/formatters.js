@@ -56,21 +56,11 @@ export function formatDayDate(day, tripStart) {
 }
 
 /**
- * Format a day card date range (e.g. "May 15, 2026 - May 16, 2026").
+ * Format a day card's date (e.g. "Tue, May 15"). A day is one date, so this
+ * matches the day header rather than spanning into the next day.
  */
 export function formatDayCardDate(day, tripStart) {
-  let start;
-  if (day?.date) {
-    start = new Date(day.date);
-  } else if (tripStart && day?.dayNumber) {
-    start = new Date(tripStart);
-    start.setDate(start.getDate() + (day.dayNumber - 1));
-  } else {
-    return "";
-  }
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return `${formatShortDate(start)} - ${formatShortDate(end)}`;
+  return formatDayDate(day, tripStart);
 }
 
 /**

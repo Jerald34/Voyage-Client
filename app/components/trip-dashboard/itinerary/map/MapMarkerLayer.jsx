@@ -27,8 +27,10 @@ export function FocusActiveStop({ points, activeIndex, sidebarWidth }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!map || !Number.isInteger(activeIndex) || activeIndex < 0 || activeIndex >= points.length) return;
-    const activePoint = points[activeIndex];
+    if (!map || !Number.isInteger(activeIndex) || activeIndex < 0) return;
+    // activeIndex is a list position; a stop with no location has no point, so
+    // match on the point's own list position rather than its array slot.
+    const activePoint = points.find((point) => point.itemIndex === activeIndex);
     if (!activePoint) return;
 
     map.panTo(activePoint);

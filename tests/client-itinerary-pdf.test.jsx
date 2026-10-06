@@ -46,7 +46,7 @@ vi.mock("../app/components/trip-dashboard/mobile/MobileGlassSheet.jsx", () => ({
 vi.mock("../app/components/trip-dashboard/mobile/CompactPlaceCard.jsx", () => ({ default: () => null }));
 vi.mock("../app/components/theme/ThemeProvider.jsx", () => ({ useTheme: () => ({ theme: "light" }) }));
 vi.mock("../app/lib/formatters.js", () => ({
-  formatDayCardDate: () => "Oct 10, 2026 - Oct 11, 2026",
+  formatDayCardDate: () => "Sat, Oct 10",
   getItemTimeLabel: () => "",
   getSavedStatusClass: () => "approved",
 }));
