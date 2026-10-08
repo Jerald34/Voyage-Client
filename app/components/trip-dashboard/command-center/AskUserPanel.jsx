@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { emptyDraft, isAnswered } from "../../../lib/agent/askUser.js";
 
-// Same surface as ChatInput's composer shell: the chat box changes shape, not style.
+// ChatInput's composer shell, nearly opaque: the panel is tall, so replies scroll behind it.
 const panelSurfaceClass =
-  "w-full min-w-0 rounded-[18px] border border-border bg-[rgba(255,255,255,0.88)] px-4 py-3.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:bg-[rgba(26,29,33,0.88)]";
+  "w-full min-w-0 rounded-[18px] border border-border bg-[rgba(255,255,255,0.97)] px-4 py-3.5 shadow-[0_10px_24px_rgba(15,23,42,0.08)] backdrop-blur-md dark:bg-[rgba(26,29,33,0.97)]";
 
 // Visible keyboard focus for the buttons; pointer clicks don't show it.
 const focusRingClass =
@@ -148,7 +148,7 @@ export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "
                     onChange={() => toggleOption(option.label)}
                     aria-labelledby={`${optionId}-label`}
                     aria-describedby={option.description ? `${optionId}-description` : undefined}
-                    className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer accent-secondary"
+                    className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer accent-secondary outline-none focus-visible:outline-none"
                   />
                   <span className="min-w-0">
                     <span id={`${optionId}-label`} className="block text-sm font-semibold text-text-primary">

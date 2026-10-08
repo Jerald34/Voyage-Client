@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ClientSwitcher from "./ClientSwitcher.jsx";
 import ChatMessage from "./ChatMessage.jsx";
 import ChatComposer from "./ChatComposer.jsx";
+import useElementHeight from "../../../hooks/useElementHeight.js";
 import { askUserStatuses, getAnswers } from "../../../lib/agent/askUser.js";
 import RichItineraryMessage from "./RichItineraryMessage.jsx";
 import useImageAttachments from "../../../hooks/useImageAttachments.js";
@@ -79,6 +80,9 @@ export default function AgentCommandCenter({
 }) {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  // The composer floats over the chat log; the log's bottom room follows its height
+  // so the question panel (much taller than the text box) never covers the last reply.
+  const [composerRef, composerHeight] = useElementHeight();
   const imageAttachments = useImageAttachments();
   const streamStartTimeRef = useRef(null);
   const [openStates, setOpenStates] = useState(() => new Map());
@@ -237,6 +241,15 @@ export default function AgentCommandCenter({
     }
   }, [messages?.length, isStreaming, assistantMessage, liveProcess?.timeline?.length]);
 
+  // When the composer grows (the question panel opens), keep the newest reply in view.
+  const prevComposerHeightRef = useRef(0);
+  useEffect(() => {
+    if (composerHeight > prevComposerHeightRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevComposerHeightRef.current = composerHeight;
+  }, [composerHeight]);
+
   function handleProcessToggle(msgId, isOpen) {
     setOpenStates(prev => new Map(prev).set(msgId, isOpen));
   }
@@ -291,8 +304,13 @@ export default function AgentCommandCenter({
 
       {/* chat log */}
       <div
-        className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-5 pr-2 ${hideChatInput ? "mb-0" : "pb-[120px]"}`}
-        style={scrollMaskStyle}
+        data-testid="chat-log"
+        className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-5 pr-2 ${hideChatInput ? "mb-0" : ""}`}
+        style={
+          hideChatInput
+            ? scrollMaskStyle
+            : { ...scrollMaskStyle, paddingBottom: `${Math.max(120, composerHeight + 24)}px` }
+        }
       >
         {displayedMessages.length === 0 ? (
           <div className="grid gap-2.5 place-items-center min-h-[220px] text-center text-text-muted">
@@ -352,7 +370,7 @@ export default function AgentCommandCenter({
 
       {!hideChatInput && (
         <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none">
-          <div className="pointer-events-auto relative">
+          <div ref={composerRef} className="pointer-events-auto relative">
             {/* Stage 6C — slash-command observer. Renders nothing unless the
                 composer matches `/^\/[a-z]*$/i`. Mounts whenever an agency is
                 active; in a draft (no saved trip) it shows a "save first" hint
