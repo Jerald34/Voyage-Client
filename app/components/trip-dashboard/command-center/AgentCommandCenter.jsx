@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ClientSwitcher from "./ClientSwitcher.jsx";
 import ChatMessage from "./ChatMessage.jsx";
-import ChatInput from "./ChatInput.jsx";
+import ChatComposer from "./ChatComposer.jsx";
+import { askUserStatuses, getAnswers } from "../../../lib/agent/askUser.js";
 import RichItineraryMessage from "./RichItineraryMessage.jsx";
 import useImageAttachments from "../../../hooks/useImageAttachments.js";
 import { toolToActiveLabel, summarize, activeLabelFor } from "../../agent/process-bubble/processBubbleLabels.js";
@@ -34,6 +35,8 @@ export default function AgentCommandCenter({
   tasks = [],
   tasksTouchedThisRun = new Set(),
   dispatchAgentMessage,
+  // (text, answer) => sends answers to the agent's ask_user questions.
+  dispatchAgentAnswer = null,
   composerInput,
   setComposerInput,
   isSending,
@@ -89,6 +92,7 @@ export default function AgentCommandCenter({
 
 
   const liveStreamingItinerary = streamingItinerary ?? null;
+  const askStatuses = useMemo(() => askUserStatuses(messages), [messages]);
   // Render the streaming bubble as soon as a run is active so the user sees the
   // ProcessBubble immediately on send — not only after the first reply delta arrives.
   // Guard against the brief commit-transition window where the committed message
@@ -313,9 +317,10 @@ export default function AgentCommandCenter({
               placeEntities={placeEntities}
               selectedPlaceId={selectedPlaceId}
               onPlaceSelect={onPlaceSelect}
-              onEdit={message.role === "user" ? (content) => setComposerInput(content) : undefined}
+              onEdit={message.role === "user" && !getAnswers(message) ? (content) => setComposerInput(content) : undefined}
               process={message.process ?? null}
               onProcessToggle={message.process ? (isOpen) => handleProcessToggle(message.id, isOpen) : undefined}
+              askUserStatus={askStatuses.get(message.id) ?? null}
             />
           ))
         )}
@@ -367,7 +372,9 @@ export default function AgentCommandCenter({
                 onInserted={onReuseInserted}
               />
             )}
-            <ChatInput
+            <ChatComposer
+          messages={messages}
+          onAnswer={dispatchAgentAnswer}
           textareaRef={textareaRef}
           composerInput={composerInput}
           setComposerInput={setComposerInput}

@@ -6,6 +6,7 @@ import useMobileViewport from "../mobile/useMobileViewport.js";
 import CompactPlaceCard from "../mobile/CompactPlaceCard.jsx";
 import MessageImageGrid from "../../chat/MessageImageGrid";
 import ProcessBubble from "../../agent/process-bubble/ProcessBubble.jsx";
+import { answerText, getAnswers, getAskUser } from "../../../lib/agent/askUser.js";
 
 function PlaceLinkedText({ children, placeEntities, selectedPlaceId, onPlaceSelect }) {
   if (typeof children !== "string" && typeof children !== "number") {
@@ -104,6 +105,20 @@ function MarkdownContent({
   );
 }
 
+// An answer to the agent's ask_user questions: each header beside its answer.
+function AnswerPairs({ answers }) {
+  return (
+    <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3.5 gap-y-1">
+      {answers.items.map((item) => (
+        <React.Fragment key={item.questionId}>
+          <dt className="text-xs font-medium text-text-muted">{item.header}</dt>
+          <dd className="m-0 min-w-0 font-medium">{answerText(item)}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
+
 export default function ChatMessage({
   message,
   isUser,
@@ -117,8 +132,12 @@ export default function ChatMessage({
   onEdit,
   process = null,
   onProcessToggle,
+  // "pending" | "answered" | "skipped" when this reply asked ask_user questions.
+  askUserStatus = null,
 }) {
   const shouldRenderRichItinerary = !isUser && renderAsItinerary && itinerary;
+  const answers = isUser ? getAnswers(message) : null;
+  const askedQuestions = isUser ? null : getAskUser(message);
   const isMobile = useMobileViewport();
 
   return (
@@ -183,12 +202,16 @@ export default function ChatMessage({
             />
           )}
           {isUser ? (
-            <div>
-              <p className="m-0 font-medium">{message.content}</p>
-              {message.metadata?.imageUrls?.length > 0 && (
-                <MessageImageGrid imageUrls={message.metadata.imageUrls} />
-              )}
-            </div>
+            answers ? (
+              <AnswerPairs answers={answers} />
+            ) : (
+              <div>
+                <p className="m-0 font-medium">{message.content}</p>
+                {message.metadata?.imageUrls?.length > 0 && (
+                  <MessageImageGrid imageUrls={message.metadata.imageUrls} />
+                )}
+              </div>
+            )
           ) : renderAsItinerary && itinerary ? (
             isMobile ? (
               <div className="flex flex-col gap-2">
@@ -244,6 +267,11 @@ export default function ChatMessage({
               onPlaceSelect={onPlaceSelect}
               showPlaceCards={false}
             />
+          )}
+          {askUserStatus === "skipped" && askedQuestions && (
+            <p className="m-0 mt-2.5 border-t border-dashed border-border/30 pt-2 text-xs text-text-muted">
+              Not answered: {askedQuestions.map((question) => question.header).join(", ")}
+            </p>
           )}
         </div>
       </div>
