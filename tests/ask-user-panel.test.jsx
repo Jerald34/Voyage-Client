@@ -36,6 +36,25 @@ describe("AskUserPanel", () => {
     expect(screen.getByText("Most stops per day")).toBeInTheDocument();
   });
 
+  it("leaves focus alone on mount when the user is typing somewhere else", () => {
+    const other = document.createElement("input");
+    document.body.appendChild(other);
+    other.focus();
+    try {
+      renderPanel();
+
+      expect(other).toHaveFocus();
+    } finally {
+      other.remove();
+    }
+  });
+
+  it("starts from the draft it is given", () => {
+    renderPanel({ initialDraft: { q1: { selected: ["Public transit"], other: "" }, q2: { selected: [], other: "" } } });
+
+    expect(screen.getByRole("radio", { name: /Public transit/ })).toBeChecked();
+  });
+
   it("asks for an answer before moving on", () => {
     renderPanel();
 
@@ -102,7 +121,9 @@ describe("AskUserPanel", () => {
   it("announces the missing answer and puts focus back on the options", () => {
     renderPanel();
 
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const nextButton = screen.getByRole("button", { name: "Next" });
+    nextButton.focus();
+    fireEvent.click(nextButton);
 
     expect(screen.getByRole("alert")).toHaveTextContent("Pick an option or type your own answer.");
     expect(screen.getByRole("radio", { name: /Private car/ })).toHaveFocus();

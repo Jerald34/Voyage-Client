@@ -63,4 +63,32 @@ describe("sending answers", () => {
     expect(result.current.draftThreadStates["thread-2"].messages.map((message) => message.id)).toEqual(["m-2", "u-3"]);
     expect(result.current.agentError).toBe("This question was already answered.");
   });
+
+  it("takes the optimistic answer back when the send fails, so the question can return", async () => {
+    api.createAgentThread.mockResolvedValue({ thread: { id: "thread-3", title: "", events: [] } });
+    api.sendMessage.mockRejectedValueOnce(
+      Object.assign(new Error("Daily limit reached."), { code: "AGENT_QUOTA_EXCEEDED", status: 429 }),
+    );
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+
+    await act(async () => {
+      await result.current.dispatchMessage("Transport: Train", vi.fn(), [], null, { answers });
+    });
+
+    expect(api.fetchThreadMessages).not.toHaveBeenCalled();
+    expect(result.current.draftThreadStates["thread-3"].messages.some((message) => message.metadata?.answers)).toBe(false);
+    expect(result.current.agentError).toBe("Daily limit reached.");
+  });
+
+  it("keeps the optimistic message of a normal send that fails", async () => {
+    api.createAgentThread.mockResolvedValue({ thread: { id: "thread-4", title: "", events: [] } });
+    api.sendMessage.mockRejectedValueOnce(new Error("Network down."));
+    const { result } = renderHook(() => useTripPlanning("agency-1"));
+
+    await act(async () => {
+      await result.current.dispatchMessage("Plan a trip", vi.fn());
+    });
+
+    expect(result.current.draftThreadStates["thread-4"].messages.at(-1)).toMatchObject({ role: "user", content: "Plan a trip" });
+  });
 });

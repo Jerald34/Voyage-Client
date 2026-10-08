@@ -12,6 +12,8 @@ export default function ChatComposer({ messages, onAnswer, ...inputProps }) {
   const pending = useMemo(() => findPendingQuestion(messages), [messages]);
   // The question the user set aside to type a normal reply instead.
   const [dismissedId, setDismissedId] = useState(null);
+  // The last submitted picks, so a failed send brings the question back as the user left it.
+  const [submitted, setSubmitted] = useState(null);
   const { textareaRef, isSending, agentError, containerClassName } = inputProps;
 
   // The panel unmounts on dismiss; hand focus to the text box that replaces it.
@@ -25,9 +27,11 @@ export default function ChatComposer({ messages, onAnswer, ...inputProps }) {
         key={pending.messageId}
         questions={pending.questions}
         error={agentError}
+        initialDraft={submitted?.messageId === pending.messageId ? submitted.draft : null}
         containerClassName={containerClassName}
         onDismiss={() => setDismissedId(pending.messageId)}
         onSubmit={(draft) => {
+          setSubmitted({ messageId: pending.messageId, draft });
           const answer = buildAnswer(pending, draft);
           onAnswer?.(answer.text, answer);
         }}

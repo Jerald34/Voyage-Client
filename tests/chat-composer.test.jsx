@@ -69,6 +69,20 @@ describe("ChatComposer", () => {
     expect(screen.getByRole("group", { name: "Car or train?" })).toBeInTheDocument();
   });
 
+  it("brings the question back with the picks and the error after a failed send", () => {
+    const props = composerProps();
+    const { rerender } = render(<ChatComposer {...props} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Train" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send answers" }));
+    rerender(<ChatComposer {...props} isSending />);
+    expect(screen.queryByRole("group", { name: "Car or train?" })).not.toBeInTheDocument();
+    rerender(<ChatComposer {...props} isSending={false} agentError="Could not send. Try again." />);
+
+    expect(screen.getByRole("radio", { name: "Train" })).toBeChecked();
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not send. Try again.");
+  });
+
   it("moves focus to the text box when dismissed", () => {
     render(<ChatComposer {...composerProps()} />);
 

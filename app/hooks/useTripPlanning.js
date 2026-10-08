@@ -402,6 +402,7 @@ export function useTripPlanning(agencyId) {
   const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null, { answers = null } = {}) => {
     const outcome = { sent: false, contextId: null, threadId: null };
     let sendContext = null;
+    let optimisticAnswerId = null;
     if (!agencyId) {
       setAgentError("Missing agency context. Refresh and log in again.");
       return outcome;
@@ -477,6 +478,7 @@ export function useTripPlanning(agencyId) {
         content: messageContent,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       };
+      if (answers) optimisticAnswerId = message.id;
       if (currentContext.type === "draft") {
         setDraftThreadStates((prev) => ({
           ...prev,
@@ -507,6 +509,17 @@ export function useTripPlanning(agencyId) {
       // The question closed elsewhere (another tab answered it): show the server's copy.
       if (answers && error?.code === "QUESTION_NOT_PENDING" && sendContext && outcome.threadId) {
         await reloadThreadMessages(sendContext, outcome.threadId);
+      } else if (optimisticAnswerId && sendContext) {
+        // Any other failure: take the answer back so the question returns to be answered again.
+        const dropAnswer = (prev) => ({
+          ...prev,
+          [sendContext.id]: {
+            ...(prev[sendContext.id] || {}),
+            messages: (prev[sendContext.id]?.messages || []).filter((item) => item.id !== optimisticAnswerId),
+          },
+        });
+        if (sendContext.type === "draft") setDraftThreadStates(dropAnswer);
+        else setTripStates(dropAnswer);
       }
     } finally {
       setIsSending(false);

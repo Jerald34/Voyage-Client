@@ -14,9 +14,9 @@ const focusRingClass =
  * radio rows (checkboxes for multi-select), a free-text "Something else", and a way
  * back to the normal text box. Calls onSubmit(draft) once every question is answered.
  */
-export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "", containerClassName = "" }) {
+export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "", containerClassName = "", initialDraft = null }) {
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState(() => emptyDraft(questions));
+  const [draft, setDraft] = useState(() => initialDraft ?? emptyDraft(questions));
   const [showError, setShowError] = useState(false);
   const optionsRef = useRef(null);
   const baseId = useId();
@@ -32,12 +32,21 @@ export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "
     const target =
       root?.querySelector("input[type='radio']:checked, input[type='checkbox']:checked") ??
       root?.querySelector("input[type='radio'], input[type='checkbox']");
-    target?.focus();
+    target?.focus({ preventScroll: true });
   }
 
-  // The text box this panel replaced had focus; move it to the options.
+  // On mount, take focus only if nothing has it (the text box this panel replaced
+  // had it and is gone); never pull it from somewhere the user is working.
+  // Moving between questions always moves focus to the new options.
+  // The decision is kept per step so React's dev-only double effect run can't change it.
+  const focusPlanRef = useRef(null);
   useEffect(() => {
-    focusOptions();
+    if (focusPlanRef.current?.step !== step) {
+      const isMount = focusPlanRef.current === null;
+      const active = document.activeElement;
+      focusPlanRef.current = { step, focus: !isMount || !active || active === document.body };
+    }
+    if (focusPlanRef.current.focus) focusOptions();
   }, [step]);
 
   function update(patch) {
