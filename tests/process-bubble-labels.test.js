@@ -66,3 +66,18 @@ describe("summarize", () => {
     expect(result).toContain("0.0s");
   });
 });
+
+describe("ask_user labels", () => {
+  it('shows "Preparing a question…" while ask_user runs', () => {
+    expect(toolToActiveLabel("ask_user")).toBe("Preparing a question…");
+  });
+
+  it("summarizes a run that asked as asking for input", () => {
+    const timeline = [
+      { id: "tool-1", kind: "tool", name: "add_itinerary_item" },
+      { id: "tool-2", kind: "tool", name: "ask_user" },
+    ];
+
+    expect(summarize(timeline, 1400)).toBe("Asked for your input · 1.4s");
+  });
+});
