@@ -49,7 +49,8 @@ function normalizeMessagesArray(rawMessages, itineraryId = null) {
         role: toUiRole(message.role),
         content: message.content,
         ...(message.itineraryId ? { itineraryId: message.itineraryId } : {}),
-        ...(message.metadata?.itineraryId ? { metadata: { itineraryId: message.metadata.itineraryId } } : {}),
+        // Keep all of it: the chat reads ask_user questions and answers, and user images, from here.
+        ...(message.metadata && typeof message.metadata === "object" ? { metadata: message.metadata } : {}),
         ...(message.metadata?.process ? { process: message.metadata.process } : {}),
       }))
     : [];
