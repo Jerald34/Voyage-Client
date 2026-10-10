@@ -19,7 +19,6 @@ const FEATURE_ICONS = {
 };
 
 const SECTION = "mx-auto w-full max-w-[1220px] scroll-mt-24 px-4 pb-24";
-const H2 = "m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl";
 
 // The closing band sits on bg-sidebar, where the shared terracotta ring is only 2.3:1 in light mode. White is 12:1 there
 // and 16:1 on the lifted dark band (bg-sidebar alone is 1.03:1 against the dark page, so dark uses surface-elevated).
@@ -31,7 +30,7 @@ const FOOTER_LINK = `inline-flex min-h-11 min-w-11 items-center justify-center r
 export function WhatItDoes() {
   return (
     <section id="what-it-does" aria-labelledby="what-it-does-title" className={SECTION}>
-      <h2 id="what-it-does-title" className={H2}>
+      <h2 id="what-it-does-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         What Voyage does
       </h2>
       {/* role="list": list-style:none drops list semantics in Safari/VoiceOver. */}
@@ -53,7 +52,7 @@ export function WhatItDoes() {
 export function HowItWorks() {
   return (
     <section id="how-it-works" aria-labelledby="how-it-works-title" className={SECTION}>
-      <h2 id="how-it-works-title" className={H2}>
+      <h2 id="how-it-works-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         How it works
       </h2>
       <ol role="list" aria-label="Steps" className="m-0 mt-6 grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-4">
@@ -75,7 +74,7 @@ export function HowItWorks() {
 export function ForAgencies() {
   return (
     <section id="for-agencies" aria-labelledby="for-agencies-title" className={SECTION}>
-      <h2 id="for-agencies-title" className={H2}>
+      <h2 id="for-agencies-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         Built for agencies
       </h2>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -93,7 +92,7 @@ export function ForAgencies() {
 export function Faq() {
   return (
     <section id="faq" aria-labelledby="faq-title" className={SECTION}>
-      <h2 id="faq-title" className={H2}>
+      <h2 id="faq-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         Questions
       </h2>
       <div className="mt-6 divide-y divide-border/15 rounded-xl border border-border/15 bg-surface">

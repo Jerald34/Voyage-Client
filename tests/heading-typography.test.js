@@ -21,6 +21,10 @@ const SCOPED_FILES = [
   "app/components/trip-dashboard/itinerary/ShareLinkResult.jsx",
   "app/agency/[agencyId]/components/dashboard/TripSlideOver.jsx",
   "app/agency/[agencyId]/components/dashboard/widgets/FunnelStageDetailPanel.jsx",
+  "app/components/landing/LandingHero.jsx",
+  "app/components/landing/SampleTripSection.jsx",
+  "app/components/landing/LandingSections.jsx",
+  "app/components/landing/after-the-plan/AfterThePlanTabs.jsx",
   ...sourceFiles(SHARE_DIR),
 ];
 
@@ -44,6 +48,20 @@ const EXPECTED = [
   [`${SHARE_DIR}/page.jsx`, "General Feedback", "sans"],
   [`${SHARE_DIR}/components/ShareStopCard.jsx`, "{item.title}", "sans"],
   [`${SHARE_DIR}/components/ProposalRating.jsx`, "Rate this proposal", "sans"],
+  ["app/components/landing/LandingHero.jsx", "{HERO.title}", "serif"],
+  ["app/components/landing/LandingHero.jsx", "{SAMPLE_TRIP.itinerary.title}", "sans"],
+  ["app/components/landing/SampleTripSection.jsx", "{SAMPLE_SECTION.title}", "sans"],
+  ["app/components/landing/SampleTripSection.jsx", "{callout.title}", "sans"],
+  ["app/components/landing/LandingSections.jsx", "What Voyage does", "sans"],
+  ["app/components/landing/LandingSections.jsx", "{feature.title}", "sans"],
+  ["app/components/landing/LandingSections.jsx", "How it works", "sans"],
+  ["app/components/landing/LandingSections.jsx", "{step.title}", "sans"],
+  ["app/components/landing/LandingSections.jsx", "Built for agencies", "sans"],
+  ["app/components/landing/LandingSections.jsx", "{audience.title}", "sans"],
+  ["app/components/landing/LandingSections.jsx", "Questions", "sans"],
+  ["app/components/landing/LandingSections.jsx", "{FINAL_CTA.title}", "sans"],
+  ["app/components/landing/after-the-plan/AfterThePlanTabs.jsx", "{AFTER_THE_PLAN.title}", "sans"],
+  ["app/components/landing/after-the-plan/AfterThePlanTabs.jsx", "{tab.title}", "sans"],
 ];
 
 // Includes arbitrary weights (font-[600]); `\b` can't end the pattern there, as "]" is not a word character.
