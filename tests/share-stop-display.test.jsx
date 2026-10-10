@@ -17,6 +17,7 @@ describe("stop display helpers", () => {
     expect(formatTimeRange("13:30", null)).toBe("1:30 PM");
     expect(formatTimeRange(null, "12:00")).toBe("Until 12:00 PM");
     expect(formatTimeRange(null, null)).toBe("");
+    expect(formatTimeRange("TBD", null)).toBe("TBD"); // unparseable is shown as written
   });
 
   it("formats the trip date range the way the share page header and PDF show it", () => {

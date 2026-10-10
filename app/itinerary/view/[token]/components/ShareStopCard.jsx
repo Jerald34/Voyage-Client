@@ -10,7 +10,7 @@ import { getReadablePlaceType, getSnapshotPhotoUrl } from "../../../../lib/trip-
  * One stop on the public share page, in the same anatomy as the in-app day view
  * (ItineraryDayView): time pill + place type, photo or type tile, title (sans,
  * like the dashboard's card titles), rating, then details. `actions` sit beside the title; `children` holds the
- * stop's comment form and comments. `compact` keeps only the header row, photo, title and rating (landing hero).
+ * stop's comment form and comments. `compact` hides the detail blocks (description, place, accessibility, notes) for the landing hero.
  */
 export default function ShareStopCard({ item, isActive = false, timeLabel = "", icon = null, actions = null, dayWeather = null, dayNumber = null, stopNumber = null, compact = false, onHoverChange, children }) {
   const snapshot = item.placeSnapshot ?? null;

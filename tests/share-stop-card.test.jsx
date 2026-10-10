@@ -31,13 +31,27 @@ describe("ShareStopCard", () => {
     expect(document.querySelector("img")).toHaveAttribute("src", "https://photos.example/kiyomizu.jpg");
   });
 
-  it("drops the description, address and notes when compact", () => {
-    render(<ShareStopCard item={item} timeLabel="8:00 AM – 10:00 AM" compact />);
+  it("drops the description, address, accessibility and notes when compact", () => {
+    const accessible = {
+      ...item,
+      placeSnapshot: {
+        ...item.placeSnapshot,
+        metadata: { ...item.placeSnapshot.metadata, accessibility: { wheelchairAccessibleEntrance: true } },
+      },
+    };
+    const { unmount } = render(<ShareStopCard item={accessible} timeLabel="8:00 AM – 10:00 AM" />);
+    // Without compact the badge is there, so its absence below proves the guard rather than missing data.
+    expect(screen.getByText("Accessible entrance")).toBeInTheDocument();
+    unmount();
+
+    render(<ShareStopCard item={accessible} timeLabel="8:00 AM – 10:00 AM" compact />);
 
     expect(screen.getByText("Kiyomizu-dera", { selector: "h3" })).toBeInTheDocument();
     expect(screen.getByText("8:00 AM – 10:00 AM")).toBeInTheDocument();
+    expect(screen.getByText("★ 4.6")).toBeInTheDocument();
     expect(screen.queryByText("Arrive early for the wooden stage.")).not.toBeInTheDocument();
     expect(screen.queryByText("1 Chome-294 Kiyomizu, Kyoto")).not.toBeInTheDocument();
+    expect(screen.queryByText("Accessible entrance")).not.toBeInTheDocument();
     expect(screen.queryByText("Wear comfy shoes.")).not.toBeInTheDocument();
   });
 
