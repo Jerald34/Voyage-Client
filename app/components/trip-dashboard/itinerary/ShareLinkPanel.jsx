@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { createItineraryShare } from "../../../lib/api/index.js";
-import { CheckIcon, LinkIcon } from "../../icons/index.js";
+import { LinkIcon } from "../../icons/index.js";
 import { Spinner } from "../../ui/index.js";
-import ShareQRCode from "./ShareQRCode.jsx";
+import ShareLinkResult from "./ShareLinkResult.jsx";
 
 export default function ShareLinkPanel({ agencyId, itineraryId, tripTitle, onShareCreated }) {
   const [dialogState, setDialogState] = useState("create"); // "create" | "result"
@@ -14,7 +14,6 @@ export default function ShareLinkPanel({ agencyId, itineraryId, tripTitle, onSha
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
   const [generatedShare, setGeneratedShare] = useState(null);
-  const [copySuccess, setCopySuccess] = useState(false);
 
   const shareUrl = generatedShare?.token
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/itinerary/view/${generatedShare.token}`
@@ -41,24 +40,6 @@ export default function ShareLinkPanel({ agencyId, itineraryId, tripTitle, onSha
     }
   };
 
-  const handleCopyUrl = async () => {
-    if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    } catch {
-      const el = document.createElement("textarea");
-      el.value = shareUrl;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    }
-  };
-
   const handleBack = () => {
     setDialogState("create");
     setGeneratedShare(null);
@@ -68,74 +49,7 @@ export default function ShareLinkPanel({ agencyId, itineraryId, tripTitle, onSha
   };
 
   if (dialogState === "result") {
-    return (
-      <section className="mb-1">
-        <h3 className="m-0 mb-3.5 text-[13px] font-bold tracking-[0.01em] text-text-primary">
-          Share Link Ready
-        </h3>
-
-        <div className="
-          flex items-center gap-2.5
-          px-3.5 py-2.5 mb-[18px]
-          rounded-md bg-background border border-border/30
-          sm:flex-row flex-col sm:items-center items-stretch
-        ">
-          <span
-            className="flex-1 min-w-0 text-[12.5px] text-text-muted whitespace-nowrap overflow-hidden text-ellipsis font-mono"
-            title={shareUrl}
-          >
-            {shareUrl}
-          </span>
-          <button
-            type="button"
-            className={`
-              shrink-0 inline-flex items-center gap-1.5
-              px-3 py-1.5
-              rounded-[10px] border text-[12px] font-bold
-              cursor-pointer whitespace-nowrap
-              transition-[background,border-color,color] duration-150
-              sm:justify-start justify-center
-              ${copySuccess
-                ? "bg-status-success/10 border-status-success/40 text-status-success"
-                : "bg-surface-elevated border-border/30 text-text-muted hover:bg-surface hover:border-border/50"
-              }
-            `}
-            onClick={handleCopyUrl}
-            aria-label="Copy link"
-          >
-            {copySuccess ? (
-              <>
-                <CheckIcon width={13} height={13} strokeWidth={3} />
-                Copied!
-              </>
-            ) : (
-              <>
-                <LinkIcon width={13} height={13} strokeWidth={2} />
-                Copy
-              </>
-            )}
-          </button>
-        </div>
-
-        <ShareQRCode shareUrl={shareUrl} tripTitle={tripTitle} />
-
-        <button
-          type="button"
-          className="
-            block mx-auto px-3 py-1.5
-            border-0 bg-transparent
-            text-text-soft text-[13px] font-semibold
-            underline underline-offset-[3px]
-            cursor-pointer
-            hover:text-primary
-            transition-colors duration-150
-          "
-          onClick={handleBack}
-        >
-          Generate another link
-        </button>
-      </section>
-    );
+    return <ShareLinkResult shareUrl={shareUrl} tripTitle={tripTitle} onGenerateAnother={handleBack} />;
   }
 
   return (
