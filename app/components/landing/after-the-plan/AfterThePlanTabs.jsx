@@ -79,7 +79,7 @@ export default function AfterThePlanTabs() {
               // Focusing scrolls a half-hidden tab into view; iOS Safari doesn't focus a button on tap.
               onClick={() => select(item.id)}
               // The ring sits inside the tab: the scroll container would clip one drawn outside it.
-              className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center whitespace-nowrap border-0 border-b-2 bg-transparent px-3 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-secondary ${
+              className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center whitespace-nowrap border-0 border-b-2 bg-transparent px-3 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-secondary-strong ${
                 selected ? "border-secondary-strong text-text-primary" : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
@@ -94,7 +94,7 @@ export default function AfterThePlanTabs() {
         id={`${baseId}-panel`}
         aria-labelledby={`${baseId}-tab-${active}`}
         tabIndex={0}
-        className="grid grid-cols-1 gap-6 pt-6 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-secondary lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
+        className="grid grid-cols-1 gap-6 pt-6 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-secondary-strong lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
       >
         <div>
           <h3 className="m-0 font-sans text-lg font-semibold text-text-primary">{tab.title}</h3>

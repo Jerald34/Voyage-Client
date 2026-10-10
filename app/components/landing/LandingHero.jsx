@@ -60,7 +60,7 @@ export default function LandingHero({ onStartPlanning, onWatchDemo }) {
         <SampleDayView dayNumber={day} compact />
         <a
           href="#sample-trip"
-          className="inline-flex min-h-11 items-center justify-self-start rounded-pill text-sm font-semibold text-secondary-strong underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"
+          className="inline-flex min-h-11 items-center justify-self-start rounded-pill text-sm font-semibold text-secondary-strong underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary-strong"
         >
           See the full trip, map and notes
         </a>

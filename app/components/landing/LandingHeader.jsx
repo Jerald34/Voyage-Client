@@ -6,7 +6,7 @@ import VoyageLogo from "../brand/VoyageLogo";
 import { LANDING_NAV } from "./landingContent.js";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
 
-const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary";
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary-strong";
 
 // The shared button classes carry px-5. Swap it (don't append a second px-*): Tailwind v4 orders
 // same-property utilities in its generated CSS, not in the class attribute, so two would fight.
