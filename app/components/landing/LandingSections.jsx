@@ -21,11 +21,12 @@ const FEATURE_ICONS = {
 const SECTION = "mx-auto w-full max-w-[1220px] scroll-mt-24 px-4 pb-24";
 const H2 = "m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl";
 
-// The closing band sits on bg-sidebar, where the shared terracotta ring is only 2.4:1 in light mode.
-// White is 12:1 there (19:1 in dark). The class is swapped, not appended: Tailwind orders by generated CSS, not by class order.
+// The closing band sits on bg-sidebar, where the shared terracotta ring is only 2.3:1 in light mode. White is 12:1 there
+// and 16:1 on the lifted dark band (bg-sidebar alone is 1.03:1 against the dark page, so dark uses surface-elevated).
+// The class is swapped, not appended: Tailwind orders by generated CSS, not by class order.
 const CTA_BUTTON = PRIMARY_BUTTON.replace("focus-visible:outline-secondary-strong", "focus-visible:outline-white");
 
-const FOOTER_LINK = `inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2text-sm text-text-muted no-underline transition-colors duration-150 hover:text-text-primary motion-reduce:transition-none ${FOCUS}`;
+const FOOTER_LINK = `inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-sm text-text-muted no-underline transition-colors duration-150 hover:text-text-primary motion-reduce:transition-none ${FOCUS}`;
 
 export function WhatItDoes() {
   return (
@@ -120,7 +121,7 @@ export function Faq() {
 
 export function FinalCta({ onStartPlanning }) {
   return (
-    <section aria-labelledby="final-cta-title" className="w-full bg-sidebar px-4 py-20 md:py-24">
+    <section aria-labelledby="final-cta-title" className="w-full bg-sidebar px-4 py-20 dark:border-y dark:border-border/40 dark:bg-surface-elevated md:py-24">
       <div className="mx-auto flex max-w-[1220px] flex-col items-center gap-5 text-center">
         <h2 id="final-cta-title" className="m-0 font-sans text-2xl font-semibold text-white md:text-3xl">
           {FINAL_CTA.title}

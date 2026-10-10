@@ -1,6 +1,6 @@
 // tests/landing-after-the-plan.test.jsx
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 vi.mock("../app/components/icons/index.js", async () => (await import("./helpers/iconsMock.js")).default);
 vi.mock("qrcode.react", () => ({
@@ -91,15 +91,49 @@ describe("AfterThePlanTabs", () => {
     fetchSpy.mockRestore();
   });
 
-  it("walks a trip through review, approval and reopening", () => {
+  it("walks a trip through review, approval and reopening back to review", () => {
+    render(<AfterThePlanTabs />);
+
+    const stepOf = (label) => screen.getByText(label, { selector: "span" }).closest("li");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Approve and lock" }));
+    expect(stepOf("Draft")).toHaveAttribute("aria-current", "step");
+    fireEvent.click(screen.getByRole("button", { name: "Save to Client" }));
+    expect(stepOf("In review")).toHaveAttribute("aria-current", "step");
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    expect(screen.getByText("Locked. Approved itineraries can't be edited.")).toBeInTheDocument();
+    expect(stepOf("Approved")).toHaveAttribute("aria-current", "step");
+
+    // Like the real app, reopening goes back to In review, not Draft, and needs approval again.
+    fireEvent.click(screen.getByRole("button", { name: "Reopen for edits" }));
+    expect(screen.getByText("Reopened: editable again, and it needs approval again.")).toBeInTheDocument();
+    expect(stepOf("In review")).toHaveAttribute("aria-current", "step");
+    expect(stepOf("Draft")).not.toHaveAttribute("aria-current");
+    expect(stepOf("Approved")).not.toHaveAttribute("aria-current");
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    expect(screen.getByText("Locked. Approved itineraries can't be edited.")).toBeInTheDocument();
+  });
+
+  it("marks steps still to come with a dashed outline, never by dimming the badge", () => {
     render(<AfterThePlanTabs />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Approve and lock" }));
+    const outlined = (label) => screen.getByText(label, { selector: "span" }).parentElement.className.includes("outline-dashed");
+
+    expect(outlined("Draft")).toBe(false);
+    expect(outlined("In review")).toBe(true);
+    expect(outlined("Approved")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Save to Client" }));
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    expect(screen.getByText("Locked. Approved itineraries can't be edited.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Reopen for edits" }));
-    expect(screen.getByText("Editable while you plan.")).toBeInTheDocument();
+    expect(outlined("In review")).toBe(false);
+    expect(outlined("Approved")).toBe(true);
+
+    for (const item of within(screen.getByRole("list", { name: "Approval steps" })).getAllByRole("listitem")) {
+      expect(item.className).not.toContain("opacity");
+    }
+    for (const label of ["Draft", "In review", "Approved"]) {
+      expect(screen.getByText(label, { selector: "span" }).className).not.toContain("opacity");
+    }
   });
 
   it("loads the PDF demo only when its tab opens", () => {

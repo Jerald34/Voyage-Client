@@ -475,10 +475,19 @@ body::before {
    ═══════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  /* Leaflet positions every tile, pane and pin with an inline translate3d(). A blanket
+     `transform: none` overrides that and collapses the whole map into its corner, so the map is excluded. */
+  :where(*:not(.leaflet-container, .leaflet-container *)), ::before, ::after {
     transform: none !important;
   }
 

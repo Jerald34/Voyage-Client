@@ -64,4 +64,27 @@ describe("landing lower sections", () => {
     expect(onLogin).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/pricing/i)).not.toBeInTheDocument();
   });
+
+  it("gives every footer link its padding and text size as separate classes", () => {
+    render(<LandingFooter onLogin={vi.fn()} />);
+
+    const footerLinks = [...within(screen.getByRole("navigation", { name: "Footer" })).getAllByRole("link"), screen.getByRole("button", { name: "Log in" })];
+    expect(footerLinks.length).toBeGreaterThan(1);
+    for (const link of footerLinks) {
+      const classes = link.className.split(/\s+/);
+      expect(classes).toContain("px-2");
+      expect(classes).toContain("text-sm");
+    }
+  });
+
+  it("lifts the closing band off the dark page background with a surface and an edge", () => {
+    const { container } = render(<FinalCta onStartPlanning={vi.fn()} />);
+
+    // bg-sidebar (#0d1013) is 1.03:1 against the dark page (#111416): invisible without these.
+    const classes = container.querySelector("section").className.split(/\s+/);
+    expect(classes).toContain("bg-sidebar");
+    expect(classes).toContain("dark:bg-surface-elevated");
+    expect(classes).toContain("dark:border-y");
+    expect(classes).toContain("dark:border-border/40");
+  });
 });
