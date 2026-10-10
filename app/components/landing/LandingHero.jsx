@@ -53,7 +53,7 @@ export default function LandingHero({ onStartPlanning, onWatchDemo }) {
 
       <div className="grid gap-3 rounded-[22px] border border-border/15 bg-surface p-4 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="m-0 font-sans text-[15px] font-semibold text-text-primary">{SAMPLE_TRIP.itinerary.title}</p>
+          <h2 className="m-0 font-sans text-[15px] font-semibold text-text-primary">{SAMPLE_TRIP.itinerary.title}</h2>
           <SegmentedControl as="radio" size="sm" ariaLabel="Sample trip day" options={SAMPLE_DAY_OPTIONS} value={day} onChange={setDay} />
         </div>
         <SampleDayHeader dayNumber={day} />

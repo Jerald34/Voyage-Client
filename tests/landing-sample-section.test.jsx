@@ -21,12 +21,15 @@ describe("SampleTripSection", () => {
   it("shows day 2's real forecast summary, full stop cards, five callouts and the map", () => {
     render(<SampleTripSection />);
 
-    // The day header's WeatherChip also carries the forecast as sr-only text, so scope to the summary.
-    const summary = within(screen.getByRole("region", { name: "Day weather" }));
-    expect(summary.getByText(/Forecast: Afternoon rain, 1–2 PM/)).toBeInTheDocument();
-    expect(summary.getByText("Put outdoor stops before 11 AM.")).toBeInTheDocument();
+    // The summary box carries the forecast; the day header shows no chip, so each line appears once.
+    expect(screen.getByRole("region", { name: "Day weather" })).toBeInTheDocument();
+    expect(screen.getByText(/Forecast: Afternoon rain, 1–2 PM/)).toBeInTheDocument();
+    expect(screen.getByText("Put outdoor stops before 11 AM.")).toBeInTheDocument();
+    expect(screen.queryByText("16–26°C · PM rain")).not.toBeInTheDocument();
     expect(screen.getByText("Enjoy panoramic views of the Cordillera mountains.")).toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "What this sample shows" })).getAllByRole("listitem")).toHaveLength(5);
+    const callouts = screen.getByRole("list", { name: "What this sample shows" });
+    expect(callouts).toHaveAttribute("role", "list");
+    expect(within(callouts).getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByTestId("map")).toHaveAttribute("data-active-day", "2");
   });
 

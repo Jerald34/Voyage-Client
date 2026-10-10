@@ -6,6 +6,7 @@ vi.mock("../app/components/icons/index.js", async () => (await import("./helpers
 
 import LandingHeader from "../app/components/landing/LandingHeader.jsx";
 import LandingHero from "../app/components/landing/LandingHero.jsx";
+import { SAMPLE_TRIP } from "../app/components/landing/sample/sampleTrip.js";
 
 describe("LandingHeader", () => {
   it("links to every section and has no pricing", () => {
@@ -51,6 +52,14 @@ describe("LandingHero", () => {
     expect(h1.className).toContain("font-normal");
     expect(screen.getByRole("radio", { name: "Day 2" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByText("Mines View Park", { selector: "h3" })).toBeInTheDocument();
+  });
+
+  it("titles the sample card with a sans h2, so the stop cards' h3s don't sit directly under the h1", () => {
+    render(<LandingHero onStartPlanning={vi.fn()} onWatchDemo={vi.fn()} />);
+
+    const title = screen.getByRole("heading", { level: 2, name: SAMPLE_TRIP.itinerary.title });
+    expect(title.className).toContain("font-sans");
+    expect(title.className).not.toContain("font-serif");
   });
 
   it("switches the sample to day 1", () => {

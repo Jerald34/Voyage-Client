@@ -17,6 +17,8 @@ describe("SampleDayView", () => {
   it("renders day 2's real stops in order with their numbers, times and weather", () => {
     render(<SampleDayView dayNumber={2} />);
 
+    // Explicit role: Safari and VoiceOver drop list semantics from a list-style:none list.
+    expect(screen.getByRole("list", { name: "Day 2 stops" })).toHaveAttribute("role", "list");
     const stops = dayStops(2);
     expect(stops).toHaveLength(4);
     expect(within(stops[0]).getByText("Mines View Park", { selector: "h3" })).toBeInTheDocument();
@@ -47,5 +49,12 @@ describe("SampleDayHeader", () => {
 
     expect(screen.getByText("Day 2 · Views & Shopping")).toBeInTheDocument();
     expect(screen.getByText("16–26°C · PM rain")).toBeInTheDocument();
+  });
+
+  it("leaves the forecast chip out when showWeather is false", () => {
+    render(<SampleDayHeader dayNumber={2} showWeather={false} />);
+
+    expect(screen.getByText("Day 2 · Views & Shopping")).toBeInTheDocument();
+    expect(screen.queryByText("16–26°C · PM rain")).not.toBeInTheDocument();
   });
 });

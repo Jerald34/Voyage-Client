@@ -34,12 +34,13 @@ export default function SampleTripSection() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
         <div className="grid content-start gap-3">
-          <SampleDayHeader dayNumber={day} />
+          {/* The summary below carries the forecast; the header's chip would show it twice. */}
+          <SampleDayHeader dayNumber={day} showWeather={false} />
           <DayWeatherSummary entry={weather} attribution={SAMPLE_WEATHER_ATTRIBUTION} />
           <SampleDayView dayNumber={day} />
         </div>
         <div className="grid content-start gap-6">
-          <ol aria-label="What this sample shows" className="m-0 grid list-none gap-4 p-0">
+          <ol role="list" aria-label="What this sample shows" className="m-0 grid list-none gap-4 p-0">
             {SAMPLE_CALLOUTS.map((callout, index) => (
               <li key={callout.title} className="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-3">
                 <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-on-primary">

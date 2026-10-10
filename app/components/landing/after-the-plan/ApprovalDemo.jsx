@@ -19,7 +19,7 @@ export default function ApprovalDemo() {
 
   return (
     <div className="grid gap-4 rounded-[18px] border border-border/15 bg-surface p-4">
-      <ol aria-label="Approval steps" className="m-0 flex list-none flex-wrap items-center gap-x-3 gap-y-2 p-0">
+      <ol role="list" aria-label="Approval steps" className="m-0 flex list-none flex-wrap items-center gap-x-3 gap-y-2 p-0">
         {STAGES.map((item, index) => (
           // Steps still to come sit at 70% (3.3:1 or better, the pale badges' worst case); the current one is underlined.
           <li
