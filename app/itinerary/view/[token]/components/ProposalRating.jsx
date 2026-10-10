@@ -52,7 +52,7 @@ function StarButton({ index, filled, hovered, onHover, onLeave, onSelect, disabl
       aria-label={`${n} star${n === 1 ? "" : "s"}`}
       aria-pressed={filled}
       disabled={disabled}
-      className="text-[28px] leading-none bg-transparent border-none p-0 cursor-pointer transition-transform duration-75 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-secondary rounded-sm"
+      className="text-[28px] leading-none bg-transparent border-none p-0 pointer-coarse:min-h-11 pointer-coarse:min-w-11 cursor-pointer transition-transform duration-75 hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-secondary rounded-sm"
       style={{
         color:
           filled || hovered
@@ -221,7 +221,7 @@ export default function ProposalRating({
         {savedRating !== null && !editing && !errorInfo?.lock && !windowClosed && (
           <button
             type="button"
-            className="px-3 py-1 text-[12px] font-medium border border-border/20 rounded-sm bg-transparent text-text-muted cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] hover:text-primary"
+            className="px-3 py-1 pointer-coarse:min-h-11 text-[12px] font-medium border border-border/20 rounded-sm bg-transparent text-text-muted cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] hover:text-primary"
             onClick={handleUpdate}
           >
             Update
@@ -239,7 +239,7 @@ export default function ProposalRating({
             </p>
           )}
           {windowClosed && (
-            <p className="m-0 text-[12px] text-text-soft">
+            <p className="m-0 text-[12px] text-text-muted">
               Thanks for your feedback.
             </p>
           )}
@@ -260,7 +260,7 @@ export default function ProposalRating({
             <legend className="sr-only">Rate this proposal</legend>
 
             {/* star row */}
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {[0, 1, 2, 3, 4].map((i) => (
                 <StarButton
                   key={i}
@@ -277,7 +277,7 @@ export default function ProposalRating({
                 />
               ))}
               {selectedRating > 0 && (
-                <span className="ml-2 text-[12px] text-text-soft font-medium">
+                <span className="ml-2 text-[12px] text-text-muted font-medium">
                   {selectedRating} / 5
                 </span>
               )}
@@ -308,7 +308,7 @@ export default function ProposalRating({
             {savedRating !== null && (
               <button
                 type="button"
-                className="px-[14px] py-[6px] border border-border/20 rounded-sm bg-transparent text-text-muted text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50"
+                className="px-[14px] py-[6px] pointer-coarse:min-h-11 border border-border/20 rounded-sm bg-transparent text-text-muted text-[12px] font-medium cursor-pointer transition-colors duration-150 hover:bg-primary/[0.06] disabled:opacity-50"
                 onClick={() => setEditing(false)}
                 disabled={status === "submitting"}
               >
@@ -317,7 +317,7 @@ export default function ProposalRating({
             )}
             <button
               type="submit"
-              className="px-4 py-[6px] bg-secondary-strong text-on-secondary-strong border-none rounded-sm text-[12px] font-semibold cursor-pointer transition-all duration-150 hover:enabled:opacity-90 active:enabled:scale-97 disabled:opacity-45 disabled:cursor-not-allowed"
+              className="px-4 py-[6px] pointer-coarse:min-h-11 bg-secondary-strong text-on-secondary-strong border-none rounded-sm text-[12px] font-semibold cursor-pointer transition-all duration-150 hover:enabled:opacity-90 active:enabled:scale-97 disabled:opacity-45 disabled:cursor-not-allowed"
               disabled={selectedRating === 0 || status === "submitting"}
             >
               {status === "submitting" ? "Saving…" : "Submit rating"}
