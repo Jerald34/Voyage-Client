@@ -8,6 +8,7 @@ import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import PdfDownloadButton from "./components/PdfDownloadButton.jsx";
 import ShareStopCard from "./components/ShareStopCard.jsx";
+import { formatTimeRange, itemTypeIcon } from "./components/stopDisplay.jsx";
 import { getDayColor } from "../../../lib/trip-dashboard/dayColors.js";
 import SegmentedControl from "../../../components/admin/SegmentedControl.jsx";
 import WeatherChip from "../../../components/weather/WeatherChip.jsx";
@@ -17,10 +18,6 @@ import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/we
 import ShareHeader, { PoweredByVoyage } from "./components/ShareHeader.jsx";
 import Spinner from "../../../components/ui/Spinner";
 import {
-  PlaneIcon,
-  HotelIcon,
-  ForkKnifeIcon,
-  CarIcon,
   MapPinIcon,
   ChatIcon,
   UserIcon,
@@ -62,23 +59,6 @@ function formatDateRange(start, end) {
   return `${startStr} – ${endStr}`;
 }
 
-function formatTime(timeStr) {
-  if (!timeStr) return "";
-  const [h, m] = timeStr.split(":");
-  const hour = parseInt(h, 10);
-  if (isNaN(hour)) return timeStr;
-  const ampm = hour >= 12 ? "PM" : "AM";
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${m} ${ampm}`;
-}
-
-function formatTimeRange(start, end) {
-  if (start && end) return `${formatTime(start)} – ${formatTime(end)}`;
-  if (start) return formatTime(start);
-  if (end) return `Until ${formatTime(end)}`;
-  return "";
-}
-
 const MOBILE_VIEWS = [
   { value: "itinerary", label: "Itinerary" },
   { value: "map", label: "Map" },
@@ -94,24 +74,6 @@ function buildGoogleMapsUrl(placeSnapshot) {
     url += `&query_place_id=${providerPlaceId}`;
   }
   return url;
-}
-
-function itemTypeIcon(type) {
-  switch (type?.toUpperCase()) {
-    case "FLIGHT":
-      return <PlaneIcon width={16} height={16} />;
-    case "HOTEL":
-    case "ACCOMMODATION":
-      return <HotelIcon width={16} height={16} />;
-    case "RESTAURANT":
-    case "DINING":
-      return <ForkKnifeIcon width={16} height={16} />;
-    case "TRANSPORT":
-    case "TRANSFER":
-      return <CarIcon width={16} height={16} />;
-    default:
-      return <MapPinIcon width={16} height={16} />;
-  }
 }
 
 /* ── map-pin icon for Google Maps link ──────────────────────── */

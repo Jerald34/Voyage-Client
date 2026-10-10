@@ -10,9 +10,9 @@ import { getReadablePlaceType, getSnapshotPhotoUrl } from "../../../../lib/trip-
  * One stop on the public share page, in the same anatomy as the in-app day view
  * (ItineraryDayView): time pill + place type, photo or type tile, title (sans,
  * like the dashboard's card titles), rating, then details. `actions` sit beside the title; `children` holds the
- * stop's comment form and comments.
+ * stop's comment form and comments. `compact` keeps only the header row, photo, title and rating (landing hero).
  */
-export default function ShareStopCard({ item, isActive = false, timeLabel = "", icon = null, actions = null, dayWeather = null, dayNumber = null, stopNumber = null, onHoverChange, children }) {
+export default function ShareStopCard({ item, isActive = false, timeLabel = "", icon = null, actions = null, dayWeather = null, dayNumber = null, stopNumber = null, compact = false, onHoverChange, children }) {
   const snapshot = item.placeSnapshot ?? null;
   const photoUrl = getSnapshotPhotoUrl(snapshot);
   const placeType = getReadablePlaceType(snapshot);
@@ -67,9 +67,9 @@ export default function ShareStopCard({ item, isActive = false, timeLabel = "", 
         {actions ? <div className="flex flex-shrink-0 items-center gap-1.5">{actions}</div> : null}
       </div>
 
-      {item.description ? <p className="m-0 text-[0.85rem] leading-relaxed text-text-muted">{item.description}</p> : null}
+      {!compact && item.description ? <p className="m-0 text-[0.85rem] leading-relaxed text-text-muted">{item.description}</p> : null}
 
-      {snapshot?.name ? (
+      {!compact && snapshot?.name ? (
         <p className="m-0 flex items-start gap-1.5 text-[0.78rem] leading-snug text-text-muted">
           <MapPinIcon width={12} height={12} className="mt-[2px] flex-shrink-0" />
           <span className="min-w-0">
@@ -79,9 +79,9 @@ export default function ShareStopCard({ item, isActive = false, timeLabel = "", 
         </p>
       ) : null}
 
-      <AccessibilityBadges snapshot={snapshot} />
+      {compact ? null : <AccessibilityBadges snapshot={snapshot} />}
 
-      {item.clientNotes ? (
+      {!compact && item.clientNotes ? (
         <div className="flex items-start gap-1.5 rounded-sm border-l-[3px] border-secondary bg-secondary/[0.06] px-3 py-2 text-[0.78rem] leading-[1.5] text-text-muted">
           <ChatIcon width={12} height={12} className="mt-[2px] flex-shrink-0 text-secondary-strong" />
           <span>{item.clientNotes}</span>

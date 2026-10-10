@@ -31,6 +31,16 @@ describe("ShareStopCard", () => {
     expect(document.querySelector("img")).toHaveAttribute("src", "https://photos.example/kiyomizu.jpg");
   });
 
+  it("drops the description, address and notes when compact", () => {
+    render(<ShareStopCard item={item} timeLabel="8:00 AM – 10:00 AM" compact />);
+
+    expect(screen.getByText("Kiyomizu-dera", { selector: "h3" })).toBeInTheDocument();
+    expect(screen.getByText("8:00 AM – 10:00 AM")).toBeInTheDocument();
+    expect(screen.queryByText("Arrive early for the wooden stage.")).not.toBeInTheDocument();
+    expect(screen.queryByText("1 Chome-294 Kiyomizu, Kyoto")).not.toBeInTheDocument();
+    expect(screen.queryByText("Wear comfy shoes.")).not.toBeInTheDocument();
+  });
+
   it("uses the stop type icon when there is no photo", () => {
     const noPhoto = { ...item, placeSnapshot: { ...item.placeSnapshot, metadata: {} } };
     render(<ShareStopCard item={noPhoto} icon={<span>type icon</span>} />);
