@@ -8,6 +8,7 @@
  *   initialRating  {number|null} Pre-existing rating (1–5) or null
  *   initialComment {string|null} Pre-existing comment or null
  *   initialRatedAt {string|null} ISO timestamp of first rating, or null
+ *   demo           {boolean}     Landing page: the rating is kept on the page and never sent.
  */
 
 import { useState, useRef } from "react";
@@ -118,6 +119,7 @@ export default function ProposalRating({
   initialRating = null,
   initialComment = null,
   initialRatedAt = null,
+  demo = false,
 }) {
   /* persisted state */
   const [savedRating, setSavedRating] = useState(initialRating);
@@ -147,6 +149,24 @@ export default function ProposalRating({
     if (liveRef.current) liveRef.current.textContent = msg;
   }
 
+  /* ── send (or, in demo mode, keep) the rating ── */
+  async function sendRating(rating, comment) {
+    if (demo) return { rating, comment: comment || null, ratedAt: new Date().toISOString() };
+    const res = await fetch(`${API_URL}/shared/${token}/rate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating, ...(comment ? { comment } : {}) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error?.message || "Request failed");
+      err.code = data.error?.code || "UNKNOWN_ERROR";
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
   /* ── submit ── */
   async function handleSubmit(e) {
     e.preventDefault();
@@ -156,22 +176,7 @@ export default function ProposalRating({
     setErrorInfo(null);
 
     try {
-      const res = await fetch(`${API_URL}/shared/${token}/rate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rating: selectedRating,
-          ...(commentText.trim() ? { comment: commentText.trim() } : {}),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        const err = new Error(data.error?.message || "Request failed");
-        err.code = data.error?.code || "UNKNOWN_ERROR";
-        err.status = res.status;
-        throw err;
-      }
+      const data = await sendRating(selectedRating, commentText.trim());
 
       setSavedRating(data.rating);
       setSavedComment(data.comment ?? null);
