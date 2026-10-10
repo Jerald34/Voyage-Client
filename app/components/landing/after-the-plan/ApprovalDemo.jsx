@@ -6,8 +6,8 @@ import { SAMPLE_TRIP } from "../sample/sampleTrip.js";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "../landingClasses.js";
 
 const STAGES = [
-  { label: "Draft", variant: "draft", note: "Editable by the assigned agent.", action: "Send for review" },
-  { label: "Needs review", variant: "pending", note: "Waiting in the approval queue.", action: "Approve" },
+  { label: "Draft", variant: "draft", note: "Editable while you plan.", action: "Save to Client" },
+  { label: "In review", variant: "pending", note: "Waiting for approval.", action: "Approve" },
   { label: "Approved", variant: "approved", note: "Locked. Approved itineraries can't be edited.", action: "Reopen for edits" },
 ];
 

@@ -62,7 +62,7 @@ export const AFTER_THE_PLAN_TABS = [
     id: "approve",
     label: "Approve and lock",
     title: "Approve it, then lock it",
-    body: "Agents send trips for review, and they wait in the approval queue. Approving locks the itinerary so it can't change by accident. Reopen it on purpose to edit.",
+    body: "Saving a trip to the client puts it in review. Approving it locks the itinerary so it can't change by accident. Reopen it on purpose to edit.",
   },
 ];
 
@@ -75,7 +75,7 @@ export const FEATURES = [
   { icon: "share", title: "Share, PDF and print", body: "A branded link your client can comment on and rate." },
   { icon: "lock", title: "Approve and lock", body: "Approving locks the trip. Editing reopens it on purpose." },
   { icon: "star", title: "Reuse top-rated stops", body: "Pull stops from past trips your clients rated 4 or higher." },
-  { icon: "calendar", title: "Team calendar", body: "Every departure, assignment and approval in one view." },
+  { icon: "calendar", title: "Team calendar", body: "Every departure and its status in one view." },
 ];
 
 export const STEPS = [
@@ -88,11 +88,11 @@ export const STEPS = [
 export const AUDIENCES = [
   {
     title: "For agency owners",
-    body: "A calendar of every departure, who's assigned, what's waiting for your approval, and how clients rated each trip.",
+    body: "A calendar of every departure, what's in review, and how clients rated each trip.",
   },
   {
     title: "For agents",
-    body: "Plan in one workspace: chat with the AI, edit stops by hand, reuse what worked, and send it for review.",
+    body: "Plan in one workspace: chat with the AI, edit stops by hand, reuse what worked, and save it to the client for review.",
   },
 ];
 
@@ -111,7 +111,7 @@ export const FAQS = [
   },
   {
     question: "Can my whole team use it?",
-    answer: "Yes. Owners invite agents and assign trips. Agents send itineraries for review, and approving one locks it.",
+    answer: "Yes. Owners invite agents to the agency. Agents plan trips and save them for review, and approving one locks it.",
   },
 ];
 

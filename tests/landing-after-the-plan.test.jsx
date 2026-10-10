@@ -95,11 +95,11 @@ describe("AfterThePlanTabs", () => {
     render(<AfterThePlanTabs />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Approve and lock" }));
-    fireEvent.click(screen.getByRole("button", { name: "Send for review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save to Client" }));
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     expect(screen.getByText("Locked. Approved itineraries can't be edited.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Reopen for edits" }));
-    expect(screen.getByText("Editable by the assigned agent.")).toBeInTheDocument();
+    expect(screen.getByText("Editable while you plan.")).toBeInTheDocument();
   });
 
   it("loads the PDF demo only when its tab opens", () => {
