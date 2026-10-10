@@ -49,7 +49,8 @@ function normalizeMessagesArray(rawMessages, itineraryId = null) {
         role: toUiRole(message.role),
         content: message.content,
         ...(message.itineraryId ? { itineraryId: message.itineraryId } : {}),
-        ...(message.metadata?.itineraryId ? { metadata: { itineraryId: message.metadata.itineraryId } } : {}),
+        // Keep all of it: the chat reads ask_user questions and answers, and user images, from here.
+        ...(message.metadata && typeof message.metadata === "object" ? { metadata: message.metadata } : {}),
         ...(message.metadata?.process ? { process: message.metadata.process } : {}),
       }))
     : [];
@@ -376,9 +377,32 @@ export function useTripPlanning(agencyId) {
     return promise;
   };
 
+  // Replace a context's messages with the server's copy, e.g. after an answer was
+  // refused because its question had already been answered in another tab.
+  const reloadThreadMessages = async (context, threadId) => {
+    try {
+      const result = await fetchThreadMessages(agencyId, threadId, { limit: 50 });
+      // Server returns DESC (newest first); UI renders ASC.
+      const ascending = [...(Array.isArray(result?.messages) ? result.messages : [])].reverse();
+      const states = context.type === "draft" ? draftThreadStatesRef.current : tripStatesRef.current;
+      const messages = normalizeMessagesArray(ascending, states[context.id]?.itinerary?.id ?? null);
+      const applyMessages = (prev) => ({
+        ...prev,
+        [context.id]: { ...(prev[context.id] || {}), messages },
+      });
+      if (context.type === "draft") setDraftThreadStates(applyMessages);
+      else setTripStates(applyMessages);
+    } catch (reloadError) {
+      console.error("Failed to reload thread messages", reloadError);
+    }
+  };
+
   // Resolves to { sent, contextId, threadId } so callers can track what reached the server.
-  const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null) => {
+  // `answers` (from buildAnswer) marks the message as the reply to ask_user questions.
+  const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null, { answers = null } = {}) => {
     const outcome = { sent: false, contextId: null, threadId: null };
+    let sendContext = null;
+    let optimisticAnswerId = null;
     if (!agencyId) {
       setAgentError("Missing agency context. Refresh and log in again.");
       return outcome;
@@ -411,6 +435,7 @@ export function useTripPlanning(agencyId) {
       if (!currentThreadId) throw new Error("Failed to create agent thread.");
       outcome.contextId = currentContext.id;
       outcome.threadId = currentThreadId;
+      sendContext = currentContext;
 
       // Persist the chosen needs on the thread as soon as it exists. The chips
       // (and HomePage's pending-needs hand-off) key off this, so it must not
@@ -443,8 +468,17 @@ export function useTripPlanning(agencyId) {
 
       // Optimistic update
       const messageContent = cleanContent || (hasImages ? "Sent image(s)" : "");
-      const metadata = imageUrls.length > 0 ? { imageUrls } : undefined;
-      const message = { id: `user-${Date.now()}`, role: "user", content: messageContent, metadata };
+      const metadata = {
+        ...(imageUrls.length > 0 ? { imageUrls } : {}),
+        ...(answers ? { answers: answers.display } : {}),
+      };
+      const message = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: messageContent,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+      };
+      if (answers) optimisticAnswerId = message.id;
       if (currentContext.type === "draft") {
         setDraftThreadStates((prev) => ({
           ...prev,
@@ -463,13 +497,30 @@ export function useTripPlanning(agencyId) {
         }));
       }
 
-      const sendResult = await sendMessage(agencyId, currentThreadId, messageContent, imageUrls, travelerNeeds);
+      const sendResult = answers
+        ? await sendMessage(agencyId, currentThreadId, messageContent, imageUrls, travelerNeeds, answers.request)
+        : await sendMessage(agencyId, currentThreadId, messageContent, imageUrls, travelerNeeds);
       outcome.sent = true;
       const runId = sendResult?.runId || sendResult?.run?.id;
       if (runId && startStream) startStream(runId);
     } catch (error) {
       console.error("Failed to send agent message", error);
       setAgentError(error?.message || "Unable to send your request to Voyage Agent.");
+      // The question closed elsewhere (another tab answered it): show the server's copy.
+      if (answers && error?.code === "QUESTION_NOT_PENDING" && sendContext && outcome.threadId) {
+        await reloadThreadMessages(sendContext, outcome.threadId);
+      } else if (optimisticAnswerId && sendContext) {
+        // Any other failure: take the answer back so the question returns to be answered again.
+        const dropAnswer = (prev) => ({
+          ...prev,
+          [sendContext.id]: {
+            ...(prev[sendContext.id] || {}),
+            messages: (prev[sendContext.id]?.messages || []).filter((item) => item.id !== optimisticAnswerId),
+          },
+        });
+        if (sendContext.type === "draft") setDraftThreadStates(dropAnswer);
+        else setTripStates(dropAnswer);
+      }
     } finally {
       setIsSending(false);
     }

@@ -27,6 +27,9 @@ export function useAgentStreamOrchestration({
   runStatus,
   completedMessageContent,
   completedMessageProcess,
+  // The reply's server id and its ask_user questions, from message.completed.
+  completedMessageId = null,
+  completedMessageAskUser = null,
   assistantMessage,
   lastItineraryUpdate,
   streamingItinerary,
@@ -57,25 +60,31 @@ export function useAgentStreamOrchestration({
 
     const update = (prev) => {
       const current = prev[runTarget.id] || { messages: [], loaded: false };
-      if (current.messages.some(m => m.role === "assistant" && m.content.trim() === finalContent)) return prev;
+      // With a server id, match on it: two replies can share the same fallback sentence.
+      const alreadyCommitted = completedMessageId
+        ? current.messages.some((m) => m.id === completedMessageId)
+        : current.messages.some((m) => m.role === "assistant" && m.content.trim() === finalContent);
+      if (alreadyCommitted) return prev;
       completedAssistantMessageRef.current = { targetKey, content: finalContent };
       const itineraryId = lastItineraryUpdate ? String(lastItineraryUpdate) : "";
       // Prefer the server-computed process snapshot (authoritative, persisted),
       // fall back to the client-computed one from AgentCommandCenter.
       const processSnapshot = completedMessageProcess ?? processSnapshotRef?.current ?? null;
       const message = {
-        id: `assistant-${Date.now()}`,
+        // The server id matches what a reload returns and lets answers name this reply.
+        id: completedMessageId ?? `assistant-${Date.now()}`,
         role: "assistant",
         content: finalContent,
         ...(itineraryId ? { itineraryId } : {}),
         ...(processSnapshot ? { process: processSnapshot } : {}),
+        ...(completedMessageAskUser ? { metadata: { askUser: completedMessageAskUser } } : {}),
       };
       return { ...prev, [runTarget.id]: { ...current, loaded: true, messages: [...current.messages, message] } };
     };
 
     if (runTarget.type === "draft") setDraftThreadStates(update);
     else setTripStates(update);
-  }, [runStatus, completedMessageContent, completedMessageProcess, assistantMessage, lastItineraryUpdate]);
+  }, [runStatus, completedMessageContent, completedMessageProcess, completedMessageId, completedMessageAskUser, assistantMessage, lastItineraryUpdate]);
 
   useEffect(() => {
     // Only merge streaming itinerary while the run is active. After

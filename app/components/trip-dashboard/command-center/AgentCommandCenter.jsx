@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ClientSwitcher from "./ClientSwitcher.jsx";
 import ChatMessage from "./ChatMessage.jsx";
-import ChatInput from "./ChatInput.jsx";
+import ChatComposer from "./ChatComposer.jsx";
+import useElementHeight from "../../../hooks/useElementHeight.js";
+import { askUserStatuses, getAnswers } from "../../../lib/agent/askUser.js";
 import RichItineraryMessage from "./RichItineraryMessage.jsx";
 import useImageAttachments from "../../../hooks/useImageAttachments.js";
 import { toolToActiveLabel, summarize, activeLabelFor } from "../../agent/process-bubble/processBubbleLabels.js";
@@ -34,6 +36,8 @@ export default function AgentCommandCenter({
   tasks = [],
   tasksTouchedThisRun = new Set(),
   dispatchAgentMessage,
+  // (text, answer) => sends answers to the agent's ask_user questions.
+  dispatchAgentAnswer = null,
   composerInput,
   setComposerInput,
   isSending,
@@ -76,6 +80,9 @@ export default function AgentCommandCenter({
 }) {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  // The composer floats over the chat log; the log's bottom room follows its height
+  // so the question panel (much taller than the text box) never covers the last reply.
+  const [composerRef, composerHeight] = useElementHeight();
   const imageAttachments = useImageAttachments();
   const streamStartTimeRef = useRef(null);
   const [openStates, setOpenStates] = useState(() => new Map());
@@ -89,6 +96,7 @@ export default function AgentCommandCenter({
 
 
   const liveStreamingItinerary = streamingItinerary ?? null;
+  const askStatuses = useMemo(() => askUserStatuses(messages), [messages]);
   // Render the streaming bubble as soon as a run is active so the user sees the
   // ProcessBubble immediately on send — not only after the first reply delta arrives.
   // Guard against the brief commit-transition window where the committed message
@@ -233,6 +241,15 @@ export default function AgentCommandCenter({
     }
   }, [messages?.length, isStreaming, assistantMessage, liveProcess?.timeline?.length]);
 
+  // When the composer grows (the question panel opens), keep the newest reply in view.
+  const prevComposerHeightRef = useRef(0);
+  useEffect(() => {
+    if (composerHeight > prevComposerHeightRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevComposerHeightRef.current = composerHeight;
+  }, [composerHeight]);
+
   function handleProcessToggle(msgId, isOpen) {
     setOpenStates(prev => new Map(prev).set(msgId, isOpen));
   }
@@ -287,8 +304,13 @@ export default function AgentCommandCenter({
 
       {/* chat log */}
       <div
-        className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-5 pr-2 ${hideChatInput ? "mb-0" : "pb-[120px]"}`}
-        style={scrollMaskStyle}
+        data-testid="chat-log"
+        className={`flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-5 pr-2 ${hideChatInput ? "mb-0" : ""}`}
+        style={
+          hideChatInput
+            ? scrollMaskStyle
+            : { ...scrollMaskStyle, paddingBottom: `${Math.max(120, composerHeight + 24)}px` }
+        }
       >
         {displayedMessages.length === 0 ? (
           <div className="grid gap-2.5 place-items-center min-h-[220px] text-center text-text-muted">
@@ -313,9 +335,10 @@ export default function AgentCommandCenter({
               placeEntities={placeEntities}
               selectedPlaceId={selectedPlaceId}
               onPlaceSelect={onPlaceSelect}
-              onEdit={message.role === "user" ? (content) => setComposerInput(content) : undefined}
+              onEdit={message.role === "user" && !getAnswers(message) ? (content) => setComposerInput(content) : undefined}
               process={message.process ?? null}
               onProcessToggle={message.process ? (isOpen) => handleProcessToggle(message.id, isOpen) : undefined}
+              askUserStatus={askStatuses.get(message.id) ?? null}
             />
           ))
         )}
@@ -347,7 +370,7 @@ export default function AgentCommandCenter({
 
       {!hideChatInput && (
         <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none">
-          <div className="pointer-events-auto relative">
+          <div ref={composerRef} className="pointer-events-auto relative">
             {/* Stage 6C — slash-command observer. Renders nothing unless the
                 composer matches `/^\/[a-z]*$/i`. Mounts whenever an agency is
                 active; in a draft (no saved trip) it shows a "save first" hint
@@ -367,7 +390,9 @@ export default function AgentCommandCenter({
                 onInserted={onReuseInserted}
               />
             )}
-            <ChatInput
+            <ChatComposer
+          messages={messages}
+          onAnswer={dispatchAgentAnswer}
           textareaRef={textareaRef}
           composerInput={composerInput}
           setComposerInput={setComposerInput}

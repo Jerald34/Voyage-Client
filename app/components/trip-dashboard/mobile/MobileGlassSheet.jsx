@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import useMobileViewport from "./useMobileViewport.js";
+import useElementHeight from "../../../hooks/useElementHeight.js";
 
 const SNAP_POINTS = {
   peek: 120,
@@ -58,6 +59,18 @@ export default function MobileGlassSheet({
   const dragState = useRef(null);
   const activePointerIdRef = useRef(null);
   const [snap, setSnap] = useState(defaultSnap);
+  // The footer floats over the content; the content's bottom room follows its height
+  // so a tall footer (the agent's question panel) never covers the last message.
+  const [footerRef, footerHeight] = useElementHeight();
+  const scrollAreaRef = useRef(null);
+  const prevFooterHeightRef = useRef(0);
+  useEffect(() => {
+    // When the footer grows, keep the newest message in view above it.
+    if (footerHeight > prevFooterHeightRef.current && scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+    prevFooterHeightRef.current = footerHeight;
+  }, [footerHeight]);
   const [isDragging, setIsDragging] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
@@ -227,11 +240,11 @@ export default function MobileGlassSheet({
        * the floating composer, then a tall fade mask softly dissolves content
        * as it approaches the input. The result mirrors the desktop floating-
        * input behavior so the perceived boundary is the same on both surfaces. */}
-      <div className="relative flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+      <div ref={scrollAreaRef} className="relative flex-1 overflow-y-auto overflow-x-hidden min-h-0">
         <div
           className="relative z-0"
           style={{
-            paddingBottom: footer ? "104px" : "0px",
+            paddingBottom: footer ? `${Math.max(104, footerHeight + 8)}px` : "0px",
             WebkitMaskImage: footer
               ? "linear-gradient(to bottom, transparent 0px, black 34px, black calc(100% - 88px), transparent calc(100% - 8px))"
               : "linear-gradient(to bottom, transparent 0px, black 34px, black 100%)",
@@ -251,7 +264,7 @@ export default function MobileGlassSheet({
        * inner div re-enables pointer events for the input itself. */}
       {footer && (
         <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
-          <div className="pointer-events-auto">
+          <div ref={footerRef} className="pointer-events-auto">
             {typeof footer === "function" ? footer({ snap, snapTo }) : footer}
           </div>
         </div>

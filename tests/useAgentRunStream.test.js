@@ -222,3 +222,32 @@ describe("useAgentRunStream — task.updated events", () => {
     expect(result.current.tasksTouchedThisRun.has("task-y")).toBe(true);
   });
 });
+
+describe("useAgentRunStream — ask_user replies", () => {
+  it("keeps the reply's server id and questions from message.completed, and clears them on the next run", () => {
+    const { result } = renderHook(() => useAgentRunStream("agency-1"));
+    const askUser = {
+      questions: [{ id: "q1", header: "Transport", question: "Car or train?", multiSelect: false, options: [{ label: "Car" }, { label: "Train" }] }],
+    };
+
+    act(() => {
+      result.current.startStream("run-1");
+    });
+    act(() => {
+      mockEventSourceInstance.emit("message.completed", {
+        type: "message.completed",
+        payload: { messageId: "message-9", content: "One question first.", askUser },
+      });
+    });
+
+    expect(result.current.completedMessageId).toBe("message-9");
+    expect(result.current.completedMessageAskUser).toEqual(askUser);
+
+    act(() => {
+      result.current.startStream("run-2");
+    });
+
+    expect(result.current.completedMessageId).toBeNull();
+    expect(result.current.completedMessageAskUser).toBeNull();
+  });
+});
