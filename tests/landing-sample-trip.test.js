@@ -45,9 +45,20 @@ describe("landing sample trip", () => {
 
   it("holds no staff-only or private fields", () => {
     const text = JSON.stringify(SAMPLE_TRIP);
-    for (const key of ["staffNotes", "createdByUserId", "agencyId", "clientEmail", "placeAdvisory"]) {
+    for (const key of ["staffNotes", "createdByUserId", "agencyId", "clientEmail", "clientName", "placeAdvisory"]) {
       expect(text).not.toContain(key);
     }
+  });
+
+  it("holds plain https photo URLs, with no quote characters left from the export", () => {
+    const urls = SAMPLE_DAYS.flatMap((day) =>
+      day.items.flatMap((item) => {
+        const metadata = item.placeSnapshot?.metadata ?? {};
+        return [metadata.primaryPhotoUrl, ...(metadata.photoUrls ?? [])].filter((url) => url != null);
+      }),
+    );
+    expect(urls.length).toBeGreaterThan(0);
+    for (const url of urls) expect(url.startsWith("https://")).toBe(true);
   });
 
   it("lists map stops with coordinates, numbered within their day", () => {
