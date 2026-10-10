@@ -13,6 +13,10 @@ import {
   getSampleShareUrl,
 } from "../app/components/landing/sample/sampleTrip.js";
 import { describeDayWeather, describeStopWeather } from "../app/lib/weather/weatherDisplay.js";
+import { formatDateRange } from "../app/itinerary/view/[token]/components/stopDisplay.jsx";
+
+// stopDisplay.jsx imports the app icons barrel, which Vitest cannot parse.
+vi.mock("../app/components/icons/index.js", async () => (await import("./helpers/iconsMock.js")).default);
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -54,8 +58,17 @@ describe("landing sample trip", () => {
     expect(stops[0].color).toEqual({ fill: "#B4532A", border: "#7C2D12" });
   });
 
+  it("titles map pins with the place name, as the share page's map does", () => {
+    const stops = getSampleMapStops();
+    // The stop is titled "Lunch at Cafe by the Ruins"; its place is "Café by the Ruins".
+    expect(stops.find((s) => s.title === "Café by the Ruins")).toMatchObject({ dayNumber: 1 });
+    expect(stops.find((s) => s.title === "Lunch at Cafe by the Ruins")).toBeUndefined();
+  });
+
   it("builds the PDF input the share page would, with weather attached", () => {
     expect(SAMPLE_PDF_INPUT.title).toBe("2-Day Baguio Itinerary");
+    expect(SAMPLE_PDF_INPUT.dateRange).toBe(formatDateRange(SAMPLE_TRIP.trip.startDate, SAMPLE_TRIP.trip.endDate));
+    expect(SAMPLE_PDF_INPUT.dateRange).toContain("–");
     expect(SAMPLE_PDF_INPUT.agencyName).toBe("Lakbay");
     expect(SAMPLE_PDF_INPUT.days[1].weatherEntry.status).toBe("OK");
   });

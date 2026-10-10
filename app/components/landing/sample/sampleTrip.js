@@ -1,7 +1,7 @@
 // app/components/landing/sample/sampleTrip.js
 import sample from "./sampleTrip.json";
 import { attachWeatherToDays, buildWeatherByDayId } from "../../../lib/weather/weatherDisplay.js";
-import { formatDateRange } from "../../../lib/formatters.js";
+import { formatDateRange } from "../../../itinerary/view/[token]/components/stopDisplay.jsx";
 import { getDayColor } from "../../../lib/trip-dashboard/dayColors.js";
 
 /**
@@ -35,7 +35,7 @@ export function getSampleMapStops() {
   return SAMPLE_DAYS.flatMap((day) =>
     day.items.map((item, index) => ({
       id: item.id,
-      title: item.title,
+      title: item.placeSnapshot?.name || item.title,
       dayNumber: day.dayNumber,
       stopNumber: index + 1,
       lat: item.placeSnapshot?.latitude,
@@ -45,14 +45,17 @@ export function getSampleMapStops() {
   ).filter((stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng));
 }
 
+/** The share page's pdfInput rules (page.jsx): the trip's title, and the agency name only for an agency brand. */
+const SAMPLE_AGENCY_NAME = sample.brand?.type === "agency" ? sample.brand.name : null;
+
 /** generateItineraryPdf's input, built the way the share page builds it. Module-level, so it is stable. */
 export const SAMPLE_PDF_INPUT = {
-  title: sample.itinerary.title,
+  title: sample.trip?.title || sample.itinerary.title,
   summary: sample.itinerary.summary,
   dateRange: formatDateRange(sample.trip.startDate, sample.trip.endDate),
   travelerCount: sample.trip.travelerCount,
   days: attachWeatherToDays(SAMPLE_DAYS, SAMPLE_WEATHER_BY_DAY_ID),
-  agencyName: sample.brand?.name || "Voyage",
+  agencyName: SAMPLE_AGENCY_NAME || "Voyage",
 };
 
 /** The ask_user questions Voyage really asked an agent planning a Mayon Volcano day trip (2026-10-08). */

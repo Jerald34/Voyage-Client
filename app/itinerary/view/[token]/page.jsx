@@ -8,7 +8,7 @@ import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import PdfDownloadButton from "./components/PdfDownloadButton.jsx";
 import ShareStopCard from "./components/ShareStopCard.jsx";
-import { formatTimeRange, itemTypeIcon } from "./components/stopDisplay.jsx";
+import { formatDateRange, formatTimeRange, itemTypeIcon } from "./components/stopDisplay.jsx";
 import { getDayColor } from "../../../lib/trip-dashboard/dayColors.js";
 import SegmentedControl from "../../../components/admin/SegmentedControl.jsx";
 import WeatherChip from "../../../components/weather/WeatherChip.jsx";
@@ -46,17 +46,6 @@ function formatDate(dateStr) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function formatDateRange(start, end) {
-  if (!start) return "";
-  const s = new Date(start);
-  const e = end ? new Date(end) : null;
-  const opts = { month: "short", day: "numeric" };
-  const startStr = s.toLocaleDateString("en-US", opts);
-  if (!e) return startStr;
-  const endStr = e.toLocaleDateString("en-US", { ...opts, year: "numeric" });
-  return `${startStr} – ${endStr}`;
 }
 
 const MOBILE_VIEWS = [
