@@ -1,28 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon, LinkIcon } from "../../icons/index.js";
 import ShareQRCode from "./ShareQRCode.jsx";
+
+const COPIED_MS = 2000;
+
+/** Copies `text` through a throwaway off-screen textarea; true only if the browser says it copied. */
+function copyViaTextarea(text) {
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.setAttribute("readonly", "");
+  el.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  try {
+    document.body.appendChild(el);
+    el.select();
+    return document.execCommand("copy") === true;
+  } catch {
+    return false;
+  } finally {
+    el.remove();
+  }
+}
 
 /** A ready share link: the URL with Copy, its QR code, and (in the app) a way to make another. */
 export default function ShareLinkResult({ shareUrl, tripTitle, onGenerateAnother }) {
   const [copySuccess, setCopySuccess] = useState(false);
+  const copyButtonRef = useRef(null);
+  const copiedTimerRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(copiedTimerRef.current), []);
+
+  const showCopied = () => {
+    setCopySuccess(true);
+    clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopySuccess(false), COPIED_MS);
+  };
 
   const handleCopyUrl = async () => {
     if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      showCopied();
     } catch {
-      const el = document.createElement("textarea");
-      el.value = shareUrl;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      const copied = copyViaTextarea(shareUrl);
+      copyButtonRef.current?.focus();
+      if (copied) showCopied();
     }
   };
 
@@ -45,10 +68,11 @@ export default function ShareLinkResult({ shareUrl, tripTitle, onGenerateAnother
           {shareUrl}
         </span>
         <button
+          ref={copyButtonRef}
           type="button"
           className={`
             shrink-0 inline-flex items-center gap-1.5
-            px-3 py-1.5
+            px-3 py-1.5 pointer-coarse:min-h-11
             rounded-[10px] border text-[12px] font-bold
             cursor-pointer whitespace-nowrap
             transition-[background,border-color,color] duration-150
@@ -59,7 +83,6 @@ export default function ShareLinkResult({ shareUrl, tripTitle, onGenerateAnother
             }
           `}
           onClick={handleCopyUrl}
-          aria-label="Copy link"
         >
           {copySuccess ? (
             <>
@@ -69,10 +92,14 @@ export default function ShareLinkResult({ shareUrl, tripTitle, onGenerateAnother
           ) : (
             <>
               <LinkIcon width={13} height={13} strokeWidth={2} />
-              Copy
+              Copy{" "}<span className="sr-only">link</span>
             </>
           )}
         </button>
+        {/* Always mounted so the change below is announced to screen readers. */}
+        <span role="status" className="sr-only">
+          {copySuccess ? "Link copied" : ""}
+        </span>
       </div>
 
       <ShareQRCode shareUrl={shareUrl} tripTitle={tripTitle} />
@@ -81,7 +108,7 @@ export default function ShareLinkResult({ shareUrl, tripTitle, onGenerateAnother
         <button
           type="button"
           className="
-            block mx-auto px-3 py-1.5
+            block mx-auto px-3 py-1.5 pointer-coarse:min-h-11
             border-0 bg-transparent
             text-text-soft text-[13px] font-semibold
             underline underline-offset-[3px]

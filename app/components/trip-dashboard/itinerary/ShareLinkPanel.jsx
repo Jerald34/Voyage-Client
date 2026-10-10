@@ -54,7 +54,7 @@ export default function ShareLinkPanel({ agencyId, itineraryId, tripTitle, onSha
 
   return (
     <section className="mb-1">
-      <h3 className="m-0 mb-3.5 text-[13px] font-bold tracking-[0.01em] text-text-primary">
+      <h3 className="m-0 mb-3.5 font-sans text-[13px] font-semibold tracking-[0.01em] text-text-primary">
         Generate Share Link
       </h3>
 
