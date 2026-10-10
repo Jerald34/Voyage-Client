@@ -42,4 +42,17 @@ describe("SampleTripSection", () => {
     expect(screen.queryByRole("region", { name: "Day weather" })).not.toBeInTheDocument();
     expect(screen.getByTestId("map")).toHaveAttribute("data-active-day", "1");
   });
+
+  it("explains why day 1 has no forecast, and says nothing of the kind on day 2", () => {
+    render(<SampleTripSection />);
+    const note = "This day had passed when the sample was saved, so it has no forecast.";
+
+    expect(screen.queryByText(note)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Day 1" }));
+    const line = screen.getByText(note);
+    expect(line.tagName).toBe("P");
+    expect(line.className).toContain("text-text-muted");
+    fireEvent.click(screen.getByRole("radio", { name: "Day 2" }));
+    expect(screen.queryByText(note)).not.toBeInTheDocument();
+  });
 });

@@ -36,7 +36,12 @@ export default function SampleTripSection() {
         <div className="grid content-start gap-3">
           {/* The summary below carries the forecast; the header's chip would show it twice. */}
           <SampleDayHeader dayNumber={day} showWeather={false} />
-          <DayWeatherSummary entry={weather} attribution={SAMPLE_WEATHER_ATTRIBUTION} />
+          {weather?.status === "PAST" ? (
+            // Day 1's entry is saved as PAST (no forecast for a day already gone), so the summary would render nothing.
+            <p className="m-0 text-sm text-text-muted">This day had passed when the sample was saved, so it has no forecast.</p>
+          ) : (
+            <DayWeatherSummary entry={weather} attribution={SAMPLE_WEATHER_ATTRIBUTION} />
+          )}
           <SampleDayView dayNumber={day} />
         </div>
         <div className="grid content-start gap-6">

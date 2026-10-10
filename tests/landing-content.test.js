@@ -19,4 +19,10 @@ describe("landing copy", () => {
   it("keeps the sample-trip callouts to five", () => {
     expect(content.SAMPLE_CALLOUTS).toHaveLength(5);
   });
+
+  it("says the demos are built from Voyage's own components and send nothing", () => {
+    expect(content.AFTER_THE_PLAN.body).toBe(
+      "The same trip, through the rest of Voyage. Everything here is built from Voyage's own components, and nothing you do here is sent anywhere.",
+    );
+  });
 });

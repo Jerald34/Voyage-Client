@@ -98,10 +98,15 @@ export function Faq() {
       </h2>
       <div className="mt-6 divide-y divide-border/15 rounded-xl border border-border/15 bg-surface">
         {FAQS.map((faq) => (
-          <details key={faq.question} className="group">
-            {/* Padding lives on the summary so the inset focus ring has room around the text and follows the container's corners. */}
+          <details
+            key={faq.question}
+            className="group [&:first-child>summary]:rounded-t-xl [&:last-child:not([open])>summary]:rounded-b-xl"
+          >
+            {/* Padding lives on the summary so the inset focus ring has room around the text. Middle rows are square, so
+                their hover fill meets the straight dividers cleanly; only the first and last rows follow the container's corners
+                (the last one only while closed, since its answer sits below it when open). */}
             <summary
-              className={`flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-xl px-5 text-[15px] font-semibold text-text-primary transition-colors duration-150 hover:bg-secondary/[0.06] motion-reduce:transition-none [&::-webkit-details-marker]:hidden ${FOCUS_INSET}`}
+              className={`flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-none px-5 text-[15px] font-semibold text-text-primary transition-colors duration-150 hover:bg-secondary/[0.06] motion-reduce:transition-none [&::-webkit-details-marker]:hidden ${FOCUS_INSET}`}
             >
               {faq.question}
               <span
@@ -121,7 +126,7 @@ export function Faq() {
 
 export function FinalCta({ onStartPlanning }) {
   return (
-    <section aria-labelledby="final-cta-title" className="w-full bg-sidebar px-4 py-20 dark:border-y dark:border-border/40 dark:bg-surface-elevated md:py-24">
+    <section className="w-full bg-sidebar px-4 py-20 dark:border-y dark:border-border/40 dark:bg-surface-elevated md:py-24">
       <div className="mx-auto flex max-w-[1220px] flex-col items-center gap-5 text-center">
         <h2 id="final-cta-title" className="m-0 font-sans text-2xl font-semibold text-white md:text-3xl">
           {FINAL_CTA.title}

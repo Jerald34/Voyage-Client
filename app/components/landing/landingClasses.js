@@ -6,4 +6,4 @@ export const FOCUS_INSET = "focus-visible:outline-2 focus-visible:-outline-offse
 
 export const PRIMARY_BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-pill border-0 bg-secondary-strong px-5 text-sm font-semibold text-on-secondary-strong no-underline transition-[filter,scale] duration-150 hover:brightness-95 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${FOCUS}`;
 
-export const SECONDARY_BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-pill border border-border/25 bg-transparent px-5 text-sm font-semibold text-text-primary no-underline transition-colors duration-150 hover:bg-secondary/[0.08] ${FOCUS}`;
+export const SECONDARY_BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-pill border border-border/25 bg-transparent px-5 text-sm font-semibold text-text-primary no-underline transition-[background-color,scale] duration-150 hover:bg-secondary/[0.08] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${FOCUS}`;

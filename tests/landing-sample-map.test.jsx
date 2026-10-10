@@ -22,7 +22,9 @@ vi.mock("react-leaflet", () => ({
     </div>
   ),
   TileLayer: ({ url }) => <div data-testid="tiles" data-url={url} />,
-  Polyline: ({ pathOptions }) => <div data-testid="route" data-color={pathOptions.color} data-opacity={pathOptions.opacity} />,
+  Polyline: ({ pathOptions, interactive }) => (
+    <div data-testid="route" data-color={pathOptions.color} data-opacity={pathOptions.opacity} data-interactive={String(interactive)} />
+  ),
   Marker: ({ title, icon, zIndexOffset }) => (
     <div data-testid="pin" title={title} data-html={icon.html} data-z-index-offset={zIndexOffset} />
   ),
@@ -88,6 +90,14 @@ describe("SampleTripMap", () => {
       ["#0F766E", "0.3"],
       ["#B4532A", "0.9"],
     ]);
+  });
+
+  it("draws the routes as plain lines: they do nothing on click, so they aren't interactive", () => {
+    render(<SampleTripMap activeDay={2} />);
+
+    const routes = screen.getAllByTestId("route");
+    expect(routes.length).toBeGreaterThan(0);
+    routes.forEach((route) => expect(route.dataset.interactive).toBe("false"));
   });
 
   it("is a static picture: no drag, zoom or keyboard handlers, so it can't trap a swipe", () => {

@@ -43,7 +43,38 @@ describe("LandingHeader", () => {
   });
 });
 
+describe("LandingHeader accessibility", () => {
+  it("names the logo link for where it goes", () => {
+    render(<LandingHeader onLogin={vi.fn()} onStartPlanning={vi.fn()} />);
+
+    expect(screen.getByRole("link", { name: "Voyage, back to top" })).toHaveAttribute("href", "#top");
+  });
+
+  it("rings the theme toggle at 44px like the other controls", () => {
+    render(<LandingHeader onLogin={vi.fn()} onStartPlanning={vi.fn()} />);
+
+    const classes = screen.getByRole("button", { name: /Switch to (dark|light) mode/ }).className.split(/\s+/);
+    for (const expected of ["h-11!", "w-11!", "rounded-full", "focus-visible:outline-2", "focus-visible:outline-secondary-strong"]) {
+      expect(classes).toContain(expected);
+    }
+  });
+
+  it("drops Log in under 380px so the header fits a 320px viewport; the footer keeps it", () => {
+    render(<LandingHeader onLogin={vi.fn()} onStartPlanning={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Log in" }).className.split(/\s+/)).toContain("max-[379px]:hidden");
+    expect(screen.getByRole("button", { name: "Start planning" }).className).not.toContain("max-[379px]:hidden");
+  });
+});
+
 describe("LandingHero", () => {
+  it("is not a landmark of its own: its region would only repeat the h1", () => {
+    const { container } = render(<LandingHero onStartPlanning={vi.fn()} onWatchDemo={vi.fn()} />);
+
+    expect(container.querySelector("section").hasAttribute("aria-labelledby")).toBe(false);
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+  });
+
   it("leads with the one serif h1 and the real sample trip on day 2", () => {
     render(<LandingHero onStartPlanning={vi.fn()} onWatchDemo={vi.fn()} />);
 

@@ -6,7 +6,9 @@ import AskFirstDemo from "./AskFirstDemo.jsx";
 import ShareLinkDemo from "./ShareLinkDemo.jsx";
 import ClientFeedbackDemo from "./ClientFeedbackDemo.jsx";
 import ApprovalDemo from "./ApprovalDemo.jsx";
+import DemoErrorBoundary from "./DemoErrorBoundary.jsx";
 import { AFTER_THE_PLAN, AFTER_THE_PLAN_TABS } from "../landingContent.js";
+import { FOCUS, FOCUS_INSET } from "../landingClasses.js";
 
 // jsPDF only loads once someone opens the PDF tab.
 const SamplePdfDemo = dynamic(() => import("./SamplePdfDemo.jsx"), {
@@ -18,8 +20,22 @@ const SamplePdfDemo = dynamic(() => import("./SamplePdfDemo.jsx"), {
   ),
 });
 
-const DEMOS = { ask: AskFirstDemo, share: ShareLinkDemo, feedback: ClientFeedbackDemo, pdf: SamplePdfDemo, approve: ApprovalDemo };
+// The only demo that downloads code on demand, so the only one that can fail to load.
+function PdfDemo() {
+  return (
+    <DemoErrorBoundary message="The PDF demo couldn't load. Reload the page to try again.">
+      <SamplePdfDemo />
+    </DemoErrorBoundary>
+  );
+}
+
+const DEMOS = { ask: AskFirstDemo, share: ShareLinkDemo, feedback: ClientFeedbackDemo, pdf: PdfDemo, approve: ApprovalDemo };
 const IDS = AFTER_THE_PLAN_TABS.map((tab) => tab.id);
+
+// The shared rings, moved 4px in (they sit at 2px): the tab ring has to clear the selected tab's 2px underline,
+// and the scroll container would clip a ring drawn outside it. Swapped, not appended: Tailwind orders by generated CSS.
+const TAB_FOCUS = FOCUS_INSET.replace("-outline-offset-2", "-outline-offset-4");
+const PANEL_FOCUS = FOCUS.replace("outline-offset-2", "outline-offset-4");
 
 /** WAI-ARIA tabs (automatic activation, roving tabindex) over five live demos. */
 export default function AfterThePlanTabs() {
@@ -58,7 +74,7 @@ export default function AfterThePlanTabs() {
       {/* The divider is an inset shadow, not a border + negative margin: a scroll container would clip the selected tab's underline. */}
       <div
         role="tablist"
-        aria-label="Voyage after the plan"
+        aria-labelledby={`${baseId}-title`}
         onKeyDown={handleKeyDown}
         className="mt-6 flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_rgb(var(--color-border-rgb)/0.15)] [scrollbar-width:thin]"
       >
@@ -74,12 +90,12 @@ export default function AfterThePlanTabs() {
               role="tab"
               id={`${baseId}-tab-${item.id}`}
               aria-selected={selected}
-              aria-controls={`${baseId}-panel`}
+              // Only the selected tab has a rendered panel to control.
+              aria-controls={selected ? `${baseId}-panel` : undefined}
               tabIndex={selected ? 0 : -1}
               // Focusing scrolls a half-hidden tab into view; iOS Safari doesn't focus a button on tap.
               onClick={() => select(item.id)}
-              // The ring sits inside the tab: the scroll container would clip one drawn outside it.
-              className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center whitespace-nowrap border-0 border-b-2 bg-transparent px-3 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-secondary-strong ${
+              className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center whitespace-nowrap border-0 border-b-2 bg-transparent px-3 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none ${TAB_FOCUS} ${
                 selected ? "border-secondary-strong text-text-primary" : "border-transparent text-text-muted hover:text-text-primary"
               }`}
             >
@@ -94,7 +110,7 @@ export default function AfterThePlanTabs() {
         id={`${baseId}-panel`}
         aria-labelledby={`${baseId}-tab-${active}`}
         tabIndex={0}
-        className="grid grid-cols-1 gap-6 pt-6 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-secondary-strong lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
+        className={`grid grid-cols-1 gap-6 pt-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] ${PANEL_FOCUS}`}
       >
         <div>
           <h3 className="m-0 font-sans text-lg font-semibold text-text-primary">{tab.title}</h3>

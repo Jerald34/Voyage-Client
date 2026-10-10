@@ -77,6 +77,35 @@ describe("landing lower sections", () => {
     }
   });
 
+  it("rings the closing band's button in white, not the terracotta that is 2.3:1 on it", () => {
+    render(<FinalCta onStartPlanning={vi.fn()} />);
+
+    const classes = screen.getByRole("button", { name: "Start planning" }).className.split(/\s+/);
+    expect(classes).toContain("focus-visible:outline-white");
+    expect(classes).not.toContain("focus-visible:outline-secondary-strong");
+  });
+
+  it("keeps the closing band out of the landmark list, with its heading still in place", () => {
+    render(<FinalCta onStartPlanning={vi.fn()} />);
+
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toBeInTheDocument();
+  });
+
+  it("squares the middle FAQ rows and rounds only the first and last, so hover fills meet the straight dividers", () => {
+    const { container } = render(<Faq />);
+
+    const rows = [...container.querySelectorAll("details")];
+    expect(rows.length).toBeGreaterThan(2);
+    for (const row of rows) {
+      expect(row.querySelector("summary").className.split(/\s+/)).toContain("rounded-none");
+      expect(row.className).not.toContain("rounded-xl ");
+    }
+    // The first row rounds its top; the last rounds its bottom only while closed (its answer sits below it when open).
+    expect(rows[0].className).toContain("[&:first-child>summary]:rounded-t-xl");
+    expect(rows[rows.length - 1].className).toContain("[&:last-child:not([open])>summary]:rounded-b-xl");
+  });
+
   it("lifts the closing band off the dark page background with a surface and an edge", () => {
     const { container } = render(<FinalCta onStartPlanning={vi.fn()} />);
 

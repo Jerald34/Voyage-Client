@@ -30,7 +30,7 @@ export const SAMPLE_CALLOUTS = [
 export const AFTER_THE_PLAN = {
   overline: "After the plan",
   title: "From draft to a client who said yes",
-  body: "The same trip, through the rest of Voyage. Everything here is the real interface, and nothing you do here is sent anywhere.",
+  body: "The same trip, through the rest of Voyage. Everything here is built from Voyage's own components, and nothing you do here is sent anywhere.",
 };
 
 export const AFTER_THE_PLAN_TABS = [

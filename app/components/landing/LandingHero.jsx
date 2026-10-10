@@ -7,7 +7,7 @@ import { ArrowRightIcon, SparkleIcon } from "../icons/index.js";
 import { SampleDayHeader, SampleDayView } from "./SampleDay.jsx";
 import { SAMPLE_DAY_OPTIONS, SAMPLE_DEFAULT_DAY, SAMPLE_TRIP } from "./sample/sampleTrip.js";
 import { HERO } from "./landingContent.js";
-import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
+import { FOCUS, PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
 
 function PlayIcon() {
   return (
@@ -23,7 +23,6 @@ export default function LandingHero({ onStartPlanning, onWatchDemo }) {
 
   return (
     <section
-      aria-labelledby="landing-hero-title"
       className="mx-auto grid w-full max-w-[1220px] gap-10 px-4 pb-20 pt-14 md:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start"
     >
       <div className="lg:pt-8">
@@ -60,7 +59,7 @@ export default function LandingHero({ onStartPlanning, onWatchDemo }) {
         <SampleDayView dayNumber={day} compact />
         <a
           href="#sample-trip"
-          className="inline-flex min-h-11 items-center justify-self-start rounded-pill text-sm font-semibold text-secondary-strong underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary-strong"
+          className={`inline-flex min-h-11 items-center justify-self-start rounded-pill text-sm font-semibold text-secondary-strong underline-offset-2 hover:underline ${FOCUS}`}
         >
           See the full trip, map and notes
         </a>

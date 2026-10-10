@@ -46,7 +46,8 @@ export default function SamplePdfDemo() {
           Day {DAY.dayNumber} · {DAY.title}
         </p>
         <p className="m-0 text-sm text-text-muted">{DAY_LINE}</p>
-        <ol className="m-0 grid list-none gap-2 p-0">
+        {/* role="list": list-style:none drops list semantics in Safari/VoiceOver. */}
+        <ol role="list" className="m-0 grid list-none gap-2 p-0">
           {STOPS.map((stop) => (
             <li key={stop.id} className="grid gap-0.5">
               <p className="m-0 text-sm text-text-muted">{stop.line}</p>

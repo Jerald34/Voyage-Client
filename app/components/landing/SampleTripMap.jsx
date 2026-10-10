@@ -88,6 +88,7 @@ export default function SampleTripMap({ activeDay }) {
             key={`${route.dayNumber}-${isActive ? "active" : "inactive"}`}
             positions={route.positions}
             pathOptions={isActive ? route.paths.active : route.paths.inactive}
+            interactive={false}
           />
         );
       })}

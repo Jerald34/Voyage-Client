@@ -4,15 +4,15 @@
 import ThemeToggle from "../theme/ThemeToggle";
 import VoyageLogo from "../brand/VoyageLogo";
 import { LANDING_NAV } from "./landingContent.js";
-import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
-
-const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary-strong";
+import { FOCUS, PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
 
 // The shared button classes carry px-5. Swap it (don't append a second px-*): Tailwind v4 orders
 // same-property utilities in its generated CSS, not in the class attribute, so two would fight.
 // Tighter below sm so logo + both buttons fit a 375px phone.
 const compactButton = (classes) => classes.replace("px-5", "px-3 sm:px-4");
-const LOGIN_BUTTON = compactButton(SECONDARY_BUTTON);
+// Under 380px the logo and both buttons need about 366px, so Log in drops out (the footer still has it) and the
+// header reflows at 320px without scrolling sideways (WCAG 1.4.10).
+const LOGIN_BUTTON = `${compactButton(SECONDARY_BUTTON)} max-[379px]:hidden`;
 const START_BUTTON = compactButton(PRIMARY_BUTTON);
 
 /** Sticky pill header: logo, section links (lg+), theme toggle (sm+), Log in and Start planning. */
@@ -22,7 +22,7 @@ export default function LandingHeader({ onLogin, onStartPlanning }) {
       <div className="flex items-center justify-between gap-2 rounded-pill border border-border/[0.12] bg-surface/85 px-3 py-2 shadow-soft backdrop-blur-md sm:gap-3 sm:px-6">
         <a
           href="#top"
-          aria-label="Voyage home"
+          aria-label="Voyage, back to top"
           className={`inline-flex min-h-11 shrink-0 items-center rounded-pill text-text-primary no-underline ${FOCUS}`}
         >
           <VoyageLogo className="h-8 w-auto sm:h-9" />
@@ -45,7 +45,7 @@ export default function LandingHeader({ onLogin, onStartPlanning }) {
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <span className="hidden text-text-primary sm:block">
             {/* ThemeToggle sizes itself 40px inline; the important modifier lifts it to the 44px touch minimum. */}
-            <ThemeToggle className="h-11! w-11!" />
+            <ThemeToggle className={`h-11! w-11! rounded-full ${FOCUS}`} />
           </span>
           <button type="button" onClick={onLogin} className={LOGIN_BUTTON}>
             Log in

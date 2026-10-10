@@ -15,6 +15,7 @@ vi.mock("next/dynamic", () => ({
 }));
 
 import AfterThePlanTabs from "../app/components/landing/after-the-plan/AfterThePlanTabs.jsx";
+import DemoErrorBoundary from "../app/components/landing/after-the-plan/DemoErrorBoundary.jsx";
 
 describe("AfterThePlanTabs", () => {
   it("opens on Asks first with the real questions and leaves focus alone", () => {
@@ -136,11 +137,67 @@ describe("AfterThePlanTabs", () => {
     }
   });
 
+  it("labels the tablist with the section heading and points only the selected tab at the panel", () => {
+    render(<AfterThePlanTabs />);
+
+    const tablist = screen.getByRole("tablist", { name: "From draft to a client who said yes" });
+    expect(tablist).not.toHaveAttribute("aria-label");
+    expect(tablist.getAttribute("aria-labelledby")).toBe(screen.getByRole("heading", { level: 2 }).id);
+
+    const tabs = screen.getAllByRole("tab");
+    const panel = screen.getByRole("tabpanel");
+    for (const tab of tabs) {
+      if (tab.getAttribute("aria-selected") === "true") {
+        expect(tab.getAttribute("aria-controls")).toBe(panel.id);
+      } else {
+        expect(tab).not.toHaveAttribute("aria-controls");
+      }
+    }
+    fireEvent.click(screen.getByRole("tab", { name: "Share link" }));
+    expect(screen.getByRole("tab", { name: "Asks first" })).not.toHaveAttribute("aria-controls");
+    expect(screen.getByRole("tab", { name: "Share link" })).toHaveAttribute("aria-controls", screen.getByRole("tabpanel").id);
+  });
+
   it("loads the PDF demo only when its tab opens", () => {
     render(<AfterThePlanTabs />);
 
     expect(screen.queryByTestId("pdf-demo")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "PDF and print" }));
     expect(screen.getByTestId("pdf-demo")).toBeInTheDocument();
+  });
+});
+
+describe("DemoErrorBoundary", () => {
+  function Broken() {
+    throw new Error("chunk failed");
+  }
+
+  it("shows a short message instead of crashing the page when its demo throws", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <>
+        <p>The rest of the page</p>
+        <DemoErrorBoundary message="The PDF demo couldn't load. Reload the page to try again.">
+          <Broken />
+        </DemoErrorBoundary>
+      </>,
+    );
+
+    const message = screen.getByRole("alert");
+    expect(message).toHaveTextContent("The PDF demo couldn't load. Reload the page to try again.");
+    expect(message.className).toContain("text-text-muted");
+    expect(screen.getByText("The rest of the page")).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it("renders its demo untouched when nothing throws", () => {
+    render(
+      <DemoErrorBoundary message="unused">
+        <p>The demo</p>
+      </DemoErrorBoundary>,
+    );
+
+    expect(screen.getByText("The demo")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

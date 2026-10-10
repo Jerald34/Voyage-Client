@@ -32,4 +32,12 @@ describe("SamplePdfDemo", () => {
     expect(screen.getByText("1:30 PM – 3:00 PM · Rain likely (up to 94% chance of rain)")).toBeInTheDocument();
     expect(screen.getByText("SM City Baguio")).toBeInTheDocument();
   });
+
+  it("keeps list semantics on the stop list, which has list-style: none", () => {
+    render(<SamplePdfDemo />);
+
+    const list = screen.getByText("SM City Baguio").closest("ol");
+    expect(list).toHaveAttribute("role", "list");
+    expect(list.className).toContain("list-none");
+  });
 });
