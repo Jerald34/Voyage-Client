@@ -59,11 +59,11 @@ describe("LandingHeader accessibility", () => {
     }
   });
 
-  it("drops Log in under 380px so the header fits a 320px viewport; the footer keeps it", () => {
+  it("drops Log in only below 341px so the header fits a 320px viewport; the footer keeps it", () => {
     render(<LandingHeader onLogin={vi.fn()} onStartPlanning={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Log in" }).className.split(/\s+/)).toContain("max-[379px]:hidden");
-    expect(screen.getByRole("button", { name: "Start planning" }).className).not.toContain("max-[379px]:hidden");
+    expect(screen.getByRole("button", { name: "Log in" }).className.split(/\s+/)).toContain("max-[341px]:hidden");
+    expect(screen.getByRole("button", { name: "Start planning" }).className).not.toContain("max-[341px]:hidden");
   });
 });
 

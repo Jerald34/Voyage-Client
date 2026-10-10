@@ -10,9 +10,10 @@ import { FOCUS, PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
 // same-property utilities in its generated CSS, not in the class attribute, so two would fight.
 // Tighter below sm so logo + both buttons fit a 375px phone.
 const compactButton = (classes) => classes.replace("px-5", "px-3 sm:px-4");
-// Under 380px the logo and both buttons need about 366px, so Log in drops out (the footer still has it) and the
-// header reflows at 320px without scrolling sideways (WCAG 1.4.10).
-const LOGIN_BUTTON = `${compactButton(SECONDARY_BUTTON)} max-[379px]:hidden`;
+// Tailwind v4 compiles max-[341px] to width < 341px. Logo + Log in + Start planning need 341px inside the pill, so below that
+// only the narrowest phones lose Log in (the footer still has it) and the header reflows at 320px without scrolling sideways
+// (WCAG 1.4.10).
+const LOGIN_BUTTON = `${compactButton(SECONDARY_BUTTON)} max-[341px]:hidden`;
 const START_BUTTON = compactButton(PRIMARY_BUTTON);
 
 /** Sticky pill header: logo, section links (lg+), theme toggle (sm+), Log in and Start planning. */
@@ -25,7 +26,7 @@ export default function LandingHeader({ onLogin, onStartPlanning }) {
           aria-label="Voyage, back to top"
           className={`inline-flex min-h-11 shrink-0 items-center rounded-pill text-text-primary no-underline ${FOCUS}`}
         >
-          <VoyageLogo className="h-8 w-auto sm:h-9" />
+          <VoyageLogo className="h-7 w-auto min-[380px]:h-8 sm:h-9" />
         </a>
         {/* From lg: the four links need ~383px, and at md (768) logo + links + buttons overflow (links wrapped). */}
         <nav aria-label="Landing" className="hidden lg:block">
