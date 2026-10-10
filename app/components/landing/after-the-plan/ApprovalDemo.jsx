@@ -7,7 +7,7 @@ import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "../landingClasses.js";
 
 const STAGES = [
   { label: "Draft", variant: "draft", note: "Editable by the assigned agent.", action: "Send for review" },
-  { label: "Needs review", variant: "pending", note: "Waiting for an owner to approve.", action: "Approve" },
+  { label: "Needs review", variant: "pending", note: "Waiting in the approval queue.", action: "Approve" },
   { label: "Approved", variant: "approved", note: "Locked. Approved itineraries can't be edited.", action: "Reopen for edits" },
 ];
 

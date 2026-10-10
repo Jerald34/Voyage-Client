@@ -19,7 +19,7 @@ export default function LazySampleTripMap({ activeDay }) {
         {inView ? <SampleTripMap activeDay={activeDay} /> : null}
       </div>
       <figcaption className="text-[12px] leading-snug text-text-muted">
-        Each pin is a stop, numbered and coloured like its card. Day {activeDay} is highlighted.
+        Each pin is a stop, numbered and coloured like its card. Day {activeDay} is highlighted. Stops without a saved location have no pin.
       </figcaption>
     </figure>
   );

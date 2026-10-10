@@ -10,8 +10,8 @@ export const LANDING_NAV = [
 export const HERO = {
   overline: "AI itinerary planning for travel agencies",
   title: "Plan client trips in minutes, not hours",
-  body: "Describe a trip in chat. Voyage builds a day-by-day plan with real places, opening checks and weather for every stop, ready to share as a branded link, PDF or print.",
-  sampleNote: "The sample trip here is real Voyage output. Rain was forecast, so it put the views first and the indoor stops in the wet hours.",
+  body: "Describe a trip in chat. Voyage builds a day-by-day plan with real places, opening checks and the weather, ready to share as a branded link, PDF or print.",
+  sampleNote: "The sample trip here is real Voyage output. Rain was forecast for the afternoon: the views come first and the indoor stops sit in the wet hours.",
 };
 
 export const SAMPLE_SECTION = {
@@ -21,8 +21,8 @@ export const SAMPLE_SECTION = {
 
 export const SAMPLE_CALLOUTS = [
   { title: "Weather for every stop", body: "An hourly forecast for each stop, not one guess for the whole day." },
-  { title: "Planned around the rain", body: "Viewpoints before 11 AM. The mall lands in the hour rain is most likely." },
-  { title: "Real places, checked", body: "Photos, ratings and addresses come from Google, and closed places get flagged before your client sees them." },
+  { title: "Planned around the rain", body: "The viewpoint comes before 11 AM. The mall lands in the hour rain is most likely." },
+  { title: "Real places, checked", body: "Where Voyage matches a place, its photos, rating and address come from Google, and closed places get flagged before your client sees them." },
   { title: "Notes your client reads", body: "Each stop carries a short note written for the traveller." },
   { title: "Matches the map", body: "Stop numbers use the same day colour as the pins on the map." },
 ];
@@ -56,24 +56,24 @@ export const AFTER_THE_PLAN_TABS = [
     id: "pdf",
     label: "PDF and print",
     title: "PDF and print from the same trip",
-    body: "The PDF is built in the browser from the itinerary, with times, client notes and each day's weather. Print sends that same PDF to the printer. These buttons make the real PDF of the Baguio trip.",
+    body: "The PDF is built in the browser from the itinerary, with times, places and each day's weather. Print sends that same PDF to the printer. These buttons make the real PDF of the Baguio trip.",
   },
   {
     id: "approve",
     label: "Approve and lock",
-    title: "Nothing goes out without sign-off",
-    body: "Agents send trips for review. Approving locks the itinerary, so it can't change after your client has seen it. Reopen it on purpose to edit.",
+    title: "Approve it, then lock it",
+    body: "Agents send trips for review, and they wait in the approval queue. Approving locks the itinerary so it can't change by accident. Reopen it on purpose to edit.",
   },
 ];
 
 /** `icon` names a key in LandingSections' FEATURE_ICONS map. */
 export const FEATURES = [
   { icon: "chat", title: "Plan by chat", body: "Describe the trip. The AI drafts it and asks when something's missing." },
-  { icon: "place", title: "Real places, checked", body: "Every stop is a real place, with its opening status checked." },
+  { icon: "place", title: "Real places, checked", body: "Stops are matched to real places, and closed ones get flagged." },
   { icon: "weather", title: "Weather per stop", body: "Hourly forecasts for dated trips, and typical weather for far-off dates." },
   { icon: "map", title: "A map for each day", body: "Colour-coded pins and routes, one colour per day." },
   { icon: "share", title: "Share, PDF and print", body: "A branded link your client can comment on and rate." },
-  { icon: "lock", title: "Approve and lock", body: "Sign off before it goes out. Editing reopens it on purpose." },
+  { icon: "lock", title: "Approve and lock", body: "Approving locks the trip. Editing reopens it on purpose." },
   { icon: "star", title: "Reuse top-rated stops", body: "Pull stops from past trips your clients rated 4 or higher." },
   { icon: "calendar", title: "Team calendar", body: "Every departure, assignment and approval in one view." },
 ];
@@ -103,7 +103,7 @@ export const FAQS = [
   },
   {
     question: "What does my client see?",
-    answer: "A branded web page with each day, the map, photos, your notes and the weather. They can comment on any stop, rate the proposal, and download or print a PDF. They don't need an account.",
+    answer: "A branded web page with each day, the map, photos, your notes and the weather. They can comment on any stop, rate the proposal, and download a PDF to keep or print. They don't need an account.",
   },
   {
     question: "Where does the weather come from?",
@@ -111,7 +111,7 @@ export const FAQS = [
   },
   {
     question: "Can my whole team use it?",
-    answer: "Yes. Owners invite agents, assign trips and approve itineraries before they reach a client.",
+    answer: "Yes. Owners invite agents and assign trips. Agents send itineraries for review, and approving one locks it.",
   },
 ];
 
