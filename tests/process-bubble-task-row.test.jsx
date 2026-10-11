@@ -122,15 +122,15 @@ describe("ProcessBubble — task row rendering", () => {
     ];
 
     const result = activeLabelFor(timeline);
-    expect(result).toBe("Adding itinerary item…");
+    expect(result).toBe("Adding a stop…");
   });
 
-  it("activeLabelFor returns 'Thinking…' when only thoughts present", () => {
+  it("activeLabelFor says it is choosing the next step when only thoughts are present", () => {
     const timeline = [
       { id: "t1", kind: "thought", text: "Considering options" },
     ];
 
     const result = activeLabelFor(timeline);
-    expect(result).toBe("Thinking…");
+    expect(result).toBe("Choosing the next step…");
   });
 });
