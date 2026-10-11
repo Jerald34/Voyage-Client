@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useId, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import MarkdownContent from "../chat/AgentMarkdown.jsx";
 import styles from "./processBubble.module.css";
 import { isTrackingTool, modernizeSummaryLabel, toolToDoneLabel } from "./processBubbleLabels.js";
@@ -93,12 +93,21 @@ export default function ProcessBubble({
   // is plain text: no toggle, no chevron, no empty region to open.
   const hasRows = groupedTimeline.length > 0;
   const HeaderTag = hasRows ? "button" : "div";
+  // A live run starts with no steps; fade the chevron in when the first one appears.
+  const startedWithRowsRef = useRef(hasRows);
+  const reduceMotion = useReducedMotion();
   const headerProps = hasRows
     ? { type: "button", "aria-expanded": open, "aria-controls": timelineId, onClick: handleToggle }
     : {};
 
   return (
     <section aria-label="Agent process">
+      {/* Status announcements live outside the header, which swaps between a div and a
+          button, so this region is never remounted. Screen readers can miss a live region
+          that is inserted fresh. The visible label below names the button instead. */}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {headerLabel}
+      </span>
       {/* ── Header button ─────────────────────────────────────────── */}
       <HeaderTag
         {...headerProps}
@@ -116,8 +125,6 @@ export default function ProcessBubble({
         />
 
         <span
-          aria-live="polite"
-          aria-atomic="true"
           className={[
             "flex-1 text-left text-[13px] font-medium leading-[1.4]",
             isLive ? styles.labelShimmer : "text-text-soft",
@@ -137,8 +144,12 @@ export default function ProcessBubble({
           strokeWidth={1.75}
           aria-hidden="true"
           className="flex-shrink-0 text-text-soft"
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ type: "spring", stiffness: 240, damping: 30, mass: 0.8 }}
+          initial={startedWithRowsRef.current ? false : { opacity: 0 }}
+          animate={{ rotate: open ? 180 : 0, opacity: 1 }}
+          transition={{
+            rotate: { type: "spring", stiffness: 240, damping: 30, mass: 0.8 },
+            opacity: { duration: reduceMotion ? 0 : 0.15, ease: "easeOut" },
+          }}
         >
           <path d="M6 9l6 6 6-6" />
         </motion.svg>
