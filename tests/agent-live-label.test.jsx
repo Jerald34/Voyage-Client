@@ -35,16 +35,23 @@ function renderLive({ assistantMessage = "", toolCalls = [], thoughtEntries = []
   );
 }
 
-// The header label also lives in an sr-only aria-live region, so it appears twice.
+// The label shows twice: the visible header and the sr-only aria-live region.
+// Other polite regions exist, so pick the atomic one.
+function expectLabel(label) {
+  expect(screen.getAllByText(label)).toHaveLength(2);
+  const live = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
+  expect(live.textContent).toBe(label);
+}
+
 describe("live agent status label", () => {
   it("says it is reading the request before anything happens", () => {
     renderLive();
-    expect(screen.getAllByText("Reading your request…").length).toBeGreaterThan(0);
+    expectLabel("Reading your request…");
   });
 
   it("names the running tool in plain words", () => {
     renderLive({ toolCalls: [{ name: "search_google_places", status: "Running" }] });
-    expect(screen.getAllByText("Searching for places…").length).toBeGreaterThan(0);
+    expectLabel("Searching for places…");
   });
 
   it("says it is choosing the next step while it reasons", () => {
@@ -52,12 +59,13 @@ describe("live agent status label", () => {
       toolCalls: [{ name: "search_google_places", status: "Completed" }],
       thoughtEntries: [{ id: "th-1", text: "Burnham Park first", precedingToolCount: 1 }],
     });
-    expect(screen.getAllByText("Choosing the next step…").length).toBeGreaterThan(0);
+    expectLabel("Choosing the next step…");
   });
 
   it("says it is writing once the reply text streams in", () => {
     renderLive({ toolCalls: [{ name: "add_itinerary_item", status: "Completed" }], assistantMessage: "Here is your plan" });
-    expect(screen.getAllByText("Writing the reply…").length).toBeGreaterThan(0);
+    expectLabel("Writing the reply…");
+    expect(screen.queryByText("Adding a stop…")).not.toBeInTheDocument();
   });
 
   it("never says Thinking", () => {
