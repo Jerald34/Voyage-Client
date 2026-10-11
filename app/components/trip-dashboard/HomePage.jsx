@@ -25,6 +25,7 @@ import {
 import { buildPlaceEntities, getItineraryPlaceEntityId } from "../../lib/trip-dashboard/placeEntities.js";
 import { getSavedItineraryTrips } from "../../lib/trip-dashboard/savedItineraries.js";
 import { buildPlanningOptions } from "../../lib/trip-dashboard/planningOptions.js";
+import { resolveVisibleTab } from "../../lib/deepLinks.js";
 
 import dynamic from "next/dynamic";
 import AgentCommandCenter from "./command-center/AgentCommandCenter.jsx";
@@ -453,10 +454,9 @@ export default function HomePage({
 
   // Deep links can open the Dashboard (e.g. `tab=team` after accepting an
   // invite). Users without an agency workspace have no dashboard, so fall back
-  // to the Command Center instead of leaving the main area empty.
-  const currentTab = activeTab === "dashboard" && user && (isPersonal || !agencyId)
-    ? "command-center"
-    : activeTab;
+  // to the Command Center instead of leaving the main area empty. Only super
+  // admins see the Admin tab.
+  const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId });
 
   useEffect(() => {
     setSelectedPlaceId("");
