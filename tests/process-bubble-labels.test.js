@@ -105,6 +105,7 @@ describe("activeLabelFor", () => {
       { id: "1", kind: "tool", name: "search_google_places" },
       { id: "k1", kind: "task", status: "RUNNING", label: "" },
       { id: "k2", kind: "task", status: "RUNNING" },
+      { id: "k3", kind: "task", status: "RUNNING", label: "   " },
     ];
     expect(activeLabelFor(timeline)).toBe("Searching for places…");
     expect(activeLabelFor(timeline, { writingReply: true })).toBe("Writing the reply…");

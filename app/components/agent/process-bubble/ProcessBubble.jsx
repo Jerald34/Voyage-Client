@@ -79,7 +79,7 @@ export default function ProcessBubble({
         last &&
         entry.kind === "tool" &&
         last.kind === "tool" &&
-        last.name === entry.name
+        toolToDoneLabel(last.name) === toolToDoneLabel(entry.name)
       ) {
         last.count = (last.count ?? 1) + 1;
       } else {
@@ -89,14 +89,19 @@ export default function ProcessBubble({
     return out;
   })();
 
+  // With nothing to list (e.g. a saved run that only used tracking tools) the header
+  // is plain text: no toggle, no chevron, no empty region to open.
+  const hasRows = groupedTimeline.length > 0;
+  const HeaderTag = hasRows ? "button" : "div";
+  const headerProps = hasRows
+    ? { type: "button", "aria-expanded": open, "aria-controls": timelineId, onClick: handleToggle }
+    : {};
+
   return (
     <section aria-label="Agent process">
       {/* ── Header button ─────────────────────────────────────────── */}
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={timelineId}
-        onClick={handleToggle}
+      <HeaderTag
+        {...headerProps}
         className="w-full flex items-center gap-2 pt-0.5 pb-2 py-2.5 focus-visible:ring-2 ring-secondary/40 ring-offset-1 rounded-md"
       >
         {/* Dot */}
@@ -122,6 +127,7 @@ export default function ProcessBubble({
         </span>
 
         {/* Chevron */}
+        {hasRows && (
         <motion.svg
           viewBox="0 0 24 24"
           width={12}
@@ -136,11 +142,12 @@ export default function ProcessBubble({
         >
           <path d="M6 9l6 6 6-6" />
         </motion.svg>
-      </button>
+        )}
+      </HeaderTag>
 
       {/* ── Timeline region ────────────────────────────────────────── */}
       <AnimatePresence>
-        {open && (
+        {open && hasRows && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{

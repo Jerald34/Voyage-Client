@@ -2,13 +2,16 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProcessBubble from "../app/components/agent/process-bubble/ProcessBubble.jsx";
 
+// One visible step, so the bubble has a step list to toggle.
+const ONE_STEP = [{ id: "s1", kind: "tool", name: "search_google_places" }];
+
 // Helper: render ProcessBubble with required defaults.
 function renderBubble(props = {}) {
   return render(
     <ProcessBubble
       status="done"
       activeLabel="Researched 4 places · 2.3s"
-      timeline={[]}
+      timeline={ONE_STEP}
       durationMs={2300}
       defaultOpen={false}
       msgId="msg-test"
@@ -18,8 +21,8 @@ function renderBubble(props = {}) {
 }
 
 describe("ProcessBubble — state: live-thinking", () => {
-  it("shows the thinking label and breathing dot while live with no tools", () => {
-    renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: [] });
+  it("shows the reading label and breathing dot while live with no tools", () => {
+    renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: ONE_STEP });
 
     expect(screen.getByText("Reading your request…")).toBeInTheDocument();
 
@@ -40,11 +43,11 @@ describe("ProcessBubble — state: live-tool", () => {
     const timeline = [{ id: "t1", kind: "tool", name: "add_itinerary_item" }];
     renderBubble({
       status: "live",
-      activeLabel: "Adding itinerary item…",
+      activeLabel: "Adding a stop…",
       timeline,
     });
 
-    expect(screen.getByText("Adding itinerary item…")).toBeInTheDocument();
+    expect(screen.getByText("Adding a stop…")).toBeInTheDocument();
 
     const button = screen.getByRole("button");
     expect(button).toHaveAttribute("aria-expanded", "false");
@@ -150,7 +153,7 @@ describe("ProcessBubble — reduced-motion", () => {
 
   it("renders without throwing under prefers-reduced-motion", () => {
     expect(() =>
-      renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: [] }),
+      renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: ONE_STEP }),
     ).not.toThrow();
 
     expect(screen.getByText("Reading your request…")).toBeInTheDocument();
@@ -172,8 +175,49 @@ describe("ProcessBubble — wording", () => {
   });
 
   it("shows a saved run's old summary in the new wording", () => {
-    renderBubble({ status: "done", activeLabel: "Thought for 1.2s", timeline: [] });
+    renderBubble({ status: "done", activeLabel: "Thought for 1.2s", timeline: ONE_STEP });
 
     expect(screen.getByText("Replied in 1.2s")).toBeInTheDocument();
+  });
+
+  it("does not reword a live label", () => {
+    renderBubble({ status: "live", activeLabel: "Thought for 1.2s", timeline: ONE_STEP });
+
+    expect(screen.getByText("Thought for 1.2s")).toBeInTheDocument();
+  });
+
+  it("shows only the header, with no toggle, when every step is a progress-tracking tool", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "record_agent_task" },
+      { id: "t2", kind: "tool", name: "update_agent_task" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Replied in 1.0s", timeline });
+
+    expect(screen.getByText("Replied in 1.0s")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("groups repeated steps by their visible label, even across a hidden tracking tool", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "add_itinerary_item" },
+      { id: "t2", kind: "tool", name: "update_agent_task" },
+      { id: "t3", kind: "tool", name: "add_itinerary_item" },
+      { id: "t4", kind: "tool", name: "add_itinerary_item" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Built itinerary · 1.0s", timeline, defaultOpen: true });
+
+    expect(screen.getAllByText("Added a stop")).toHaveLength(1);
+    expect(screen.getByLabelText("3 times")).toBeInTheDocument();
+  });
+
+  it("groups adjacent unknown tools into one generic row", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "mystery_a" },
+      { id: "t2", kind: "tool", name: "mystery_b" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Finished in 1.0s", timeline, defaultOpen: true });
+
+    expect(screen.getAllByText("Finished a step")).toHaveLength(1);
+    expect(screen.getByLabelText("2 times")).toBeInTheDocument();
   });
 });

@@ -112,7 +112,7 @@ export function activeLabelFor(timeline, { writingReply = false } = {}) {
 
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i];
-    if (entry.kind === "task" && entry.status === "RUNNING" && entry.label) {
+    if (entry.kind === "task" && entry.status === "RUNNING" && typeof entry.label === "string" && entry.label.trim()) {
       return entry.label;
     }
   }
