@@ -144,4 +144,25 @@ describe("AskUserPanel", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("Could not send. Try again.");
   });
+
+  it("leaves focus alone on mount when focusOnMount is false (landing page demo)", () => {
+    renderPanel({ focusOnMount: false });
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("still moves focus to the next question's options after Next when focusOnMount is false", () => {
+    renderPanel({ focusOnMount: false });
+
+    fireEvent.click(screen.getByRole("radio", { name: /Private car/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByRole("checkbox", { name: "Food" })).toHaveFocus();
+  });
+
+  it("hides the plain-reply link when there is no onDismiss", () => {
+    render(<AskUserPanel questions={questions} onSubmit={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "Type a normal reply instead" })).not.toBeInTheDocument();
+  });
 });

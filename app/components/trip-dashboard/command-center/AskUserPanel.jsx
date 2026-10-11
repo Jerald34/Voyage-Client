@@ -13,8 +13,10 @@ const focusRingClass =
  * The composer while the agent waits on ask_user questions: one question at a time,
  * radio rows (checkboxes for multi-select), a free-text "Something else", and a way
  * back to the normal text box. Calls onSubmit(draft) once every question is answered.
+ * `focusOnMount={false}` never takes focus on mount (the landing page shows it in
+ * passing); `onDismiss` omitted hides the plain-reply link.
  */
-export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "", containerClassName = "", initialDraft = null }) {
+export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "", containerClassName = "", initialDraft = null, focusOnMount = true }) {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState(() => initialDraft ?? emptyDraft(questions));
   const [showError, setShowError] = useState(false);
@@ -44,7 +46,7 @@ export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "
     if (focusPlanRef.current?.step !== step) {
       const isMount = focusPlanRef.current === null;
       const active = document.activeElement;
-      focusPlanRef.current = { step, focus: !isMount || !active || active === document.body };
+      focusPlanRef.current = { step, focus: !isMount || (focusOnMount && (!active || active === document.body)) };
     }
     if (focusPlanRef.current.focus) focusOptions();
   }, [step]);
@@ -188,13 +190,15 @@ export default function AskUserPanel({ questions, onSubmit, onDismiss, error = "
           </p>
         ) : null}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <button
-            type="button"
-            onClick={onDismiss}
-            className={`min-h-11 cursor-pointer rounded-md border-0 bg-transparent px-1 text-[13px] font-medium text-text-muted underline-offset-2 hover:underline ${focusRingClass}`}
-          >
-            Type a normal reply instead
-          </button>
+          {onDismiss ? (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className={`min-h-11 cursor-pointer rounded-md border-0 bg-transparent px-1 text-[13px] font-medium text-text-muted underline-offset-2 hover:underline ${focusRingClass}`}
+            >
+              Type a normal reply instead
+            </button>
+          ) : null}
           <div className="ml-auto flex items-center gap-2">
             {step > 0 && (
               <button

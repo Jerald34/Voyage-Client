@@ -2,11 +2,12 @@ import React from "react";
 import AgentMarkdown from "../../agent/chat/AgentMarkdown";
 import { getMatchedPlaces, matchPlaceMentions, getItineraryPlaceEntityId } from "../../../lib/trip-dashboard/placeEntities.js";
 import RichItineraryMessage from "./RichItineraryMessage.jsx";
+import AnswerPairs from "./AnswerPairs.jsx";
 import useMobileViewport from "../mobile/useMobileViewport.js";
 import CompactPlaceCard from "../mobile/CompactPlaceCard.jsx";
 import MessageImageGrid from "../../chat/MessageImageGrid";
 import ProcessBubble from "../../agent/process-bubble/ProcessBubble.jsx";
-import { answerText, getAnswers, getAskUser } from "../../../lib/agent/askUser.js";
+import { getAnswers, getAskUser } from "../../../lib/agent/askUser.js";
 
 function PlaceLinkedText({ children, placeEntities, selectedPlaceId, onPlaceSelect }) {
   if (typeof children !== "string" && typeof children !== "number") {
@@ -102,20 +103,6 @@ function MarkdownContent({
       <AgentMarkdown content={content} renderText={renderText} />
       <PlaceCards places={matchedPlaces} selectedPlaceId={selectedPlaceId} onPlaceSelect={onPlaceSelect} />
     </div>
-  );
-}
-
-// An answer to the agent's ask_user questions: each header beside its answer.
-function AnswerPairs({ answers }) {
-  return (
-    <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3.5 gap-y-1">
-      {answers.items.map((item) => (
-        <React.Fragment key={item.questionId}>
-          <dt className="text-xs font-medium text-text-muted">{item.header}</dt>
-          <dd className="m-0 min-w-0 font-medium">{answerText(item)}</dd>
-        </React.Fragment>
-      ))}
-    </dl>
   );
 }
 

@@ -167,7 +167,7 @@ function HomePageInner() {
   }
 
   if (currentScreen === "welcome") {
-    return <LandingPage onLogin={() => router.push("/login")} onContinue={() => router.push("/login")} />;
+    return <LandingPage onLogin={() => router.push("/login")} onStartPlanning={() => router.push("/login?mode=register")} />;
   }
 
   return (
