@@ -19,9 +19,9 @@ function renderBubble(props = {}) {
 
 describe("ProcessBubble — state: live-thinking", () => {
   it("shows the thinking label and breathing dot while live with no tools", () => {
-    renderBubble({ status: "live", activeLabel: "Thinking…", timeline: [] });
+    renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: [] });
 
-    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expect(screen.getByText("Reading your request…")).toBeInTheDocument();
 
     // Button should be collapsed by default
     const button = screen.getByRole("button");
@@ -53,8 +53,8 @@ describe("ProcessBubble — state: live-tool", () => {
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-expanded", "true");
 
-    // Tool row content: humanized name "Add Itinerary Item"
-    expect(screen.getByText("Add Itinerary Item")).toBeInTheDocument();
+    // Tool row content: the past-tense label
+    expect(screen.getByText("Added a stop")).toBeInTheDocument();
   });
 });
 
@@ -150,10 +150,30 @@ describe("ProcessBubble — reduced-motion", () => {
 
   it("renders without throwing under prefers-reduced-motion", () => {
     expect(() =>
-      renderBubble({ status: "live", activeLabel: "Thinking…", timeline: [] }),
+      renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: [] }),
     ).not.toThrow();
 
-    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expect(screen.getByText("Reading your request…")).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeInTheDocument();
+  });
+});
+
+describe("ProcessBubble — wording", () => {
+  it("hides the agent's progress-tracking tools from the step list", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "record_agent_task" },
+      { id: "t2", kind: "tool", name: "search_google_places" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Finished in 1.0s", timeline, defaultOpen: true });
+
+    expect(screen.getByText("Searched for places")).toBeInTheDocument();
+    expect(screen.queryByText(/record agent task/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Finished a step")).not.toBeInTheDocument();
+  });
+
+  it("shows a saved run's old summary in the new wording", () => {
+    renderBubble({ status: "done", activeLabel: "Thought for 1.2s", timeline: [] });
+
+    expect(screen.getByText("Replied in 1.2s")).toBeInTheDocument();
   });
 });

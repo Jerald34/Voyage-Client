@@ -4,15 +4,7 @@ import { useState, useRef, useId, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import MarkdownContent from "../chat/AgentMarkdown.jsx";
 import styles from "./processBubble.module.css";
-
-// Private helper: humanize a raw tool name into title-cased words.
-function humanizeToolName(name) {
-  return String(name ?? "")
-    .replace(/[_.]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
+import { isTrackingTool, modernizeSummaryLabel, toolToDoneLabel } from "./processBubbleLabels.js";
 
 // Compute the margin-top class for a timeline row based on the previous entry kind.
 function rowGapClass(prevKind, currentKind) {
@@ -65,11 +57,16 @@ export default function ProcessBubble({
   }
 
   const isLive = status === "live";
-  const safeTimeline = Array.isArray(timeline) ? timeline : [];
+  // The agent's progress-tracking tools show up as task rows already; hide their tool rows.
+  const safeTimeline = (Array.isArray(timeline) ? timeline : []).filter(
+    (entry) => !(entry.kind === "tool" && isTrackingTool(entry.name)),
+  );
+  // Saved runs from before the 2026-10-11 wording still carry "Thought for …" and similar.
+  const headerLabel = status === "done" ? modernizeSummaryLabel(activeLabel) : activeLabel;
 
   // Coalesce consecutive identical tool calls into one row with a count.
   // Continuation loops (e.g. add_itinerary_item once per stop) otherwise produce
-  // N identical rows; this collapses them into "Add Itinerary Item ×N".
+  // N identical rows; this collapses them into "Added a stop ×N".
   // Thought entries are never coalesced.
   // IMPORTANT: Task entries are also never coalesced — the condition only fires
   // for tool ↔ tool same-name pairs. Tasks are id-keyed and must each render as
@@ -121,7 +118,7 @@ export default function ProcessBubble({
             isLive ? styles.labelShimmer : "text-text-soft",
           ].join(" ")}
         >
-          {activeLabel}
+          {headerLabel}
         </span>
 
         {/* Chevron */}
@@ -191,7 +188,7 @@ export default function ProcessBubble({
                       {entry.kind === "tool" ? (
                         <div className="pb-tool flex items-center gap-1.5 h-6 pl-3.5 text-[12px] font-medium text-text-muted dark:text-text-muted">
                           <span className="text-secondary/70 select-none" aria-hidden="true">→</span>
-                          <span>{humanizeToolName(entry.name)}</span>
+                          <span>{toolToDoneLabel(entry.name)}</span>
                           {entry.count > 1 && (
                             <motion.span
                               key={entry.count}
