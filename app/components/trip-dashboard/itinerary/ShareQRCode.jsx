@@ -28,6 +28,7 @@ export default function ShareQRCode({ shareUrl, tripTitle }) {
           bgColor="#ffffff"
           fgColor="#223843"
           level="M"
+          title={`QR code for ${tripTitle || "this itinerary"}`}
         />
       </div>
 
@@ -48,7 +49,7 @@ export default function ShareQRCode({ shareUrl, tripTitle }) {
         type="button"
         className="
           inline-flex items-center gap-2
-          px-[18px] py-2.5
+          px-[18px] py-2.5 pointer-coarse:min-h-11
           rounded-md border border-border/30
           bg-surface-elevated text-primary text-[13px] font-bold
           cursor-pointer

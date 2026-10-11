@@ -15,6 +15,7 @@ const TOOL_ACTIVE_LABEL_MAP = {
   update_itinerary_item: "Updating itinerary item…",
   map_pinpoint: "Pinpointing on map…",
   weather_forecast: "Checking the weather…",
+  ask_user: "Preparing a question…",
 };
 
 /**
@@ -46,6 +47,11 @@ export function summarize(timeline, durationMs) {
 
   if (toolEntries.length === 0) {
     return `Thought for ${durationStr}`;
+  }
+
+  // Matches the server's summary for a run that ended by asking the user.
+  if (toolEntries.some((entry) => entry.name === "ask_user")) {
+    return `Asked for your input · ${durationStr}`;
   }
 
   const hasMapPinpoint = toolEntries.some((entry) => entry.name === "map_pinpoint");

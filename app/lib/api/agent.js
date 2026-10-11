@@ -26,13 +26,15 @@ export async function deleteAgentThread(agencyId, threadId) {
   });
 }
 
-export async function sendMessage(agencyId, threadId, content, imageUrls = [], travelerNeeds = null) {
+export async function sendMessage(agencyId, threadId, content, imageUrls = [], travelerNeeds = null, answers = null) {
   return fetchApi(`/agencies/${agencyId}/agent/threads/${threadId}/messages`, {
     method: "POST",
     body: JSON.stringify({
       content,
       ...(imageUrls.length > 0 ? { imageUrls } : {}),
       ...(travelerNeeds ? { travelerNeeds } : {}),
+      // Answers to the agent's ask_user questions: { messageId, items }.
+      ...(answers ? { answers } : {}),
     }),
   });
 }

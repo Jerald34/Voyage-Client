@@ -29,6 +29,8 @@ export function useAgentRunStream(agencyId) {
   const [lastCompletedItineraryTool, setLastCompletedItineraryTool] = useState(null);
   const [completedMessageContent, setCompletedMessageContent] = useState(null);
   const [completedMessageProcess, setCompletedMessageProcess] = useState(null);
+  const [completedMessageId, setCompletedMessageId] = useState(null);
+  const [completedMessageAskUser, setCompletedMessageAskUser] = useState(null);
   // streamingItinerary is the in-flight cached itinerary patched by granular events.
   const [streamingItinerary, setStreamingItinerary] = useState(null);
   const [error, setError] = useState(null);
@@ -67,6 +69,8 @@ export function useAgentRunStream(agencyId) {
     setLastCompletedItineraryTool(null);
     setCompletedMessageContent(null);
     setCompletedMessageProcess(null);
+    setCompletedMessageId(null);
+    setCompletedMessageAskUser(null);
     setStreamingItinerary(null);
     setError(null);
     thoughtActiveRef.current = false;
@@ -174,6 +178,12 @@ export function useAgentRunStream(agencyId) {
       if (data.payload?.process != null) {
         setCompletedMessageProcess(data.payload.process);
       }
+      // The server's id for the reply, so answers to its questions can name it.
+      if (typeof data.payload?.messageId === 'string') {
+        setCompletedMessageId(data.payload.messageId);
+      }
+      // Questions the reply asked with ask_user (null for an ordinary reply).
+      setCompletedMessageAskUser(data.payload?.askUser ?? null);
     });
 
     // Server sends: { type: "task.updated", payload: { id, label, status, sortOrder } }
@@ -469,6 +479,8 @@ export function useAgentRunStream(agencyId) {
     assistantMessage,
     completedMessageContent,
     completedMessageProcess,
+    completedMessageId,
+    completedMessageAskUser,
     tasks,
     toolCalls,
     thoughtEntries,

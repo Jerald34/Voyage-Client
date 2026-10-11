@@ -40,7 +40,7 @@ import DashboardSidebar from "./layout/DashboardSidebar.jsx";
 import AdminPage from "../admin/AdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
-import ChatInput from "./command-center/ChatInput.jsx";
+import ChatComposer from "./command-center/ChatComposer.jsx";
 import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
 import { useTravelerNeeds } from "../../hooks/useTravelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
@@ -196,6 +196,8 @@ export default function HomePage({
     assistantMessage,
     completedMessageContent,
     completedMessageProcess,
+    completedMessageId,
+    completedMessageAskUser,
     tasks,
     tasksTouchedThisRun,
     toolCalls,
@@ -389,6 +391,8 @@ export default function HomePage({
     runStatus,
     completedMessageContent,
     completedMessageProcess,
+    completedMessageId,
+    completedMessageAskUser,
     assistantMessage,
     lastItineraryUpdate,
     streamingItinerary,
@@ -479,6 +483,12 @@ export default function HomePage({
     if (!composerInput.trim()) return;
     void sendWithNeeds((needs) => dispatchMessage(composerInput, startStream, [], needs));
     setComposerInput("");
+  }
+
+  // Answers to the agent's ask_user questions go out as a normal message with the
+  // structured answers attached; traveler needs ride along as for typed messages.
+  function answerAgentQuestion(text, answer) {
+    void sendWithNeeds((needs) => dispatchMessage(text, startStream, [], needs, { answers: answer }));
   }
 
   const activeTripClientName = String(effectiveActiveOption?.clientName ?? effectiveActiveOption?.label ?? "").trim();
@@ -778,6 +788,7 @@ export default function HomePage({
                     travelerNeeds={activeTravelerNeeds}
                     onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                     needsToggleRef={desktopNeedsToggleRef}
+                    dispatchAgentAnswer={answerAgentQuestion}
                   />
                 </div>
               </div>
@@ -790,7 +801,9 @@ export default function HomePage({
                   forcedSnap={tourGlassSheetSnap}
                   data-tour-target="workspace-chat"
                   footer={
-                    <ChatInput
+                    <ChatComposer
+                      messages={effectiveTripState?.messages ?? []}
+                      onAnswer={answerAgentQuestion}
                       textareaRef={mobileTextareaRef}
                       composerInput={composerInput}
                       setComposerInput={setComposerInput}
