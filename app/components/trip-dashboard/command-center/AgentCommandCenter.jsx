@@ -6,7 +6,7 @@ import useElementHeight from "../../../hooks/useElementHeight.js";
 import { askUserStatuses, getAnswers } from "../../../lib/agent/askUser.js";
 import RichItineraryMessage from "./RichItineraryMessage.jsx";
 import useImageAttachments from "../../../hooks/useImageAttachments.js";
-import { toolToActiveLabel, summarize, activeLabelFor } from "../../agent/process-bubble/processBubbleLabels.js";
+import { summarize, activeLabelFor } from "../../agent/process-bubble/processBubbleLabels.js";
 import ReuseSlashCommand from "../../ratedHistory/entryPoints/ReuseSlashCommand.jsx";
 
 function getInitials(name) {
@@ -105,6 +105,9 @@ export default function AgentCommandCenter({
     isStreaming &&
     displayedMessages[displayedMessages.length - 1]?.content !== assistantMessage;
 
+  // useAgentRunStream clears the reply text on every tool.started, so any text
+  // here arrived after the latest tool: the agent is writing its reply.
+  const writingReply = typeof assistantMessage === "string" && assistantMessage.trim().length > 0;
   const liveProcess = useMemo(() => {
     if (!isStreaming) return null;
     const toolEntries = Array.isArray(toolCalls)
@@ -153,7 +156,7 @@ export default function AgentCommandCenter({
       timeline.push(taskEntry);
     }
 
-    const activeLabel = activeLabelFor(timeline);
+    const activeLabel = activeLabelFor(timeline, { writingReply });
 
     return {
       status: "live",
@@ -164,7 +167,7 @@ export default function AgentCommandCenter({
       // Respect the user's explicit collapse — only honored via openStates entry.
       defaultOpen: openStates.get("streaming") ?? true,
     };
-  }, [isStreaming, toolCalls, thoughtEntries, tasks, tasksTouchedThisRun, openStates]);
+  }, [isStreaming, toolCalls, thoughtEntries, tasks, tasksTouchedThisRun, openStates, writingReply]);
 
   const userName = user?.displayName || "You";
   const userInitials = getInitials(userName);
