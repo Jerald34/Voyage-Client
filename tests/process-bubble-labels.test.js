@@ -100,6 +100,16 @@ describe("activeLabelFor", () => {
     expect(activeLabelFor(timeline, { writingReply: true })).toBe("Researching cafés");
   });
 
+  it("ignores a running task with no label and falls through to the next rule", () => {
+    const timeline = [
+      { id: "1", kind: "tool", name: "search_google_places" },
+      { id: "k1", kind: "task", status: "RUNNING", label: "" },
+      { id: "k2", kind: "task", status: "RUNNING" },
+    ];
+    expect(activeLabelFor(timeline)).toBe("Searching for places…");
+    expect(activeLabelFor(timeline, { writingReply: true })).toBe("Writing the reply…");
+  });
+
   it("skips progress-tracking tools", () => {
     const timeline = [
       { id: "1", kind: "tool", name: "search_google_places" },
