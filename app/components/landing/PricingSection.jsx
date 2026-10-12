@@ -1,14 +1,14 @@
 "use client";
 
 import { FREE_TRIAL_DAYS, PLAN_INCLUDES, PLANS, formatPeso } from "../../lib/pricing/plans.js";
-import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
+import { LANDING_SECTION, PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
 
-const SECTION = "mx-auto w-full max-w-[1220px] scroll-mt-24 px-4 pb-24";
+const LIST = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
 /** Display-only prices. Every button starts the free trial through the normal sign-up. */
 export default function PricingSection({ onStartPlanning }) {
   return (
-    <section id="pricing" aria-labelledby="pricing-title" className={SECTION}>
+    <section id="pricing" aria-labelledby="pricing-title" className={LANDING_SECTION}>
       <h2 id="pricing-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         Pricing
       </h2>
@@ -51,7 +51,8 @@ export default function PricingSection({ onStartPlanning }) {
         ))}
       </ul>
       <p className="m-0 mt-4 text-sm leading-relaxed text-text-muted">
-        Every plan includes {PLAN_INCLUDES.join(", ")}. Prices are in Philippine pesos.
+        Every plan includes {LIST.format(PLAN_INCLUDES)}. Prices are in Philippine pesos. Voyage is free during the pilot; billing
+        isn&apos;t switched on yet.
       </p>
     </section>
   );

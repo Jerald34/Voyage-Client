@@ -17,6 +17,22 @@ describe("PricingSection", () => {
     expect(within(section).getByText(/14-day free trial/)).toBeInTheDocument();
   });
 
+  it("badges only the Pro card as 'Most agencies'", () => {
+    render(<PricingSection onStartPlanning={vi.fn()} />);
+
+    const badges = screen.getAllByText("Most agencies");
+    expect(badges).toHaveLength(1);
+    expect(within(badges[0].closest("li")).getByRole("heading", { level: 3, name: "Pro" })).toBeInTheDocument();
+  });
+
+  it("says the pilot is free and lists what every plan includes", () => {
+    render(<PricingSection onStartPlanning={vi.fn()} />);
+
+    const footnote = screen.getByText(/free during the pilot/);
+    expect(footnote).toHaveTextContent(/post-trip ratings/);
+    expect(footnote).toHaveTextContent(/, and post-trip ratings/);
+  });
+
   it("starts every free trial through the normal sign-up", () => {
     const onStartPlanning = vi.fn();
     render(<PricingSection onStartPlanning={onStartPlanning} />);

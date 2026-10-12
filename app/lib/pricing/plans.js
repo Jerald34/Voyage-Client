@@ -44,13 +44,18 @@ export const PLANS = [
   },
 ];
 
-const PESO = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 });
+const PESO = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export function formatPeso(amount) {
   return PESO.format(amount);
 }
 
+// Non-numeric and non-finite usage (a missing field, NaN) counts as none, so it can't skip every tier.
+const safe = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+
 /** The cheapest tier whose team size and monthly itineraries cover this usage, or null when none does. */
 export function suggestPlan({ itineraries = 0, members = 0 } = {}) {
-  return PLANS.find((plan) => plan.teamMembers >= members && plan.itinerariesPerMonth >= itineraries) ?? null;
+  const neededItineraries = safe(itineraries);
+  const neededMembers = safe(members);
+  return PLANS.find((plan) => plan.teamMembers >= neededMembers && plan.itinerariesPerMonth >= neededItineraries) ?? null;
 }

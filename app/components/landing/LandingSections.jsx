@@ -4,7 +4,7 @@ import VoyageLogo from "../brand/VoyageLogo";
 import WeatherIcon from "../weather/WeatherIcon.jsx";
 import { ArrowRightIcon, CalendarIcon, ChatIcon, LockIcon, MapIcon, MapPinIcon, ShareIcon, StarIcon } from "../icons/index.js";
 import { AUDIENCES, FAQS, FEATURES, FINAL_CTA, LANDING_NAV, STEPS } from "./landingContent.js";
-import { FOCUS, FOCUS_INSET, PRIMARY_BUTTON } from "./landingClasses.js";
+import { FOCUS, FOCUS_INSET, LANDING_SECTION, PRIMARY_BUTTON } from "./landingClasses.js";
 
 const FEATURE_ICONS = {
   chat: <ChatIcon width={18} height={18} />,
@@ -18,8 +18,6 @@ const FEATURE_ICONS = {
   calendar: <CalendarIcon width={18} height={18} />,
 };
 
-const SECTION = "mx-auto w-full max-w-[1220px] scroll-mt-24 px-4 pb-24";
-
 // The closing band sits on bg-sidebar, where the shared terracotta ring is only 2.3:1 in light mode. White is 12:1 there
 // and 16:1 on the lifted dark band (bg-sidebar alone is 1.03:1 against the dark page, so dark uses surface-elevated).
 // The class is swapped, not appended: Tailwind orders by generated CSS, not by class order.
@@ -29,7 +27,7 @@ const FOOTER_LINK = `inline-flex min-h-11 min-w-11 items-center justify-center r
 
 export function WhatItDoes() {
   return (
-    <section id="what-it-does" aria-labelledby="what-it-does-title" className={SECTION}>
+    <section id="what-it-does" aria-labelledby="what-it-does-title" className={LANDING_SECTION}>
       <h2 id="what-it-does-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         What Voyage does
       </h2>
@@ -51,7 +49,7 @@ export function WhatItDoes() {
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" aria-labelledby="how-it-works-title" className={SECTION}>
+    <section id="how-it-works" aria-labelledby="how-it-works-title" className={LANDING_SECTION}>
       <h2 id="how-it-works-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         How it works
       </h2>
@@ -73,7 +71,7 @@ export function HowItWorks() {
 
 export function ForAgencies() {
   return (
-    <section id="for-agencies" aria-labelledby="for-agencies-title" className={SECTION}>
+    <section id="for-agencies" aria-labelledby="for-agencies-title" className={LANDING_SECTION}>
       <h2 id="for-agencies-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         Built for agencies
       </h2>
@@ -91,7 +89,7 @@ export function ForAgencies() {
 
 export function Faq() {
   return (
-    <section id="faq" aria-labelledby="faq-title" className={SECTION}>
+    <section id="faq" aria-labelledby="faq-title" className={LANDING_SECTION}>
       <h2 id="faq-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
         Questions
       </h2>

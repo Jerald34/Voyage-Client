@@ -26,6 +26,12 @@ describe("suggestPlan", () => {
     expect(suggestPlan({ itineraries: 3, members: 6 }).id).toBe("agency");
   });
 
+  it("treats non-finite or non-numeric usage as none", () => {
+    expect(suggestPlan({ itineraries: NaN, members: undefined }).id).toBe("starter");
+    expect(suggestPlan({ itineraries: "abc", members: null }).id).toBe("starter");
+    expect(suggestPlan({ itineraries: "40", members: "5" }).id).toBe("pro");
+  });
+
   it("returns null when usage is above every tier", () => {
     expect(suggestPlan({ itineraries: 101, members: 3 })).toBeNull();
     expect(suggestPlan({ itineraries: 1, members: 16 })).toBeNull();
