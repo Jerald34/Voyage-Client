@@ -29,6 +29,7 @@ class FakeDoc {
   roundedRect() {}
   addImage() {}
   setProperties() {}
+  setPage() {}
   addPage() {
     this.pages += 1;
   }

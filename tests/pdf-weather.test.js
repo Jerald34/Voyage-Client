@@ -26,6 +26,7 @@ class FakeDoc {
   roundedRect() {}
   addImage() {}
   setProperties() {}
+  setPage() {}
   addPage() {
     this.pages += 1;
     state.pageBreaks.push(this.texts.length);
@@ -165,7 +166,7 @@ describe("pdf export weather", () => {
     expect(printed).not.toContain("Weather");
   });
 
-  it("prints the timed forecast and each stop's weather after its time", async () => {
+  it("prints the timed forecast and each stop's weather under its title", async () => {
     await generateItineraryPdf({
       title: "Trip",
       summary: "",
@@ -190,7 +191,9 @@ describe("pdf export weather", () => {
 
     const printed = state.instance.texts.join("").replace(/\n/g, "");
     expect(printed).toContain("Weather forecast: Afternoon thunderstorms, 2–8 PM, 16–24°C, dry until 11 AM, about 19 mm of rain");
-    expect(printed).toContain("2:00 PM – 4:30 PM  ·  Storms likely (up to 99% chance of rain)");
+    expect(printed).toContain("2:00 PM – 4:30 PM");
+    expect(printed).toContain("Storms likely (up to 99% chance of rain)");
+    expect(printed).not.toContain("4:30 PM  ·  Storms");
     // A stop the summary does not cover prints its time alone.
     expect(state.instance.texts).toContain("7:00 PM");
   });

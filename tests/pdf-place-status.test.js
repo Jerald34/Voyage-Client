@@ -30,6 +30,7 @@ class FakeDoc {
   roundedRect() {}
   addImage() {}
   setProperties() {}
+  setPage() {}
   addPage() {
     this.pages += 1;
     state.pageBreaks.push(this.texts.length);
