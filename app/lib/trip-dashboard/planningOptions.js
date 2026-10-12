@@ -1,4 +1,36 @@
 import { mapTripStatus } from "../formatters.js";
+import { buildTripTabLabels, getSavedItineraryTrips } from "./savedItineraries.js";
+
+/**
+ * Place line and status for each trip in the Planner's picker, by trip id. Trips to the same place for
+ * one client are numbered the way the Itineraries tabs number them: "Option 2 · Baguio City".
+ *
+ * @param {Object[]} trips Portfolio trips (see toPortfolioTrip), newest first.
+ * @returns {Map<string, {label: string, statusLabel: string}>}
+ */
+export function buildTripPickerLabels(trips = []) {
+  const list = Array.isArray(trips) ? trips : [];
+  // Only saved trips are tabs on the Itineraries page, so only they count as options.
+  const savedByClient = new Map();
+  for (const trip of getSavedItineraryTrips(list)) {
+    const client = String(trip.clientName ?? "").trim().replace(/\s+/g, " ").toLowerCase() || `trip:${trip.id}`;
+    savedByClient.set(client, [...(savedByClient.get(client) ?? []), trip]);
+  }
+  const optionLabels = new Map();
+  for (const group of savedByClient.values()) {
+    for (const [id, label] of buildTripTabLabels(group)) optionLabels.set(id, label);
+  }
+
+  const labels = new Map();
+  for (const trip of list) {
+    if (!trip?.id) continue;
+    labels.set(trip.id, {
+      label: optionLabels.get(trip.id) || trip.destination || "",
+      statusLabel: trip.approvalStatus || "",
+    });
+  }
+  return labels;
+}
 
 /**
  * Pure helper that assembles the unified planning options array from state slices.
@@ -10,9 +42,12 @@ import { mapTripStatus } from "../formatters.js";
  * @param {Object[]} args.safeTrips
  * @param {Object} args.tripStates
  * @param {Object|null} args.activeContext
+ * @param {Map<string, {label?: string, statusLabel?: string}>|null} [args.tripLabels] Per trip id: the
+ *   place line ("Option 2 · Baguio City", as on the Itineraries tabs) and the status from the trip list.
+ *   A trip missing from the map keeps the label and status read from its own state.
  * @returns {Object[]}
  */
-export function buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext }) {
+export function buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext, tripLabels = null }) {
   const drafts = draftThreadOrder.map((id, i) => {
     const s = draftThreadStates[id];
     if (!s) return null;
@@ -35,8 +70,8 @@ export function buildPlanningOptions({ draftThreadOrder, draftThreadStates, safe
     id: t.id,
     clientName: t.clientName,
     label: t.clientName,
-    destination: t.destination,
-    statusLabel: t.approvalStatus || t.status || "Client trip",
+    destination: tripLabels?.get(t.id)?.label || t.destination,
+    statusLabel: tripLabels?.get(t.id)?.statusLabel || t.approvalStatus || t.status || "Client trip",
     tripId: t.id,
     threadId: tripStates[t.id]?.threadId ?? null,
     assignedOrganizer: t.assignedOrganizer,
@@ -51,8 +86,8 @@ export function buildPlanningOptions({ draftThreadOrder, draftThreadStates, safe
       id: tripId,
       clientName: state.title || state.itinerary?.title || state.itinerary?.trip?.clientName || "Client trip",
       label: state.title || "Client trip",
-      destination: state.itinerary?.trip?.destination || state.itinerary?.trip?.destinationSummary || "",
-      statusLabel: mapTripStatus(state.itinerary?.trip?.status ?? "APPROVED_INTERNAL"),
+      destination: tripLabels?.get(tripId)?.label || state.itinerary?.trip?.destination || state.itinerary?.trip?.destinationSummary || "",
+      statusLabel: tripLabels?.get(tripId)?.statusLabel || mapTripStatus(state.itinerary?.trip?.status ?? "APPROVED_INTERNAL"),
       tripId,
       threadId: state.threadId ?? null,
       createdAt: state.createdAt ?? null,

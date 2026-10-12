@@ -26,7 +26,7 @@ import {
 import { buildPlaceEntities, getItineraryPlaceEntityId } from "../../lib/trip-dashboard/placeEntities.js";
 import { getSavedItineraryTrips } from "../../lib/trip-dashboard/savedItineraries.js";
 import { toPortfolioTrip } from "../../lib/trip-dashboard/portfolioTrips.js";
-import { buildPlanningOptions } from "../../lib/trip-dashboard/planningOptions.js";
+import { buildPlanningOptions, buildTripPickerLabels } from "../../lib/trip-dashboard/planningOptions.js";
 import { resolveVisibleTab } from "../../lib/deepLinks.js";
 import { normalizeTravelerNeeds } from "../../lib/accessibility/travelerNeeds.js";
 
@@ -414,9 +414,11 @@ export default function HomePage({
     saveNeeds(next);
   };
 
+  // The picker names a client's trips to one place like the Itineraries tabs do ("Option 2 · Baguio City").
+  const tripLabels = useMemo(() => buildTripPickerLabels(fetchedTrips), [fetchedTrips]);
   const planningOptions = useMemo(
-    () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext }),
-    [draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext],
+    () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext, tripLabels }),
+    [draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext, tripLabels],
   );
 
   const activeOption = useMemo(() => activeContext ? planningOptions.find(o => o.type === activeContext.type && o.id === activeContext.id) : planningOptions[0], [activeContext, planningOptions]);

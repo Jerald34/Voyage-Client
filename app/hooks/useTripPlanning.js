@@ -195,7 +195,9 @@ export function useTripPlanning(agencyId) {
       }
 
       const hydrated = await hydrateContext(agencyId, threadId, itineraryId);
+      // Keep the fields the entry was seeded with (createdAt, status): the Planner picker sorts on createdAt.
       const nextState = {
+        ...existingState,
         threadId,
         messages: hydrated.messages,
         itinerary: hydrated.itinerary ?? existingState?.itinerary ?? null,

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // HomePage's own suite fails to import in the baseline, so this wiring test carries its own mocks
@@ -60,6 +60,7 @@ vi.mock("../app/lib/api/client.js", () => ({
 }));
 
 const api = vi.hoisted(() => ({
+  bootstrapAgentWorkspace: vi.fn(),
   createAgentThread: vi.fn(),
   duplicateClientTrip: vi.fn(),
   listAgencyTrips: vi.fn(),
@@ -67,13 +68,15 @@ const api = vi.hoisted(() => ({
   fetchItineraryDraft: vi.fn(),
 }));
 
+// trip-1 is the original; trip-2 is the copy the server makes, a day-and-a-bit newer.
+const CREATED = { "trip-1": "2026-10-01T02:00:00Z", "trip-2": "2026-10-12T03:00:00Z" };
 const serverTrip = (id, itineraryId) => ({
   id,
   clientName: "Alice",
   title: "Alice itinerary",
   destinationSummary: "Baguio City",
   status: "IN_REVIEW",
-  createdAt: "2026-10-12T02:00:00Z",
+  createdAt: CREATED[id],
   itineraries: [{ id: itineraryId, version: 1 }],
 });
 
@@ -84,11 +87,7 @@ vi.mock("../app/lib/api/index.js", async (importOriginal) => ({
   listAgencyTrips: api.listAgencyTrips,
   fetchThreadMessages: api.fetchThreadMessages,
   fetchItineraryDraft: api.fetchItineraryDraft,
-  bootstrapAgentWorkspace: async () => ({
-    trips: [serverTrip("trip-1", "iter-1")],
-    threads: [],
-    itinerarySummaries: {},
-  }),
+  bootstrapAgentWorkspace: api.bootstrapAgentWorkspace,
 }));
 
 import HomePage from "../app/components/trip-dashboard/HomePage.jsx";
@@ -114,9 +113,15 @@ beforeEach(() => {
   localStorage.setItem(tourStorageKey("user-owner"), "true");
   if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn();
   vi.spyOn(console, "error").mockImplementation(() => {});
+  api.bootstrapAgentWorkspace.mockResolvedValue({
+    trips: [serverTrip("trip-1", "iter-1")],
+    threads: [{ id: "thread-1", tripId: "trip-1", itineraryId: "iter-1", createdAt: CREATED["trip-1"] }],
+    itinerarySummaries: { "iter-1": { id: "iter-1", title: "Alice itinerary" } },
+  });
   api.fetchThreadMessages.mockResolvedValue({ messages: [] });
-  api.fetchItineraryDraft.mockResolvedValue(null);
-  api.listAgencyTrips.mockResolvedValue({ trips: [serverTrip("trip-1", "iter-1"), serverTrip("trip-2", "iter-2")] });
+  // The itinerary GET answers with the itinerary's own fields; the trip's place is not among them.
+  api.fetchItineraryDraft.mockImplementation(async (_agencyId, id) => ({ id, title: "Alice itinerary" }));
+  api.listAgencyTrips.mockResolvedValue({ trips: [serverTrip("trip-2", "iter-2"), serverTrip("trip-1", "iter-1")] });
 });
 
 async function clickAnotherOption() {
@@ -142,6 +147,29 @@ describe("HomePage: Another option on the Itineraries page", () => {
     await waitFor(() => expect(api.fetchThreadMessages).toHaveBeenCalledWith("agency-1", "thread-2", { limit: 50 }));
     expect(api.fetchItineraryDraft).toHaveBeenCalledWith("agency-1", "iter-2");
     expect(api.createAgentThread).not.toHaveBeenCalled();
+  });
+
+  it("tells the original from the copy in the Planner's trip picker, newest first", async () => {
+    api.duplicateClientTrip.mockResolvedValue({
+      trip: { id: "trip-2" },
+      itinerary: { id: "iter-2" },
+      thread: { id: "thread-2", tripId: "trip-2", title: "Alice itinerary", travelerNeeds: null, createdAt: CREATED["trip-2"] },
+    });
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+    await screen.findByText(/New option created/);
+    // Both threads have loaded: the copy keeps the creation time it was seeded with, so it stays on top.
+    await waitFor(() => expect(api.fetchItineraryDraft).toHaveBeenCalledWith("agency-1", "iter-2"));
+    fireEvent.click(await screen.findByRole("button", { name: /^Current client/ }));
+
+    const options = within(await screen.findByRole("listbox")).getAllByRole("option");
+    await waitFor(() => expect(options[0]).toHaveTextContent("Option 2 · Baguio City"));
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveTextContent("Alice itinerary");
+    expect(options[0]).toHaveTextContent("In review");
+    expect(options[1]).toHaveTextContent("Alice itinerary");
+    expect(options[1]).toHaveTextContent("Option 1 · Baguio City");
   });
 
   it("asks to save the trip first when the server refuses an unsaved or archived trip", async () => {
