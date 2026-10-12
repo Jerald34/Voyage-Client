@@ -31,7 +31,7 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
   const [supportOpen, setSupportOpen] = useState(false);
   const [reportSent, setReportSent] = useState(false);
   const supportButtonRef = useRef(null);
-  // The server caps a report subject at 150 chars; the longest prefix is 18, so 125 leaves room.
+  // The server caps a report subject at 150 chars; the longest prefix is 20, so 125 leaves room.
   const agencyLabel = (agency.name || "my agency").slice(0, 125);
   const supportSubject = isSuspended ? `Suspended agency: ${agencyLabel}` : `Agency application: ${agencyLabel}`;
 
