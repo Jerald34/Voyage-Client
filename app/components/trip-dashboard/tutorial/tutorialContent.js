@@ -2,9 +2,6 @@
 // agency members get the Dashboard, super admins get Admin, everyone gets the Planner,
 // Itineraries and where to replay the tour.
 
-// Still read by useTourFlow until Task 5 of the 2026-10-12 plan switches it to tourStorageKey.
-export const VOYAGE_TOUR_STORAGE_KEY = "voyage-tour-completed-v2";
-
 const TOUR_STORAGE_PREFIX = "voyage-tour-completed-v3";
 
 /** The "seen the tour" flag, per account, so a new account on a shared browser still gets the tour. */

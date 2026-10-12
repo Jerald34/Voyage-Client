@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider";
-import { voyageTourHelpBullets, voyageTourSteps } from "../tutorial/tutorialContent.js";
+import { buildTourSteps, voyageTourHelpBullets } from "../tutorial/tutorialContent.js";
 import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
 import TeamPage from "../../team/TeamPage.jsx";
@@ -105,6 +105,11 @@ export default function SettingsPage({
 }) {
   const { theme, setTheme } = useTheme();
   const isPersonal = user?.accountType === "PERSONAL";
+  // The quick reference lists this person's own tour, minus the welcome card.
+  const tourSteps = useMemo(
+    () => buildTourSteps({ user, agencyId: agency?.id ?? null }).filter((step) => step.target),
+    [user, agency?.id],
+  );
 
   const [displayName, setDisplayName] = useState("");
   const [savedDisplayName, setSavedDisplayName] = useState("");
@@ -452,7 +457,7 @@ export default function SettingsPage({
         <Panel
           eyebrow="Help"
           title="First-use tutorial"
-          description="Replay the homepage walkthrough anytime or use the quick reference below to remember where each action lives."
+          description="Replay the walkthrough any time, or use the quick reference below to find where each action lives."
           className="xl:col-span-2"
         >
           <div className="grid gap-4 rounded-[22px] border border-border bg-surface/80 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -489,10 +494,10 @@ export default function SettingsPage({
             <div className="min-w-0">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-soft">Quick steps</p>
-                <p className="hidden text-xs text-text-soft lg:block">{voyageTourSteps.length} guided stops</p>
+                <p className="hidden text-xs text-text-soft lg:block">{tourSteps.length} guided stops</p>
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-                {voyageTourSteps.map((step, index) => (
+                {tourSteps.map((step, index) => (
                   <article
                     key={step.title}
                     className="min-h-[148px] rounded-2xl border border-border bg-background px-3.5 py-3"

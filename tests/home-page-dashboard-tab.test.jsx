@@ -72,6 +72,7 @@ vi.mock("../app/lib/api/client.js", () => ({
 }));
 
 import HomePage from "../app/components/trip-dashboard/HomePage.jsx";
+import { tourStorageKey } from "../app/components/trip-dashboard/tutorial/tutorialContent.js";
 
 const JOINED_NOTICE = "You joined this agency. Your workspace access is ready.";
 
@@ -93,7 +94,8 @@ function agencyUser(role) {
 
 beforeEach(() => {
   localStorage.clear();
-  localStorage.setItem("voyage-tour-completed-v2", "true");
+  // Every account these tests sign in with has already seen the tour.
+  for (const id of ["user-owner", "user-staff", "user-new"]) localStorage.setItem(tourStorageKey(id), "true");
 });
 
 describe("HomePage Dashboard tab", () => {

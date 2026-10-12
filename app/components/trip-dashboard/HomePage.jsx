@@ -292,7 +292,7 @@ export default function HomePage({
     closeFirstUseTutorial,
     replayFirstUseTutorial,
     handleFirstUseTutorialStepChange,
-  } = useTourFlow({ user, cipTourState, setActiveTab, setIsSidebarOpen });
+  } = useTourFlow({ user, agencyId, cipTourState, setActiveTab, setIsSidebarOpen });
 
   const persistUser = useCallback((nextUserOrUpdater) => {
     setUser((currentUser) => {
