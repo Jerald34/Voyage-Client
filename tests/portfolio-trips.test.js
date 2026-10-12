@@ -31,4 +31,9 @@ describe("toPortfolioTrip", () => {
     const row = toPortfolioTrip({ id: "t", title: "Weekend", status: "ARCHIVED", itineraries: [] });
     expect(row).toMatchObject({ destination: "Weekend", status: "archived", itineraryId: null, createdAt: null });
   });
+
+  it("falls back to the title when the destination summary is blank", () => {
+    const row = toPortfolioTrip({ id: "t", title: "Weekend", destinationSummary: "   ", itineraries: [] });
+    expect(row.destination).toBe("Weekend");
+  });
 });

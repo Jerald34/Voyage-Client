@@ -6,7 +6,7 @@ export function toPortfolioTrip(trip) {
   return {
     id: trip.id,
     clientName: trip.clientName ?? null,
-    destination: trip.destinationSummary ?? trip.title,
+    destination: trip.destinationSummary?.trim() || trip.title,
     travelWindow: formatTripDates(trip.startDate, trip.endDate),
     status: trip.status?.toLowerCase() === "archived" ? "archived" : "active",
     approvalStatus: mapTripStatus(trip.status),
