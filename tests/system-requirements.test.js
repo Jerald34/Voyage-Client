@@ -18,7 +18,7 @@ describe("isBrowserSupported", () => {
 
   it("rejects a browser with no CSS object at all", () => {
     expect(isBrowserSupported({})).toBe(false);
-    expect(isBrowserSupported(undefined)).toBe(false);
+    expect(isBrowserSupported(null)).toBe(false);
   });
 });
 

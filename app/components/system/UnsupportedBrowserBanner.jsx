@@ -35,8 +35,9 @@ export default function UnsupportedBrowserBanner({ check = isBrowserSupported })
 
   return (
     <div
-      role="status"
-      className="fixed inset-x-0 top-0 z-[200] flex items-start justify-center gap-3 border-b border-status-warning bg-surface px-4 py-3 text-sm text-text-primary shadow-strong"
+      role="region"
+      aria-label="Browser support warning"
+      className="fixed inset-x-0 top-0 z-[200] flex items-start justify-center gap-3 border-b border-status-warning bg-surface px-4 py-3 text-sm text-text-primary shadow-strong print:hidden"
     >
       <p className="m-0 max-w-3xl">
         Your browser is older than Voyage supports, so some screens may not work. Voyage needs {MINIMUM_BROWSERS} or newer.
