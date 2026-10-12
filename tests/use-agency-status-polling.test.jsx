@@ -226,3 +226,56 @@ describe("useAgencyStatusPolling", () => {
     expect(api.fetchApi).not.toHaveBeenCalled();
   });
 });
+
+describe("useAgencyStatusPolling session end", () => {
+  it("calls onUnauthorized once on a 401 and stops polling", async () => {
+    const authError = Object.assign(new Error("Sign in is required."), { status: 401 });
+    api.fetchApi.mockRejectedValue(authError);
+    const onUser = vi.fn();
+    const onUnauthorized = vi.fn();
+    renderHook(() => useAgencyStatusPolling({ enabled: true, onUser, onUnauthorized }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AGENCY_STATUS_POLL_MS);
+    });
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AGENCY_STATUS_POLL_MS * 3);
+      window.dispatchEvent(new Event("focus"));
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(api.fetchApi).toHaveBeenCalledTimes(1);
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    expect(onUser).not.toHaveBeenCalled();
+  });
+
+  it("ignores a 500 and keeps polling", async () => {
+    const serverError = Object.assign(new Error("Server error"), { status: 500 });
+    api.fetchApi.mockRejectedValueOnce(serverError);
+    const onUser = vi.fn();
+    const onUnauthorized = vi.fn();
+    renderHook(() => useAgencyStatusPolling({ enabled: true, onUser, onUnauthorized }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AGENCY_STATUS_POLL_MS);
+    });
+    expect(onUnauthorized).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AGENCY_STATUS_POLL_MS);
+    });
+    expect(onUser).toHaveBeenCalledTimes(1);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it("does not throw on a 401 when no onUnauthorized is given", async () => {
+    api.fetchApi.mockRejectedValue(Object.assign(new Error("Sign in is required."), { status: 401 }));
+    renderHook(() => useAgencyStatusPolling({ enabled: true, onUser: vi.fn() }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AGENCY_STATUS_POLL_MS);
+    });
+    expect(api.fetchApi).toHaveBeenCalledTimes(1);
+  });
+});
