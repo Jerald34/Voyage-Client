@@ -117,4 +117,24 @@ describe("public share PDF", () => {
     expect(link).toHaveAttribute("href", "blob:fallback");
     expect(link).toHaveAttribute("target", "_blank");
   });
+
+  it("passes the agency's logo and the client's name to the PDF", async () => {
+    api.fetchPublicItinerary.mockResolvedValue(
+      share({ type: "agency", name: "Island Hops Travel", logoUrl: "https://cdn.example.com/hops.png" }),
+    );
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(
+      expect.objectContaining({ logoUrl: "https://cdn.example.com/hops.png", clientName: "Garcia" }),
+    );
+  });
+
+  it("sends no logo for a personal share", async () => {
+    api.fetchPublicItinerary.mockResolvedValue(share({ type: "personal", displayName: "Ana" }));
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ logoUrl: null }));
+  });
 });

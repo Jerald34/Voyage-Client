@@ -894,6 +894,7 @@ export default function HomePage({
             <ClientItineraryPage
               agencyTrips={tripsForCip}
               agencyId={agencyId}
+              agencyName={activeAgency?.name ?? null}
               onTourStateChange={setCipTourState}
               tourMobilePaneOverride={tourMobilePaneOverride}
               onAddTripForClient={(clientName) => {

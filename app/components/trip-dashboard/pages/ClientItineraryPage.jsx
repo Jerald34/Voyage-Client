@@ -80,6 +80,8 @@ export default function ClientItineraryPage({
   tourMobilePaneOverride = null,
   onAddTripForClient,
   onTripStatusChange,
+  // The signed-in agency's name, printed on the PDF; Voyage's own brand when missing.
+  agencyName = null,
 }) {
   const { theme } = useTheme();
   const [selectedClientId, setSelectedClientId] = useState(null);
@@ -433,10 +435,11 @@ export default function ClientItineraryPage({
             dateRange: tripDateRange,
             travelerCount,
             days: attachWeatherToDays(safeDays, itineraryWeather.byDayId),
-            agencyName: "Voyage",
+            agencyName: agencyName || "Voyage",
+            clientName: selectedTrip?.clientName ?? null,
           }
         : null,
-    [fullItinerary, itineraryIsCurrent, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId],
+    [fullItinerary, itineraryIsCurrent, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId, agencyName, selectedTrip?.clientName],
   );
   const itineraryPdf = useItineraryPdf(pdfInput);
   // Spinner only while a build is under way: no itinerary means no build (the hook

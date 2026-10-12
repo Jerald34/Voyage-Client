@@ -417,6 +417,9 @@ export default function PublicItineraryPage() {
       days: attachWeatherToDays(data.itinerary.days, shareWeather.byDayId),
       // The PDF carries the brand the page header shows.
       agencyName: agencyBrand || "Voyage",
+      // The share header's logo and the client the agency shared it with.
+      logoUrl: data.brand?.type === "agency" ? data.brand.logoUrl ?? null : null,
+      clientName: data.share?.clientName ?? null,
     };
   }, [data, shareWeather.byDayId]);
 
