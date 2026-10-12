@@ -188,6 +188,32 @@ describe("useAgencyStatusPolling", () => {
     expect(onUser).not.toHaveBeenCalled();
   });
 
+  it("ignores a read that carries no user", async () => {
+    api.fetchApi.mockResolvedValue({});
+    const onUser = vi.fn();
+    renderHook(() => useAgencyStatusPolling({ enabled: true, onUser }));
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    expect(api.fetchApi).toHaveBeenCalledTimes(1);
+    expect(onUser).not.toHaveBeenCalled();
+  });
+
+  it("reads once when focus and visibilitychange arrive together", async () => {
+    const onUser = vi.fn();
+    renderHook(() => useAgencyStatusPolling({ enabled: true, onUser }));
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(api.fetchApi).toHaveBeenCalledTimes(1);
+    expect(onUser).toHaveBeenCalledTimes(1);
+  });
+
   it("stops when unmounted", async () => {
     const { unmount } = renderHook(() => useAgencyStatusPolling({ enabled: true, onUser: vi.fn() }));
     unmount();
