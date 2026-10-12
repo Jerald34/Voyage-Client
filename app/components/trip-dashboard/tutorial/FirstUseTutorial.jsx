@@ -35,6 +35,18 @@ function getCompactViewport() {
 }
 
 function getCoachPosition(rect, step, isCompact) {
+  // A step with nothing to point at (the welcome card) sits in the middle of the window.
+  if (step?.centered) {
+    const viewportWidth = window.innerWidth || 1024;
+    const viewportHeight = window.innerHeight || 768;
+    const top = Math.max(VIEWPORT_PADDING, (viewportHeight - ESTIMATED_CARD_HEIGHT) / 2);
+    if (isCompact) {
+      return { left: VIEWPORT_PADDING, right: VIEWPORT_PADDING, top };
+    }
+    const width = Math.min(CARD_WIDTH, viewportWidth - VIEWPORT_PADDING * 2);
+    return { left: Math.max(VIEWPORT_PADDING, (viewportWidth - width) / 2), top, width };
+  }
+
   const placement = step?.placement;
   if (isCompact) {
     // Per-step explicit override wins.
@@ -323,13 +335,20 @@ export default function FirstUseTutorial({
   }, [onClose, open]);
 
   useEffect(() => {
-    if (!open || !activeStep?.target) {
+    if (!open) {
+      return undefined;
+    }
+    if (!activeStep?.target) {
+      // No target (the welcome card): drop the previous step's spotlight.
+      setTargetRect(null);
       return undefined;
     }
 
     let frameId = 0;
     let scrollSettleTimer = 0;
     let observer = null;
+    let resizeObserver = null;
+    let observedElement = null;
     let didScrollIntoView = false;
 
     const findTarget = () => {
@@ -357,6 +376,15 @@ export default function FirstUseTutorial({
       if (!(targetElement instanceof HTMLElement)) {
         setTargetRect(null);
         return;
+      }
+
+      // The mutation observer below stops after the first measurement, so watch
+      // the target itself: a skeleton swapping for real content changes its size.
+      if (typeof ResizeObserver !== "undefined" && targetElement !== observedElement) {
+        resizeObserver?.disconnect();
+        resizeObserver = new ResizeObserver(() => requestRectUpdate());
+        resizeObserver.observe(targetElement);
+        observedElement = targetElement;
       }
 
       if (!didScrollIntoView) {
@@ -413,6 +441,10 @@ export default function FirstUseTutorial({
         observer.disconnect();
         observer = null;
       }
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+      }
       window.removeEventListener("resize", requestRectUpdate);
       window.removeEventListener("scroll", requestRectUpdate, true);
     };
@@ -456,7 +488,7 @@ export default function FirstUseTutorial({
 
       <div
         className="pointer-events-none fixed rounded-[22px] border-2 border-secondary bg-transparent shadow-[0_0_0_8px_rgba(215,122,97,0.16),0_18px_46px_rgba(0,0,0,0.28)] transition-all duration-200"
-        data-tour-spotlight={activeStep.target}
+        data-tour-spotlight={activeStep.target ?? "none"}
         style={spotlightStyle}
       />
 
@@ -489,14 +521,26 @@ export default function FirstUseTutorial({
           {activeStep.description}
         </p>
 
-        <ul className="mt-4 space-y-2 max-[820px]:mt-3 max-[820px]:space-y-1.5">
-          {activeStep.bullets.map((bullet) => (
-            <li key={bullet} className="flex gap-2 text-sm leading-6 text-white/72 max-[820px]:text-[0.78rem] max-[820px]:leading-5">
-              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-secondary max-[820px]:mt-[7px] max-[820px]:h-1 max-[820px]:w-1" aria-hidden="true" />
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
+        {activeStep.chips?.length ? (
+          <ul aria-label="What the tour covers" className="mt-4 flex flex-wrap gap-1.5 max-[820px]:mt-3">
+            {activeStep.chips.map((chip) => (
+              <li key={chip} className="rounded-pill bg-white/8 px-2.5 py-1 text-xs font-semibold text-white/85">
+                {chip}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {activeStep.bullets?.length ? (
+          <ul className="mt-4 space-y-2 max-[820px]:mt-3 max-[820px]:space-y-1.5">
+            {activeStep.bullets.map((bullet) => (
+              <li key={bullet} className="flex gap-2 text-sm leading-6 text-white/72 max-[820px]:text-[0.78rem] max-[820px]:leading-5">
+                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-secondary max-[820px]:mt-[7px] max-[820px]:h-1 max-[820px]:w-1" aria-hidden="true" />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 max-[820px]:mt-4 max-[820px]:gap-2">
           <button
@@ -530,7 +574,7 @@ export default function FirstUseTutorial({
                 className="min-h-11 rounded-pill bg-secondary px-5 text-sm font-semibold text-white transition hover:brightness-110 max-[820px]:min-h-10 max-[820px]:px-4 max-[820px]:text-[0.78rem]"
                 onClick={() => setActiveIndex((current) => Math.min(current + 1, steps.length - 1))}
               >
-                Next
+                {activeStep.nextLabel ?? "Next"}
               </button>
             )}
           </div>
