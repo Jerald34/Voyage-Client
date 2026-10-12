@@ -394,11 +394,7 @@ export async function generateItineraryPdf({
   /* ── Day-by-day content ───────────────────────────────────── */
 
   safeDays.forEach((day, di) => {
-    const dayDate = formatLongDate(day?.date);
-    const dayTitle = String(day?.title ?? "").trim();
-    let dayLabel = `Day ${day?.dayNumber || di + 1}`;
-    if (dayDate) dayLabel += `  ·  ${dayDate}`;
-    if (dayTitle) dayLabel += `  —  ${dayTitle}`;
+    const dayLabel = buildDayLabel(day, di);
     const labelLines = measure(dayLabel, 11, "bold", contentWidth - 8);
     const weatherLines = measure(describeDayWeather(day?.weatherEntry)?.pdfText ?? "", 8.5, "normal", contentWidth);
     const barHeight = 3 + labelLines.length * 5;
@@ -483,7 +479,18 @@ function formatShortDate(value) {
   return date ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
 }
 
-function buildTimeLabel(item) {
+/** The navy day bar's text: "Day 2  ·  Sat, Oct 10, 2026  —  Views & Shopping". The landing page quotes it. */
+export function buildDayLabel(day, index = 0) {
+  const dayDate = formatLongDate(day?.date);
+  const dayTitle = String(day?.title ?? "").trim();
+  let dayLabel = `Day ${day?.dayNumber || index + 1}`;
+  if (dayDate) dayLabel += `  ·  ${dayDate}`;
+  if (dayTitle) dayLabel += `  —  ${dayTitle}`;
+  return dayLabel;
+}
+
+/** A stop's time column: "9:00 AM – 10:00 AM", "Ends 5:00 PM", or "". The landing page quotes it. */
+export function buildTimeLabel(item) {
   if (!item) return "";
   const fmt = (t) => {
     if (!t) return "";

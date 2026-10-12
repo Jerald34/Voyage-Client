@@ -3,21 +3,22 @@
 import { useItineraryPdf } from "../../../hooks/useItineraryPdf.js";
 import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice";
 import { DownloadIcon, PrinterIcon } from "../../icons/index.js";
-import { formatTimeRange } from "../../../itinerary/view/[token]/components/stopDisplay.jsx";
+import { buildDayLabel, buildTimeLabel } from "../../../lib/pdfExport.js";
 import { describeDayWeather, describeStopWeather } from "../../../lib/weather/weatherDisplay.js";
 import { SAMPLE_PDF_INPUT, getSampleDay, getSampleDayWeather } from "../sample/sampleTrip.js";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "../landingClasses.js";
 
 const DAY = getSampleDay(2);
 const ENTRY = getSampleDayWeather(DAY);
-const DAY_LINE = describeDayWeather(ENTRY)?.pdfText ?? "";
+const DAY_LABEL = buildDayLabel(DAY);
+const DAY_WEATHER = describeDayWeather(ENTRY)?.pdfText ?? "";
 
-// pdfExport.js prints each stop as its time followed by the stop's weather ("1:30 PM – 3:00 PM  ·  Rain
-// likely (…)"), then the title on the line below. Same helpers, same order, so this quotes the file.
+// pdfExport.js draws a navy day bar ("Day 2  ·  Sat, Oct 10, 2026  —  title") with the day's weather under it.
+// Each stop is its time in a left column, then the title, then the stop's weather on its own line. The
+// same helpers build the same strings, so this quotes the file.
 const STOPS = DAY.items.map((item) => {
-  const time = formatTimeRange(item.startTime, item.endTime);
-  const weather = time ? describeStopWeather(ENTRY, item.id)?.pdfText : "";
-  return { id: item.id, title: item.title, line: weather ? `${time} · ${weather}` : time };
+  const time = buildTimeLabel(item);
+  return { id: item.id, time, title: item.title, weather: time ? describeStopWeather(ENTRY, item.id)?.pdfText ?? "" : "" };
 });
 
 const BUTTON_DISABLED = "disabled:cursor-not-allowed disabled:opacity-60";
@@ -42,16 +43,15 @@ export default function SamplePdfDemo() {
       <PdfDeliveryNotice status={pdf.status} fallbackUrl={pdf.fallbackUrl} />
       <div className="grid gap-2 rounded-md border border-border/15 bg-background px-4 py-3">
         <p className="m-0 text-[12px] font-semibold text-text-muted">What the PDF says for day 2</p>
-        <p className="m-0 text-sm font-semibold text-text-primary">
-          Day {DAY.dayNumber} · {DAY.title}
-        </p>
-        <p className="m-0 text-sm text-text-muted">{DAY_LINE}</p>
+        <p className="m-0 whitespace-pre-wrap text-sm font-semibold text-text-primary">{DAY_LABEL}</p>
+        <p className="m-0 text-sm text-text-muted">{DAY_WEATHER}</p>
         {/* role="list": list-style:none drops list semantics in Safari/VoiceOver. */}
         <ol role="list" className="m-0 grid list-none gap-2 p-0">
           {STOPS.map((stop) => (
             <li key={stop.id} className="grid gap-0.5">
-              <p className="m-0 text-sm text-text-muted">{stop.line}</p>
+              {stop.time ? <p className="m-0 text-sm text-text-muted">{stop.time}</p> : null}
               <p className="m-0 text-sm font-semibold text-text-primary">{stop.title}</p>
+              {stop.weather ? <p className="m-0 text-sm text-text-muted">{stop.weather}</p> : null}
             </li>
           ))}
         </ol>
