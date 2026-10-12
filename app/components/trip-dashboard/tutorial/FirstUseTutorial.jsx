@@ -13,6 +13,8 @@ const FOCUSABLE_SELECTOR = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
+const PRIMARY_SELECTOR = "[data-tour-primary]";
+
 const VIEWPORT_PADDING = 16;
 const CARD_WIDTH = 370;
 const CARD_GAP = 18;
@@ -35,16 +37,20 @@ function getCompactViewport() {
 }
 
 function getCoachPosition(rect, step, isCompact) {
-  // A step with nothing to point at (the welcome card) sits in the middle of the window.
+  // A step with nothing to point at (the welcome card) sits in the middle of the
+  // window. CSS does the centring, so it stays put when the window resizes or
+  // the phone rotates; the card's max-height keeps it on screen.
   if (step?.centered) {
-    const viewportWidth = window.innerWidth || 1024;
-    const viewportHeight = window.innerHeight || 768;
-    const top = Math.max(VIEWPORT_PADDING, (viewportHeight - ESTIMATED_CARD_HEIGHT) / 2);
     if (isCompact) {
-      return { left: VIEWPORT_PADDING, right: VIEWPORT_PADDING, top };
+      return { left: VIEWPORT_PADDING, right: VIEWPORT_PADDING, top: "50%", transform: "translateY(-50%)" };
     }
-    const width = Math.min(CARD_WIDTH, viewportWidth - VIEWPORT_PADDING * 2);
-    return { left: Math.max(VIEWPORT_PADDING, (viewportWidth - width) / 2), top, width };
+    return {
+      left: "50%",
+      top: "50%",
+      transform: "translate(-50%, -50%)",
+      width: CARD_WIDTH,
+      maxWidth: `calc(100vw - ${VIEWPORT_PADDING * 2}px)`,
+    };
   }
 
   const placement = step?.placement;
@@ -262,9 +268,10 @@ export default function FirstUseTutorial({
 
     window.setTimeout(() => {
       const dialog = dialogRef.current;
-      const firstFocusable = dialog?.querySelector(FOCUSABLE_SELECTOR);
-      if (firstFocusable instanceof HTMLElement) {
-        firstFocusable.focus();
+      // Land on Next / Start tour so Enter moves on rather than skipping the tour.
+      const initialFocus = dialog?.querySelector(PRIMARY_SELECTOR) ?? dialog?.querySelector(FOCUSABLE_SELECTOR);
+      if (initialFocus instanceof HTMLElement) {
+        initialFocus.focus();
       } else {
         dialog?.focus();
       }
@@ -278,6 +285,22 @@ export default function FirstUseTutorial({
       previousFocusRef.current = null;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    // A step change can leave focus nowhere (Back disables itself on the first
+    // step); bring it back to the primary button.
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.contains(document.activeElement)) {
+      const primary = dialog.querySelector(PRIMARY_SELECTOR);
+      if (primary instanceof HTMLElement) {
+        primary.focus();
+      }
+    }
+  }, [activeIndex, open]);
 
   useEffect(() => {
     if (!open) {
@@ -339,9 +362,14 @@ export default function FirstUseTutorial({
       return undefined;
     }
     if (!activeStep?.target) {
-      // No target (the welcome card): drop the previous step's spotlight.
+      // No target (the welcome card): drop the previous step's spotlight, and
+      // keep the compact/desktop layout in step with the window.
       setTargetRect(null);
-      return undefined;
+      const handleResize = () => setIsCompact(getCompactViewport());
+      window.addEventListener("resize", handleResize);
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
     }
 
     let frameId = 0;
@@ -402,12 +430,23 @@ export default function FirstUseTutorial({
         setTargetRect(null);
         return;
       }
-      setTargetRect({
+      const measured = {
         top: nextRect.top,
         left: nextRect.left,
         width: nextRect.width,
         height: nextRect.height,
-      });
+      };
+      // Keep the previous object when nothing moved, so the settle timer and the
+      // resize observer don't re-render the overlay for nothing.
+      setTargetRect((previous) =>
+        previous &&
+        previous.top === measured.top &&
+        previous.left === measured.left &&
+        previous.width === measured.width &&
+        previous.height === measured.height
+          ? previous
+          : measured,
+      );
       setIsCompact(getCompactViewport());
 
       if (observer) {
@@ -450,16 +489,19 @@ export default function FirstUseTutorial({
     };
   }, [activeStep, open]);
 
+  // targetRect lags a frame behind a step change; a step with no target never shows it.
+  const visibleRect = activeStep?.target ? targetRect : null;
+
   const coachStyle = useMemo(() => {
     if (!open || !activeStep) {
       return {};
     }
 
-    return getCoachPosition(targetRect, activeStep, isCompact);
-  }, [activeStep, isCompact, open, targetRect]);
+    return getCoachPosition(visibleRect, activeStep, isCompact);
+  }, [activeStep, isCompact, open, visibleRect]);
 
   const spotlightStyle = useMemo(() => {
-    if (!targetRect) {
+    if (!visibleRect) {
       return {
         display: "none",
       };
@@ -467,12 +509,12 @@ export default function FirstUseTutorial({
 
     const inset = isCompact ? 4 : 8;
     return {
-      top: Math.max(8, targetRect.top - inset),
-      left: Math.max(8, targetRect.left - inset),
-      width: Math.max(44, targetRect.width + inset * 2),
-      height: Math.max(44, targetRect.height + inset * 2),
+      top: Math.max(8, visibleRect.top - inset),
+      left: Math.max(8, visibleRect.left - inset),
+      width: Math.max(44, visibleRect.width + inset * 2),
+      height: Math.max(44, visibleRect.height + inset * 2),
     };
-  }, [isCompact, targetRect]);
+  }, [isCompact, visibleRect]);
 
   const handleClose = useCallback(() => {
     onClose?.();
@@ -496,7 +538,7 @@ export default function FirstUseTutorial({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="first-use-tutorial-title"
+        aria-labelledby="first-use-tutorial-title first-use-tutorial-step-title"
         aria-describedby="first-use-tutorial-description"
         tabIndex={-1}
         className="fixed z-10 max-h-[calc(100dvh-32px)] overflow-y-auto rounded-[22px] border border-white/12 bg-[#0b171e] p-4 text-white shadow-[0_24px_80px_rgba(2,8,23,0.5)] outline-none max-[820px]:max-h-[calc(100dvh-20px)] max-[820px]:rounded-[20px] max-[820px]:p-3"
@@ -514,7 +556,7 @@ export default function FirstUseTutorial({
           <TutorialProgress activeIndex={activeIndex} steps={steps} />
         </div>
 
-        <h3 className="mt-4 text-lg font-semibold leading-6 tracking-[-0.01em] text-white max-[820px]:mt-3 max-[820px]:text-[0.98rem] max-[820px]:leading-5">
+        <h3 id="first-use-tutorial-step-title" className="mt-4 text-lg font-semibold leading-6 tracking-[-0.01em] text-white max-[820px]:mt-3 max-[820px]:text-[0.98rem] max-[820px]:leading-5">
           {activeStep.title}
         </h3>
         <p id="first-use-tutorial-description" className="mt-2 text-sm leading-6 text-white/70 max-[820px]:mt-1.5 max-[820px]:text-[0.78rem] max-[820px]:leading-5">
@@ -522,7 +564,7 @@ export default function FirstUseTutorial({
         </p>
 
         {activeStep.chips?.length ? (
-          <ul aria-label="What the tour covers" className="mt-4 flex flex-wrap gap-1.5 max-[820px]:mt-3">
+          <ul role="list" aria-label="What the tour covers" className="mt-4 flex flex-wrap gap-1.5 max-[820px]:mt-3">
             {activeStep.chips.map((chip) => (
               <li key={chip} className="rounded-pill bg-white/8 px-2.5 py-1 text-xs font-semibold text-white/85">
                 {chip}
@@ -532,7 +574,7 @@ export default function FirstUseTutorial({
         ) : null}
 
         {activeStep.bullets?.length ? (
-          <ul className="mt-4 space-y-2 max-[820px]:mt-3 max-[820px]:space-y-1.5">
+          <ul role="list" className="mt-4 space-y-2 max-[820px]:mt-3 max-[820px]:space-y-1.5">
             {activeStep.bullets.map((bullet) => (
               <li key={bullet} className="flex gap-2 text-sm leading-6 text-white/72 max-[820px]:text-[0.78rem] max-[820px]:leading-5">
                 <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-secondary max-[820px]:mt-[7px] max-[820px]:h-1 max-[820px]:w-1" aria-hidden="true" />
@@ -564,6 +606,7 @@ export default function FirstUseTutorial({
               <button
                 type="button"
                 className="min-h-11 rounded-pill bg-secondary px-5 text-sm font-semibold text-white transition hover:brightness-110 max-[820px]:min-h-10 max-[820px]:px-4 max-[820px]:text-[0.78rem]"
+                data-tour-primary
                 onClick={handleClose}
               >
                 Finish tutorial
@@ -572,6 +615,7 @@ export default function FirstUseTutorial({
               <button
                 type="button"
                 className="min-h-11 rounded-pill bg-secondary px-5 text-sm font-semibold text-white transition hover:brightness-110 max-[820px]:min-h-10 max-[820px]:px-4 max-[820px]:text-[0.78rem]"
+                data-tour-primary
                 onClick={() => setActiveIndex((current) => Math.min(current + 1, steps.length - 1))}
               >
                 {activeStep.nextLabel ?? "Next"}

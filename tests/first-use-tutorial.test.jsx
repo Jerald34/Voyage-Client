@@ -63,10 +63,50 @@ describe("FirstUseTutorial welcome card", () => {
     expect(within(dialog).queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
   });
 
-  it("centres the card in the window", () => {
+  it("centres the card with CSS, so it needs no measured window size", () => {
     renderTour();
-    // jsdom's window is 1024 x 768; the card is 370 wide and estimated 310 tall.
-    expect(screen.getByRole("dialog")).toHaveStyle({ left: "327px", top: "229px" });
+    expect(screen.getByRole("dialog")).toHaveStyle({
+      left: "50%",
+      top: "50%",
+      transform: "translate(-50%, -50%)",
+      width: "370px",
+      maxWidth: "calc(100vw - 32px)",
+    });
+  });
+
+  it("switches the centred card to the full-width layout when the window turns narrow", async () => {
+    let compact = false;
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: compact,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    renderTour();
+    expect(screen.getByRole("dialog")).toHaveStyle({ left: "50%", transform: "translate(-50%, -50%)" });
+
+    // A phone rotating (or a window shrinking) fires resize with no step change.
+    compact = true;
+    fireEvent(window, new Event("resize"));
+
+    await waitFor(() =>
+      expect(screen.getByRole("dialog")).toHaveStyle({
+        left: "16px",
+        right: "16px",
+        top: "50%",
+        transform: "translateY(-50%)",
+      }),
+    );
+  });
+
+  it("puts focus on Start tour, so Enter begins the tour instead of skipping it", async () => {
+    renderTour();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Start tour" })).toHaveFocus());
+  });
+
+  it("names the dialog after the current step", () => {
+    renderTour();
+    expect(screen.getByRole("dialog", { name: /Welcome to Voyage, Ana/ })).toBeInTheDocument();
   });
 
   it("has no spotlight on the welcome card", () => {
@@ -119,10 +159,21 @@ describe("FirstUseTutorial welcome card", () => {
     // 80px target + 8px inset on each side.
     await waitFor(() => expect(spotlight()).toHaveStyle({ height: "96px" }));
 
-    // The real content swaps in and the target grows; only the ResizeObserver can tell us.
-    targetHeight = 160;
-    observers.find((observer) => observer.observed.includes(target)).callback();
+    // Let the effect's 90ms settle re-measure run first, so it cannot be what picks up the change below.
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
+    // The real content swaps in and the target grows. Nothing but the ResizeObserver notices.
+    targetHeight = 160;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(spotlight()).toHaveStyle({ height: "96px" });
+
+    const observer = observers.find((candidate) => candidate.observed.includes(target));
+    observer.callback();
     await waitFor(() => expect(spotlight()).toHaveStyle({ height: "176px" }));
+
+    // Leaving the step stops observing it.
+    expect(observer.disconnected).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(observer.disconnected).toBe(true));
   });
 });
