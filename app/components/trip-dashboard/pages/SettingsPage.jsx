@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider";
 import { buildTourSteps, voyageTourHelpBullets } from "../tutorial/tutorialContent.js";
 import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
+import PlanUsageCard from "../../settings/PlanUsageCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
 import TeamPage from "../../team/TeamPage.jsx";
 import { createProblemReport } from "../../../lib/api/support.js";
@@ -535,6 +536,17 @@ export default function SettingsPage({
             </button>
           </div>
         </Panel>
+
+        {!isPersonal && membership?.role === "OWNER" && agency?.id ? (
+          <Panel
+            eyebrow="Plan"
+            title="Plan and usage"
+            description="What Voyage would cost your agency, based on this month's real use."
+            className="xl:col-span-2"
+          >
+            <PlanUsageCard agencyId={agency.id} />
+          </Panel>
+        ) : null}
 
         {!isPersonal && agency?.id ? (
           <section
