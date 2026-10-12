@@ -95,7 +95,7 @@ export default function StaffMyWork({
       <div className={DASHBOARD_GRID_CLASS}>
         <div className="min-w-0 space-y-5">
           {/* Tour markers wrap whole sections so the spotlight has a box even while data loads. */}
-          <div data-tour-target="dashboard-needs-you">
+          <div data-tour-target="dashboard-needs-you" className="empty:hidden">
             {data ? <NeedsYouList ref={needsYouRef} items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
           </div>
           <div data-tour-target="dashboard-calendar">
@@ -103,7 +103,7 @@ export default function StaffMyWork({
           </div>
         </div>
         {/* self-start keeps the marker as tall as the column, not the whole grid row. */}
-        <div data-tour-target="dashboard-side" className="min-w-0 self-start">
+        <div data-tour-target="dashboard-side" className="min-w-0 self-start empty:hidden">
           {data ? (
             <MyWorkColumn
               hero={data.hero ?? null}
