@@ -161,4 +161,19 @@ describe("HomePage Dashboard tab", () => {
 
     expect(screen.queryByText(JOINED_NOTICE)).not.toBeInTheDocument();
   });
+
+  it.each([
+    ["OWNER", "dashboard-side", "Insights"],
+    ["STAFF", "dashboard-side", "My work"],
+  ])("marks the %s dashboard's sections for the tour", (role) => {
+    const { container } = render(<HomePage user={agencyUser(role)} initialTab="dashboard" />);
+
+    const needsYou = container.querySelector('[data-tour-target="dashboard-needs-you"]');
+    expect(needsYou).toContainElement(screen.getByRole("heading", { name: "Needs you today" }));
+    expect(container.querySelector('[data-tour-target="dashboard-calendar"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-tour-target="dashboard-side"]')).toBeInTheDocument();
+    for (const target of ["dashboard-needs-you", "dashboard-calendar", "dashboard-side"]) {
+      expect(container.querySelectorAll(`[data-tour-target="${target}"]`)).toHaveLength(1);
+    }
+  });
 });

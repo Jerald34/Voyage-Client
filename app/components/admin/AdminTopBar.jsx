@@ -12,7 +12,7 @@ export default function AdminTopBar({ title, tabs }) {
       style={{ background: "var(--glass-bg)", paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
     >
       <h1 className="font-serif text-2xl text-text-primary sm:text-[1.7rem]">{title}</h1>
-      <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div data-tour-target="admin-sections" className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs}
       </div>
     </div>
