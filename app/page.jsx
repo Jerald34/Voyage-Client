@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import prototypeData from "./data/prototype/trip-dashboard.js";
 import { usePrototypeState } from "./hooks/usePrototypeState.js";
@@ -8,6 +8,7 @@ import { useTripDashboard } from "./hooks/useTripDashboard.js";
 import { useAuth } from "./hooks/useAuth.js";
 import { fetchApi } from "./lib/api/index.js";
 import { resolveInitialView } from "./lib/deepLinks.js";
+import useAgencyStatusPolling from "./hooks/useAgencyStatusPolling.js";
 
 import LandingPage from "./components/landing/LandingPage.jsx";
 import HomePage from "./components/trip-dashboard/HomePage.jsx";
@@ -135,6 +136,19 @@ function HomePageInner() {
       setActiveScreen("trip-brief");
     }
   }, [activeScreen, setActiveScreen, shouldBypassLanding]);
+
+  // While the agency waits (or is rejected/suspended), re-read the user so an
+  // approval opens the app without a manual refresh.
+  const handlePolledUser = useCallback((freshUser) => {
+    localStorage.setItem("voyage-user", JSON.stringify(freshUser));
+    setUser(freshUser);
+    const agency = freshUser?.memberships?.[0]?.agency;
+    if (agency) setAgencyStatus(agency);
+  }, []);
+  useAgencyStatusPolling({
+    enabled: Boolean(agencyStatus) && agencyStatus.status !== "VERIFIED",
+    onUser: handlePolledUser,
+  });
 
   // Show agency status screen for non-verified agencies
   if (agencyStatus && agencyStatus.status !== "VERIFIED") {

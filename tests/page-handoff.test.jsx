@@ -1,5 +1,4 @@
-import { render } from "@testing-library/react";
-import { waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Page from "../app/page.jsx";
@@ -29,10 +28,12 @@ vi.mock("../app/hooks/useAuth.js", () => ({
   useAuth: () => ({ logout: vi.fn() }),
 }));
 
+// Next's real router is referentially stable. A fresh object per render would
+// re-run page.jsx's [authenticatedParam, router] /auth/me effect on every render.
+const stableRouter = { push: (...args) => mockState.routerPush(...args) };
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockState.routerPush,
-  }),
+  useRouter: () => stableRouter,
   useSearchParams: () => ({
     get: (key) => {
       if (key === "authenticated") return mockState.searchParamsAuthenticated;
@@ -45,6 +46,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../app/hooks/usePrototypeState.js", () => ({
   usePrototypeState: () => mockState.prototypeState,
+}));
+
+vi.mock("../app/components/theme/ThemeToggle", () => ({
+  default: () => null,
 }));
 
 vi.mock("../app/components/landing/LandingPage.jsx", () => ({
@@ -400,5 +405,29 @@ describe("auth routing — fully set-up users reach the dashboard (Bug B)", () =
       expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=agency");
     });
     expect(mockState.setActiveScreen).not.toHaveBeenCalledWith("trip-brief");
+  });
+});
+
+describe("agency review screen refresh", () => {
+  beforeEach(() => {
+    mockState.searchParamsAuthenticated = "1";
+    mockState.prototypeState = landingPrototypeState();
+  });
+
+  it("leaves the review screen by itself once the agency is approved", async () => {
+    const agency = { id: "agency-1", name: "Hillside Travel", status: "PENDING_REVIEW" };
+    const pendingUser = { id: "user-1", email: "owner@hillside.test", accountType: "AGENCY_USER", memberships: [{ agency }] };
+    const approvedUser = { ...pendingUser, memberships: [{ agency: { ...agency, status: "VERIFIED" } }] };
+    mockState.fetchApi.mockResolvedValueOnce({ user: pendingUser }).mockResolvedValueOnce({ user: approvedUser });
+
+    render(<Page />);
+    expect(await screen.findByText("Application Under Review")).toBeInTheDocument();
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    await waitFor(() => expect(screen.queryByText("Application Under Review")).not.toBeInTheDocument());
+    expect(mockState.fetchApi).toHaveBeenLastCalledWith("/auth/me");
   });
 });
