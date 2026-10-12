@@ -47,6 +47,8 @@ describe("resolveVisibleTab", () => {
   it("shows the Admin tab to super admins only", () => {
     expect(resolveVisibleTab({ activeTab: "admin", user: admin, isPersonal: false, agencyId: "a1" })).toBe("admin");
     expect(resolveVisibleTab({ activeTab: "admin", user: member, isPersonal: false, agencyId: "a1" })).toBe("command-center");
+    expect(resolveVisibleTab({ activeTab: "admin", user: admin, isPersonal: true, agencyId: null })).toBe("admin");
+    expect(resolveVisibleTab({ activeTab: "settings", user: member, isPersonal: false, agencyId: "a1" })).toBe("settings");
   });
 
   it("sends users without an agency workspace from the dashboard to the Command Center", () => {
