@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadPdfImage, loadPdfImages, pdfPhotoUrl } from "../app/lib/pdfImages.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearPdfImageCache, loadPdfImage, loadPdfImages, pdfPhotoUrl } from "../app/lib/pdfImages.js";
 
 const originalGetContext = HTMLCanvasElement.prototype.getContext;
 const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+
+beforeEach(() => {
+  clearPdfImageCache();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -192,6 +196,55 @@ describe("loadPdfImage failure paths", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("loadPdfImage cache", () => {
+  it("serves a second load of the same photo without fetching again", async () => {
+    fakeBrowser();
+
+    const first = await loadPdfImage("https://example.com/a.jpg");
+    const second = await loadPdfImage("https://example.com/a.jpg");
+
+    expect(second).toEqual(first);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a photo per size, fit and format", async () => {
+    fakeBrowser();
+
+    await loadPdfImage("https://example.com/a.jpg", { width: 320, height: 240, fit: "cover", format: "jpeg" });
+    await loadPdfImage("https://example.com/a.jpg", { width: 600, height: 200, fit: "contain", format: "png" });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not remember a failure, so a transient error can retry", async () => {
+    fakeBrowser({ ok: false });
+    await expect(loadPdfImage("https://example.com/a.jpg")).resolves.toBeNull();
+
+    fakeBrowser();
+    await expect(loadPdfImage("https://example.com/a.jpg")).resolves.not.toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds at most 200 photos, dropping the oldest first", async () => {
+    fakeBrowser();
+    for (let index = 0; index < 201; index += 1) await loadPdfImage(`https://example.com/${index}.jpg`);
+    expect(fetch).toHaveBeenCalledTimes(201);
+
+    await loadPdfImage("https://example.com/200.jpg"); // newest: still cached
+    expect(fetch).toHaveBeenCalledTimes(201);
+    await loadPdfImage("https://example.com/0.jpg"); // oldest: dropped, fetched again
+    expect(fetch).toHaveBeenCalledTimes(202);
+  });
+
+  it("forgets everything on clearPdfImageCache", async () => {
+    fakeBrowser();
+    await loadPdfImage("https://example.com/a.jpg");
+    clearPdfImageCache();
+    await loadPdfImage("https://example.com/a.jpg");
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -62,6 +62,22 @@ function drawToCanvas(canvas, bitmap, { width, height, fit, format }) {
   };
 }
 
+// The PDF is rebuilt whenever its input changes (weather arriving, say), so loaded photos are kept for
+// reuse. Successes only: a failure may be transient and should retry. Oldest entries go first.
+const CACHE_LIMIT = 200;
+const imageCache = new Map();
+
+/** Forgets every cached photo. Tests call it so one test's photos never reach the next. */
+export function clearPdfImageCache() {
+  imageCache.clear();
+}
+
+function remember(key, image) {
+  imageCache.delete(key);
+  imageCache.set(key, image);
+  if (imageCache.size > CACHE_LIMIT) imageCache.delete(imageCache.keys().next().value);
+}
+
 /**
  * @param {string} url
  * @param {{ width?: number, height?: number, fit?: "cover"|"contain", format?: "jpeg"|"png", timeoutMs?: number }} [options]
@@ -71,6 +87,9 @@ export async function loadPdfImage(url, { width = 320, height = 240, fit = "cove
   if (!url || typeof fetch !== "function" || typeof createImageBitmap !== "function" || typeof document === "undefined") {
     return null;
   }
+  const cacheKey = `${url}|${width}x${height}|${fit}|${format}`;
+  const cached = imageCache.get(cacheKey);
+  if (cached) return cached;
   const controller = typeof AbortController === "function" ? new AbortController() : null;
   const timer = setTimeout(() => controller?.abort(), timeoutMs);
   try {
@@ -78,7 +97,9 @@ export async function loadPdfImage(url, { width = 320, height = 240, fit = "cove
     if (!response.ok) return null;
     const bitmap = await createImageBitmap(await response.blob());
     try {
-      return drawToCanvas(document.createElement("canvas"), bitmap, { width, height, fit, format });
+      const image = drawToCanvas(document.createElement("canvas"), bitmap, { width, height, fit, format });
+      if (image) remember(cacheKey, image);
+      return image;
     } finally {
       bitmap.close?.();
     }

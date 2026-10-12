@@ -130,6 +130,28 @@ describe("public share PDF", () => {
     );
   });
 
+  it("falls back to the trip's client name when the share has none", async () => {
+    const data = share({ type: "agency", name: "Island Hops Travel", logoUrl: null });
+    api.fetchPublicItinerary.mockResolvedValue({
+      ...data,
+      share: { ...data.share, clientName: null },
+      trip: { ...data.trip, clientName: "Reyes Family" },
+    });
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ clientName: "Reyes Family" }));
+  });
+
+  it("prefers the share's client name over the trip's", async () => {
+    const data = share({ type: "agency", name: "Island Hops Travel", logoUrl: null });
+    api.fetchPublicItinerary.mockResolvedValue({ ...data, trip: { ...data.trip, clientName: "Reyes Family" } });
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ clientName: "Garcia" }));
+  });
+
   it("sends no logo for a personal share", async () => {
     api.fetchPublicItinerary.mockResolvedValue(share({ type: "personal", displayName: "Ana", logoUrl: "https://x.test/y.png" }));
     render(<PublicItineraryPage />);

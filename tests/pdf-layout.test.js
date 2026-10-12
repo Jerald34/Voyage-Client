@@ -96,11 +96,12 @@ function day(overrides = {}) {
 }
 
 let generateItineraryPdf;
+let VOYAGE_LOGO_PATH;
 
 beforeEach(async () => {
   state.instance = null;
   vi.resetModules();
-  ({ generateItineraryPdf } = await import("../app/lib/pdfExport.js"));
+  ({ generateItineraryPdf, VOYAGE_LOGO_PATH } = await import("../app/lib/pdfExport.js"));
 });
 
 describe("itinerary PDF: branded timeline", () => {
@@ -206,10 +207,10 @@ describe("itinerary PDF: branded timeline", () => {
   });
 
   it("uses the Voyage wordmark for a Voyage-branded PDF", async () => {
-    const { loadImages, calls } = recordingLoader({ "/email/voyage-logo.png": voyageLogo });
+    const { loadImages, calls } = recordingLoader({ [VOYAGE_LOGO_PATH]: voyageLogo });
     await generateItineraryPdf({ title: "Trip", agencyName: "Voyage", days: [day()], loadImages });
 
-    expect(calls[0].urls).toEqual(["/email/voyage-logo.png"]);
+    expect(calls[0].urls).toEqual([VOYAGE_LOGO_PATH]);
     expect(state.instance.images.some((image) => image.dataUrl === voyageLogo.dataUrl)).toBe(true);
     expect(texts()).not.toContain("VOYAGE");
   });
