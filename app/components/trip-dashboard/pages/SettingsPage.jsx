@@ -4,6 +4,7 @@ import { buildTourSteps, voyageTourHelpBullets } from "../tutorial/tutorialConte
 import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
 import PlanUsageCard from "../../settings/PlanUsageCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
+import SystemRequirementsTable from "../../settings/SystemRequirementsTable.jsx";
 import TeamPage from "../../team/TeamPage.jsx";
 import { createProblemReport } from "../../../lib/api/support.js";
 
@@ -535,6 +536,14 @@ export default function SettingsPage({
               Report a problem
             </button>
           </div>
+        </Panel>
+
+        <Panel
+          eyebrow="Help"
+          title="System requirements"
+          description="What you need to use Voyage on a phone or computer."
+        >
+          <SystemRequirementsTable />
         </Panel>
 
         {!isPersonal && agency?.id ? (

@@ -55,3 +55,17 @@ describe("Settings plan card", () => {
     expect(screen.queryByRole("heading", { name: "Plan and usage" })).not.toBeInTheDocument();
   });
 });
+
+describe("Settings system requirements", () => {
+  it.each([
+    ["an agency member", "STAFF", { id: "u1", displayName: "Maria", accountType: "AGENCY_USER" }],
+    ["a personal account", null, { id: "p1", displayName: "Lee", accountType: "PERSONAL" }],
+  ])("lists the minimum and recommended setup for %s", (_who, role, user) => {
+    renderSettings(role, user);
+
+    expect(screen.getByRole("heading", { name: "System requirements" })).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: "System requirements" });
+    expect(table).toHaveTextContent("Chrome or Edge 111, Safari 16.4, Firefox 128");
+    expect(screen.getAllByRole("row")).toHaveLength(6); // header + 5 rows
+  });
+});
