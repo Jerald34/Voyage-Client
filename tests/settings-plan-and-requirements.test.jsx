@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { CLIENT_REQUIREMENTS } from "../app/lib/systemRequirements.js";
 
 vi.mock("../app/components/team/TeamPage.jsx", () => ({ default: () => null }));
 vi.mock("../app/components/settings/DangerZoneCard.jsx", () => ({ default: () => null }));
@@ -66,6 +67,6 @@ describe("Settings system requirements", () => {
     expect(screen.getByRole("heading", { name: "System requirements" })).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "System requirements" });
     expect(table).toHaveTextContent("Chrome or Edge 111, Safari 16.4, Firefox 128");
-    expect(screen.getAllByRole("row")).toHaveLength(6); // header + 5 rows
+    expect(within(table).getAllByRole("row")).toHaveLength(CLIENT_REQUIREMENTS.length + 1);
   });
 });

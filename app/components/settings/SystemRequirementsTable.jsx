@@ -4,7 +4,7 @@ import { CLIENT_REQUIREMENTS } from "../../lib/systemRequirements.js";
 export default function SystemRequirementsTable() {
   return (
     <div className="overflow-x-auto">
-      <table aria-label="System requirements" className="w-full min-w-[480px] border-collapse text-left text-sm">
+      <table aria-label="System requirements" className="w-full border-collapse text-left text-sm">
         <thead>
           <tr className="border-b border-border text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">
             <th scope="col" className="py-2 pr-3 font-semibold"><span className="sr-only">Requirement</span></th>
