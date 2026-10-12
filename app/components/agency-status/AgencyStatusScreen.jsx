@@ -31,7 +31,8 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
   const [supportOpen, setSupportOpen] = useState(false);
   const [reportSent, setReportSent] = useState(false);
   const supportButtonRef = useRef(null);
-  const agencyLabel = agency.name || "my agency";
+  // The server caps a report subject at 150 chars; the longest prefix is 18, so 125 leaves room.
+  const agencyLabel = (agency.name || "my agency").slice(0, 125);
   const supportSubject = isSuspended ? `Suspended agency: ${agencyLabel}` : `Agency application: ${agencyLabel}`;
 
   const closeSupport = () => {
@@ -172,15 +173,17 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
           ref={supportButtonRef}
           type="button"
           className="w-full py-3 rounded-pill font-bold text-sm bg-secondary text-white hover:opacity-90 transition-opacity mb-3"
-          onClick={() => setSupportOpen(true)}
+          onClick={() => {
+            setReportSent(false);
+            setSupportOpen(true);
+          }}
         >
           Contact support
         </button>
-        {reportSent && (
-          <p role="status" className="text-sm text-text-muted mb-3">
-            Report sent. We&apos;ll reply by email.
-          </p>
-        )}
+        {/* Always rendered so screen readers register it as a live region; no height or margin while empty */}
+        <p role="status" aria-live="polite" className={reportSent ? "text-sm text-text-muted mb-3" : undefined}>
+          {reportSent ? "Report sent. We'll reply by email." : ""}
+        </p>
 
         {/* Logout */}
         <button

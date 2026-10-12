@@ -70,4 +70,41 @@ describe("AgencyStatusScreen", () => {
     fireEvent.click(trigger);
     expect(screen.getByLabelText(/details/i)).toHaveValue("");
   });
+
+  it("keeps the subject within the server's 150-character limit for a long agency name", () => {
+    render(<AgencyStatusScreen agency={agency({ name: "A".repeat(160) })} user={user} onLogout={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Contact support" }));
+    const subject = screen.getByLabelText(/subject/i);
+    expect(subject.value.length).toBeLessThanOrEqual(150);
+    expect(subject.value.startsWith("Agency application: AAAA")).toBe(true);
+  });
+
+  it("keeps a live status region mounted, empty until a report is sent", async () => {
+    render(<AgencyStatusScreen agency={agency()} user={user} onLogout={vi.fn()} />);
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toBeEmptyDOMElement();
+
+    fireEvent.click(screen.getByRole("button", { name: "Contact support" }));
+    fireEvent.change(screen.getByLabelText(/details/i), { target: { value: "Any update?" } });
+    fireEvent.click(screen.getByRole("button", { name: /send report/i }));
+
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/report sent/i));
+    expect(screen.getByRole("status")).toBe(status);
+  });
+
+  it("clears the sent notice when the dialog is opened again", async () => {
+    render(<AgencyStatusScreen agency={agency()} user={user} onLogout={vi.fn()} />);
+    const trigger = screen.getByRole("button", { name: "Contact support" });
+
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText(/details/i), { target: { value: "Any update?" } });
+    fireEvent.click(screen.getByRole("button", { name: /send report/i }));
+    expect(await screen.findByText(/report sent/i)).toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    expect(screen.queryByText(/report sent/i)).not.toBeInTheDocument();
+  });
 });
