@@ -55,7 +55,7 @@ function drawToCanvas(canvas, bitmap, { width, height, fit, format }) {
   }
   context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, dw, dh);
   return {
-    dataUrl: canvas.toDataURL(isPng ? "image/png" : "image/jpeg", 0.82),
+    dataUrl: isPng ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", 0.82),
     width: dw,
     height: dh,
     format: isPng ? "PNG" : "JPEG",
@@ -96,16 +96,17 @@ export async function loadPdfImage(url, { width = 320, height = 240, fit = "cove
 export async function loadPdfImages(urls, { load = loadPdfImage, concurrency = 6, options = {} } = {}) {
   const unique = [...new Set((Array.isArray(urls) ? urls : []).filter(Boolean))];
   const results = new Map();
+  const limit = Math.max(1, Number(concurrency) || 1);
   let next = 0;
 
   async function worker() {
     while (next < unique.length) {
       const url = unique[next];
       next += 1;
-      results.set(url, await load(url, options));
+      results.set(url, await Promise.resolve().then(() => load(url, options)).catch(() => null));
     }
   }
 
-  await Promise.all(Array.from({ length: Math.min(concurrency, unique.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(limit, unique.length) }, worker));
   return results;
 }

@@ -90,7 +90,62 @@ describe("loadPdfImage", () => {
   });
 });
 
+describe("loadPdfImage crop cases", () => {
+  it("crops a portrait photo vertically when covering a landscape frame", async () => {
+    const { context } = fakeBrowser({ bitmapWidth: 400, bitmapHeight: 800 });
+
+    const image = await loadPdfImage("https://example.com/p.jpg", { width: 320, height: 240, fit: "cover", format: "jpeg" });
+
+    expect(image).toMatchObject({ width: 320, height: 240, format: "JPEG" });
+    const [, sx, sy, sw, sh, dx, dy, dw, dh] = context.drawImage.mock.calls[0];
+    expect(sw).toBe(400);
+    expect(sx).toBe(0);
+    expect(sh).toBeCloseTo(300, 5);
+    expect(sy).toBeCloseTo(250, 5);
+    expect(sy).toBeGreaterThan(0);
+    expect([dx, dy, dw, dh]).toEqual([0, 0, 320, 240]);
+  });
+
+  it("shrinks an oversized logo to fit the frame", async () => {
+    const { context } = fakeBrowser({ bitmapWidth: 1200, bitmapHeight: 400 });
+
+    const image = await loadPdfImage("/email/voyage-logo.png", { width: 600, height: 200, fit: "contain", format: "png" });
+
+    expect(image).toMatchObject({ width: 600, height: 200, format: "PNG" });
+    expect(context.drawImage.mock.calls[0].slice(1)).toEqual([0, 0, 1200, 400, 0, 0, 600, 200]);
+  });
+
+  it("only passes a quality argument for JPEG", async () => {
+    fakeBrowser();
+    await loadPdfImage("https://example.com/a.jpg", { format: "jpeg" });
+    expect(HTMLCanvasElement.prototype.toDataURL).toHaveBeenLastCalledWith("image/jpeg", 0.82);
+    await loadPdfImage("https://example.com/a.png", { format: "png" });
+    expect(HTMLCanvasElement.prototype.toDataURL).toHaveBeenLastCalledWith("image/png");
+  });
+});
+
 describe("loadPdfImage failure paths", () => {
+  it("aborts when the timeout fires while the body is still downloading", async () => {
+    vi.useFakeTimers();
+    try {
+      fakeBrowser();
+      let aborted = false;
+      vi.stubGlobal("fetch", vi.fn(async (url, { signal }) => ({
+        ok: true,
+        blob: () => new Promise((resolve, reject) => {
+          signal.addEventListener("abort", () => { aborted = true; reject(new DOMException("aborted", "AbortError")); });
+        }),
+      })));
+      const pending = loadPdfImage("https://example.com/slow-body.jpg", { timeoutMs: 6000 });
+      await vi.advanceTimersByTimeAsync(6000);
+      await expect(pending).resolves.toBeNull();
+      expect(aborted).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("returns null when fetch rejects", async () => {
     fakeBrowser();
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("CORS"); }));
@@ -150,6 +205,27 @@ describe("loadPdfImages", () => {
     expect(load).toHaveBeenCalledWith("a.jpg", { fit: "cover" });
     expect(images.get("a.jpg")).toEqual({ dataUrl: "a.jpg" });
     expect(images.get("bad.jpg")).toBeNull();
+  });
+
+  it("maps a loader that throws to null instead of rejecting", async () => {
+    const load = vi.fn(async (url) => {
+      if (url === "boom.jpg") throw new Error("boom");
+      return { dataUrl: url };
+    });
+    const sync = vi.fn(() => { throw new Error("sync boom"); });
+
+    const images = await loadPdfImages(["boom.jpg", "ok.jpg"], { load });
+    expect(images.get("boom.jpg")).toBeNull();
+    expect(images.get("ok.jpg")).toEqual({ dataUrl: "ok.jpg" });
+    await expect(loadPdfImages(["x.jpg"], { load: sync })).resolves.toEqual(new Map([["x.jpg", null]]));
+  });
+
+  it("treats a concurrency of 0 (or junk) as 1 and still loads everything", async () => {
+    const load = vi.fn(async (url) => ({ dataUrl: url }));
+    const zero = await loadPdfImages(["a.jpg", "b.jpg"], { load, concurrency: 0 });
+    expect(zero.size).toBe(2);
+    const junk = await loadPdfImages(["c.jpg"], { load, concurrency: "nope" });
+    expect(junk.get("c.jpg")).toEqual({ dataUrl: "c.jpg" });
   });
 
   it("never runs more loads at once than the limit", async () => {
