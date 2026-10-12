@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import * as content from "../app/components/landing/landingContent.js";
 
 describe("landing copy", () => {
-  it("never mentions pricing", () => {
-    expect(JSON.stringify(content)).not.toMatch(/pric/i);
+  it("keeps prices out of the landing copy (they live in lib/pricing/plans.js)", () => {
+    expect(JSON.stringify(content)).not.toMatch(/₱/);
   });
 
   it("links the nav to sections that exist", () => {
-    const sectionIds = ["what-it-does", "how-it-works", "for-agencies", "faq"];
+    const sectionIds = ["what-it-does", "how-it-works", "for-agencies", "pricing", "faq"];
     expect(content.LANDING_NAV.map((link) => link.href)).toEqual(sectionIds.map((id) => `#${id}`));
   });
 

@@ -62,7 +62,6 @@ describe("landing lower sections", () => {
     fireEvent.click(screen.getByRole("button", { name: "Log in" }));
     expect(onStartPlanning).toHaveBeenCalledTimes(1);
     expect(onLogin).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText(/pricing/i)).not.toBeInTheDocument();
   });
 
   it("gives every footer link its padding and text size as separate classes", () => {
