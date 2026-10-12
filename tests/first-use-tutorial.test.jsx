@@ -176,4 +176,28 @@ describe("FirstUseTutorial welcome card", () => {
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     await waitFor(() => expect(observer.disconnected).toBe(true));
   });
+
+  it("starts a reopened tour on the welcome card and never reports the stale step", async () => {
+    const onStepChange = vi.fn();
+    const ui = (open) => (
+      <>
+        <div data-tour-target="needs">Needs you</div>
+        <FirstUseTutorial open={open} steps={steps} onClose={vi.fn()} onStepChange={onStepChange} />
+      </>
+    );
+    const { rerender } = render(ui(true));
+
+    fireEvent.click(screen.getByRole("button", { name: "Start tour" }));
+    expect(await screen.findByText("Start with what needs you")).toBeInTheDocument();
+    expect(onStepChange).toHaveBeenLastCalledWith(steps[1]);
+
+    rerender(ui(false));
+    const callsBeforeReopen = onStepChange.mock.calls.length;
+    rerender(ui(true));
+
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Start tour" })).toBeInTheDocument();
+    const callsAfterReopen = onStepChange.mock.calls.slice(callsBeforeReopen).map(([step]) => step);
+    expect(callsAfterReopen).not.toContain(steps[1]);
+    expect(onStepChange).toHaveBeenLastCalledWith(steps[0]);
+  });
 });

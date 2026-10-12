@@ -499,7 +499,7 @@ export default function SettingsPage({
               <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                 {tourSteps.map((step, index) => (
                   <article
-                    key={step.title}
+                    key={step.id}
                     className="min-h-[148px] rounded-2xl border border-border bg-background px-3.5 py-3"
                     aria-label={`Step ${index + 1}: ${step.title}`}
                   >

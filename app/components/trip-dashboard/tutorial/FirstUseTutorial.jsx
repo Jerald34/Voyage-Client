@@ -244,6 +244,8 @@ export default function FirstUseTutorial({
 
   useEffect(() => {
     if (!open) {
+      // Reset on close too, so a reopen renders step 0 and never reports the stale last step.
+      setActiveIndex(0);
       return;
     }
 

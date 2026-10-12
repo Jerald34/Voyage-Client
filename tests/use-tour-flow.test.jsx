@@ -78,6 +78,24 @@ describe("useTourFlow", () => {
     expect(setIsSidebarOpen).toHaveBeenCalledWith(true);
   });
 
+  it("closes the sidebar drawer when the tour is closed", () => {
+    const { result, setIsSidebarOpen } = setup();
+    act(() => result.current.handleFirstUseTutorialStepChange({ target: "settings-replay" }));
+    setIsSidebarOpen.mockClear();
+
+    act(() => result.current.closeFirstUseTutorial());
+
+    expect(setIsSidebarOpen).toHaveBeenCalledWith(false);
+  });
+
+  it("hides the sidebar on any step other than the replay step", () => {
+    const { result, setIsSidebarOpen } = setup();
+
+    act(() => result.current.handleFirstUseTutorialStepChange({ tab: "dashboard", target: "dashboard-needs-you" }));
+
+    expect(setIsSidebarOpen).toHaveBeenLastCalledWith(false);
+  });
+
   it("gives a personal account the Planner start", () => {
     const { result } = setup({ id: "p1", displayName: "Lee", accountType: "PERSONAL", memberships: [] }, null);
     expect(result.current.activeTourSteps[0].tab).toBe("command-center");

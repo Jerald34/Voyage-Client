@@ -37,22 +37,22 @@ export function useTourFlow({ user, agencyId, cipTourState, setActiveTab, setIsS
   const [tourGlassSheetSnap, setTourGlassSheetSnap] = useState(null);
   const userId = user?.id ?? null;
 
-  const visibleTourSteps = useMemo(() => filterForItineraries(tourSteps, cipTourState), [tourSteps, cipTourState]);
-
   // Decide once per account, not again when the profile object changes.
   useEffect(() => {
     if (!userId || hasSeenTour(userId)) return;
     setActiveTourSteps(tourSteps);
     setIsFirstUseTutorialOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, agencyId]);
 
   const closeFirstUseTutorial = useCallback(() => {
     if (userId) rememberTourSeen(userId);
     setIsFirstUseTutorialOpen(false);
     setTourMobilePaneOverride(null);
     setTourGlassSheetSnap(null);
-  }, [userId]);
+    // The replay step opens the mobile drawer; don't leave it covering the page.
+    setIsSidebarOpen(false);
+  }, [userId, setIsSidebarOpen]);
 
   // The welcome step carries the start tab, so the step change below moves there.
   const replayFirstUseTutorial = useCallback(() => {
@@ -83,9 +83,8 @@ export function useTourFlow({ user, agencyId, cipTourState, setActiveTab, setIsS
     } else {
       setTourGlassSheetSnap(null);
     }
-    if (step?.target === "settings-replay") {
-      setIsSidebarOpen(true);
-    }
+    // Only the replay step shows the sidebar (the mobile drawer); every other step hides it.
+    setIsSidebarOpen(step?.target === "settings-replay");
   }, [setActiveTab, setIsSidebarOpen]);
 
   return {
@@ -93,7 +92,6 @@ export function useTourFlow({ user, agencyId, cipTourState, setActiveTab, setIsS
     activeTourSteps,
     tourMobilePaneOverride,
     tourGlassSheetSnap,
-    visibleTourSteps,
     closeFirstUseTutorial,
     replayFirstUseTutorial,
     handleFirstUseTutorialStepChange,
