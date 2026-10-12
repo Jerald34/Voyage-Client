@@ -10,6 +10,7 @@ import {
   deleteAgentThread,
   deleteAgencyTrip,
   listAgencyTrips,
+  duplicateClientTrip,
   fetchPendingCount,
   updateAgencySettings,
   updateCurrentUserProfile,
@@ -27,6 +28,7 @@ import { getSavedItineraryTrips } from "../../lib/trip-dashboard/savedItinerarie
 import { toPortfolioTrip } from "../../lib/trip-dashboard/portfolioTrips.js";
 import { buildPlanningOptions } from "../../lib/trip-dashboard/planningOptions.js";
 import { resolveVisibleTab } from "../../lib/deepLinks.js";
+import { normalizeTravelerNeeds } from "../../lib/accessibility/travelerNeeds.js";
 
 import dynamic from "next/dynamic";
 import AgentCommandCenter from "./command-center/AgentCommandCenter.jsx";
@@ -46,6 +48,7 @@ import ChatComposer from "./command-center/ChatComposer.jsx";
 import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
 import { useTravelerNeeds } from "../../hooks/useTravelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
+import FlashNotice from "./layout/FlashNotice.jsx";
 import {
   TUTORIAL_MOCK_TRIPS,
   TUTORIAL_MOCK_PLANNING_OPTIONS,
@@ -156,6 +159,9 @@ export default function HomePage({
   const [pendingCount, setPendingCount] = useState(0);
   const [mobileMapPadding, setMobileMapPadding] = useState(0);
   const [pendingClientName, setPendingClientName] = useState(null);
+  const [isMakingOption, setIsMakingOption] = useState(false);
+  const [flashNotice, setFlashNotice] = useState("");
+  const clearFlashNotice = useCallback(() => setFlashNotice(""), []);
   const [cipTourState, setCipTourState] = useState({
     hasSelectedClient: false,
     hasMultipleTrips: false,
@@ -519,6 +525,43 @@ export default function HomePage({
     }
   };
 
+  // Copy a saved trip as another option, then open the copy in the Planner to adjust it.
+  const handleMakeOption = useCallback(async (tripId) => {
+    if (!agencyId || !tripId || isMakingOption) return;
+    setIsMakingOption(true);
+    try {
+      const { trip, itinerary, thread } = await duplicateClientTrip(agencyId, tripId);
+      const listed = await listAgencyTrips(agencyId).catch(() => null);
+      if (Array.isArray(listed?.trips)) setFetchedTrips(listed.trips.map(toPortfolioTrip));
+      // Seed the copy's chat so the Planner hydrates it instead of creating another thread.
+      setTripStates((previous) => ({
+        ...previous,
+        [trip.id]: {
+          threadId: thread.id,
+          messages: [],
+          itinerary: { id: itinerary.id },
+          loaded: false,
+          createdAt: thread.createdAt ?? null,
+          travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
+        },
+      }));
+      explicitContextRef.current = true;
+      setActiveTab("command-center");
+      setActiveContext(createPlanningContext("trip", trip.id));
+      setFlashNotice("New option created. Adjust it here, then approve it on the Itineraries page.");
+    } catch (error) {
+      console.error("Failed to copy the trip", error);
+      // The server refuses to copy a trip that is still an unsaved draft or is archived.
+      setFlashNotice(
+        error?.code === "TRIP_NOT_SAVED"
+          ? "Save this trip before making another option."
+          : "Couldn't copy this trip. Try again.",
+      );
+    } finally {
+      setIsMakingOption(false);
+    }
+  }, [agencyId, isMakingOption, setTripStates, setActiveContext, createPlanningContext]);
+
   const handleDeleteOption = async (option) => {
     const threadId = option?.threadId;
     if (!agencyId || !threadId || deletingThreadId) return;
@@ -616,6 +659,7 @@ export default function HomePage({
         onStepChange={handleFirstUseTutorialStepChange}
         steps={activeTourSteps}
       />
+      <FlashNotice message={flashNotice} onDone={clearFlashNotice} />
 
       {isApprovalModalOpen && activeContext?.type === "draft" && (
         <SaveItineraryModal
@@ -874,6 +918,8 @@ export default function HomePage({
                 setPendingClientName(clientName);
                 handleNewItinerary();
               }}
+              onDuplicateTrip={agencyId && !isPersonal ? handleMakeOption : null}
+              isDuplicatingTrip={isMakingOption}
               onDeleteTrip={async (aid, tripId) => {
                 await deleteAgencyTrip(aid, tripId);
                 setFetchedTrips(prev => (prev || []).filter(t => t.id !== tripId));

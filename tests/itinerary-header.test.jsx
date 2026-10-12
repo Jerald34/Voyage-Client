@@ -284,4 +284,24 @@ describe("ItineraryHeader", () => {
       expect(span.className).toContain("@min-[920px]:inline");
     }
   });
+
+  it("offers Another option when the page passes a handler", () => {
+    const onMakeOption = vi.fn();
+    renderHeader({ onMakeOption });
+
+    fireEvent.click(screen.getByRole("button", { name: "Make another option for Danang" }));
+    expect(onMakeOption).toHaveBeenCalledOnce();
+  });
+
+  it("has no Another option without a handler", () => {
+    renderHeader();
+    expect(screen.queryByRole("button", { name: /another option/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the copy in progress and blocks a second click", () => {
+    renderHeader({ onMakeOption: vi.fn(), isMakingOption: true });
+    const button = screen.getByRole("button", { name: "Make another option for Danang" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Copying…");
+  });
 });

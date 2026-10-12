@@ -10,11 +10,13 @@ import {
 import { getItineraryPlaceEntityId } from "../../../lib/trip-dashboard/placeEntities.js";
 import { getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
 import {
+  buildTripTabLabels,
   formatSavedItineraryCount,
   getSavedItineraryTrips,
   getStableItineraryId,
   groupSavedTripsByClient,
   normalizeItineraryResponse,
+  orderTripsForTabs,
   resolveSavedPortfolioSelection,
 } from "../../../lib/trip-dashboard/savedItineraries.js";
 import {
@@ -79,6 +81,9 @@ export default function ClientItineraryPage({
   onTourStateChange,
   tourMobilePaneOverride = null,
   onAddTripForClient,
+  // Copies a saved trip as another option for the same client (HomePage supplies it).
+  onDuplicateTrip = null,
+  isDuplicatingTrip = false,
   onTripStatusChange,
   // The signed-in agency's name, printed on the PDF; Voyage's own brand when missing.
   agencyName = null,
@@ -132,6 +137,10 @@ export default function ClientItineraryPage({
   const selectedTrip = selectedClient?.trips.find(t => t.id === selectedTripId) || null;
   const selectedItineraryId = getStableItineraryId(selectedTrip);
   const isTutorialItinerary = String(selectedItineraryId ?? "").startsWith(TUTORIAL_ITINERARY_ID_PREFIX);
+  // Trips to the same place are options: numbered labels, and placed side by side in the tab strips.
+  // selectedClient.trips itself stays newest first, since the default selection reads trips[0].
+  const tripTabLabels = useMemo(() => buildTripTabLabels(selectedClient?.trips ?? []), [selectedClient]);
+  const tabTrips = useMemo(() => orderTripsForTabs(selectedClient?.trips ?? []), [selectedClient]);
   const itineraryWeather = useItineraryWeather({
     agencyId,
     itineraryId: selectedItineraryId,
@@ -679,7 +688,7 @@ export default function ClientItineraryPage({
                   {/* Trip selector */}
                   {selectedClient.trips.length > 1 && (
                     <div className="flex gap-2 px-4 py-2 border-b border-border/5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-shrink-0" data-tour-target="cip-trip-selector">
-                      {selectedClient.trips.map((t) => (
+                      {tabTrips.map((t) => (
                         <button
                           key={t.id}
                           className={`px-3 py-1.5 rounded-md text-[0.75rem] font-bold whitespace-nowrap border transition-all duration-200 ${selectedTripId === t.id
@@ -688,7 +697,7 @@ export default function ClientItineraryPage({
                             }`}
                           onClick={() => setSelectedTripId(t.id)}
                         >
-                          {t.destination || "Unnamed Trip"}
+                          {tripTabLabels.get(t.id) ?? (t.destination || "Unnamed Trip")}
                         </button>
                       ))}
                     </div>
@@ -847,6 +856,12 @@ export default function ClientItineraryPage({
               showCommentsPanel={showCommentsPanel}
               onBackToList={() => setMobilePane("list")}
               onAddTripForClient={onAddTripForClient}
+              onMakeOption={
+                onDuplicateTrip && selectedTrip?.id && selectedItineraryId && !isTutorialItinerary
+                  ? () => onDuplicateTrip(selectedTrip.id)
+                  : null
+              }
+              isMakingOption={isDuplicatingTrip}
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
               onDownloadPdf={handleDownloadPdf}
@@ -877,7 +892,7 @@ export default function ClientItineraryPage({
                   data-tour-target="cip-trip-selector"
                   className="flex gap-2 px-6 py-3 border-b border-border/10 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-shrink-0"
                 >
-                  {selectedClient.trips.map(t => (
+                  {tabTrips.map(t => (
                     <button
                       key={t.id}
                       className={`px-3.5 py-1.5 rounded-md text-[0.8rem] font-bold whitespace-nowrap border transition-all duration-200 relative ${selectedTripId === t.id
@@ -886,7 +901,7 @@ export default function ClientItineraryPage({
                         }`}
                       onClick={() => setSelectedTripId(t.id)}
                     >
-                      {t.destination || "Unnamed Trip"}
+                      {tripTabLabels.get(t.id) ?? (t.destination || "Unnamed Trip")}
                       {selectedTripId === t.id && unreadCommentCount > 0 && (
                         <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-pill bg-[#dc2626] text-white text-[0.6rem] font-extrabold flex items-center justify-center leading-none pointer-events-none">
                           {unreadCommentCount > 99 ? "99+" : unreadCommentCount}

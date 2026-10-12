@@ -49,6 +49,9 @@ export default function ItineraryHeader({
   showCommentsPanel,
   onBackToList,
   onAddTripForClient,
+  // "Another option" shows only when the page passes a handler (a real, saved trip).
+  onMakeOption = null,
+  isMakingOption = false,
   onToggleComments,
   onShare,
   onDownloadPdf,
@@ -135,6 +138,21 @@ export default function ItineraryHeader({
                   >
                     <PlusIcon width={12} height={12} strokeWidth={2.5} aria-hidden="true" />
                     New trip
+                  </button>
+                </>
+              ) : null}
+              {onMakeOption ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <button
+                    type="button"
+                    onClick={onMakeOption}
+                    disabled={isMakingOption}
+                    aria-label={`Make another option for ${selectedClient.name}`}
+                    title="Copy this trip as the starting point for another option"
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {isMakingOption ? "Copying…" : "Another option"}
                   </button>
                 </>
               ) : null}
