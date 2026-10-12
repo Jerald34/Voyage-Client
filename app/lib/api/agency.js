@@ -40,3 +40,8 @@ export async function duplicateClientTrip(agencyId, tripId) {
     method: "POST",
   });
 }
+
+// This month's usage for the owner's "Plan and usage" card. Answers { usage }.
+export async function fetchPlanUsage(agencyId) {
+  return fetchApi(`/agencies/${agencyId}/dashboard/plan-usage`);
+}
