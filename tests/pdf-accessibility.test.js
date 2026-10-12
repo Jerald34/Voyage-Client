@@ -143,7 +143,7 @@ describe("pdf export accessibility line colour", () => {
       pdfInput({ name: "Burnham Park", metadata: { accessibility: { source: "GOOGLE_PLACES", checkedAt } } })
     );
 
-    expect(colourOfAccessibilityLine()).toEqual([130, 150, 160]);
+    expect(colourOfAccessibilityLine()).toEqual([100, 116, 126]);
   });
 
   it("stays green when accessibility features are confirmed", async () => {

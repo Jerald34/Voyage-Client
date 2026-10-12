@@ -8,6 +8,7 @@ class FakeDoc {
     this.images = [];
     this.pages = 1;
     this.currentPage = 1;
+    this.color = null;
     this.internal = {
       pageSize: { getWidth: () => 210, getHeight: () => 297 },
       getNumberOfPages: () => this.pages,
@@ -15,7 +16,9 @@ class FakeDoc {
   }
   setFontSize() {}
   setFont() {}
-  setTextColor() {}
+  setTextColor(...color) {
+    this.color = color;
+  }
   setFillColor() {}
   setDrawColor() {}
   setLineWidth() {}
@@ -43,7 +46,7 @@ class FakeDoc {
   }
   text(value, x, y) {
     for (const entry of Array.isArray(value) ? value : [value]) {
-      this.entries.push({ text: String(entry), x, y, page: this.currentPage });
+      this.entries.push({ text: String(entry), x, y, page: this.currentPage, color: this.color });
     }
   }
   output() {
@@ -289,5 +292,64 @@ describe("itinerary PDF: branded timeline", () => {
     expect(state.instance.images).toHaveLength(0);
     expect(texts()).toContain("VOYAGE");
     expect(texts()).toContain("Burnham Park");
+  });
+
+  it("prints times, footers and the weather credit in greys dark enough for paper", async () => {
+    const { loadImages } = recordingLoader();
+    const weatherEntry = {
+      status: "OK",
+      weather: { kind: "FORECAST", condition: "RAIN", temperatureMinC: 16.2, temperatureMaxC: 23.4, precipitationProbabilityPct: 85 },
+    };
+    await generateItineraryPdf({ title: "Trip", days: [day({ weatherEntry })], loadImages });
+
+    const colourOf = (text) => state.instance.entries.find((entry) => entry.text === text)?.color;
+    expect(colourOf("10:30 AM")).toEqual([100, 116, 126]);
+    expect(colourOf("Baguio")).toEqual([100, 116, 126]);
+    expect(colourOf("Planned with Voyage")).toEqual([110, 110, 110]);
+    expect(colourOf("Page 1 of 1")).toEqual([110, 110, 110]);
+    expect(colourOf("Weather data by Open-Meteo.com")).toEqual([110, 120, 130]);
+  });
+
+  it("repeats the at-a-glance header row when the table runs onto a new page", async () => {
+    const { loadImages } = recordingLoader();
+    const days = Array.from({ length: 50 }, (_, index) => day({ id: `d${index + 1}`, dayNumber: index + 1, title: `Plan ${index + 1}`, items: [] }));
+    await generateItineraryPdf({ title: "Trip", days, loadImages });
+
+    const entries = state.instance.entries;
+    const lastRow = entries.find((entry) => entry.text === "Plan 50");
+    expect(lastRow.page).toBeGreaterThan(1);
+    for (let page = 1; page <= lastRow.page; page += 1) {
+      const header = entries.find((entry) => entry.page === page && entry.text === "Plan");
+      const firstRow = entries.find((entry) => entry.page === page && /^Plan \d+$/.test(entry.text));
+      expect(header, `header on page ${page}`).toBeDefined();
+      expect(header.y).toBeLessThan(firstRow.y);
+      expect(entries.filter((entry) => entry.page === page && entry.text === "Stops")).toHaveLength(1);
+    }
+  });
+
+  it("skips empty stops instead of failing", async () => {
+    const { loadImages } = recordingLoader();
+    await generateItineraryPdf({
+      title: "Trip",
+      days: [day({ items: [null, stop(), undefined] }), day({ id: "d2", dayNumber: 2, title: "Old town", items: [undefined] })],
+      loadImages,
+    });
+
+    const rowOf = (plan) => {
+      const planEntry = state.instance.entries.find((entry) => entry.text === plan);
+      return state.instance.entries.filter((entry) => entry.y === planEntry.y && entry.page === planEntry.page).map((entry) => entry.text);
+    };
+    expect(texts()).toContain("Burnham Park");
+    expect(texts()).not.toContain("Activity");
+    expect(rowOf("Arrival")).toContain("1");
+    expect(rowOf("Old town")).toContain("0");
+  });
+
+  it("doesn't count a trailing space or newline as an extra line", async () => {
+    const { loadImages } = recordingLoader();
+    // Exactly one fake line of text (65 characters at the stop's width), then trailing whitespace.
+    await generateItineraryPdf({ title: "Trip", days: [day({ items: [stop({ description: `${"d".repeat(65)}  \n` })] })], loadImages });
+
+    expect(texts().filter((text) => text.trim() === "")).toHaveLength(0);
   });
 });

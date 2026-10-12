@@ -11,7 +11,7 @@ export const VOYAGE_LOGO_PATH = "/email/voyage-logo.png";
 const NAVY = [34, 56, 67];
 const TERRACOTTA = [215, 122, 97];
 const MUTED = [90, 110, 120];
-const SOFT = [140, 155, 165];
+const SOFT = [100, 116, 126]; // ~4.8:1 on white, so small print stays legible on paper
 const WEATHER_BLUE = [70, 110, 140];
 const HAIRLINE = [220, 228, 232];
 const WHITE = [255, 255, 255];
@@ -41,7 +41,7 @@ function getProviderClosureLabel(businessStatus) {
 
 // Same status logic as the on-screen badges: a caution is amber (matching the closure line),
 // an unchecked-in-practice place is neutral grey, confirmed features are green.
-const PDF_ACCESSIBILITY_COLORS = { warning: [146, 64, 14], unverified: [130, 150, 160], positive: [21, 94, 67] };
+const PDF_ACCESSIBILITY_COLORS = { warning: [146, 64, 14], unverified: [100, 116, 126], positive: [21, 94, 67] };
 
 function getAccessibilityPdfColor(snapshot) {
   const badges = getAccessibilityBadges(snapshot);
@@ -97,7 +97,7 @@ export async function generateItineraryPdf({
   const voyageBrand = isVoyageBrand(agencyName);
   const brandName = voyageBrand ? "Voyage" : String(agencyName).trim();
   const safeDays = Array.isArray(days) ? days : [];
-  const itemsOf = (day) => (Array.isArray(day?.items) ? day.items : []);
+  const itemsOf = (day) => (Array.isArray(day?.items) ? day.items.filter(Boolean) : []);
 
   // Images load before drawing; any that fail come back null and print as nothing.
   // A loader that throws outright costs the images, never the PDF.
@@ -120,11 +120,14 @@ export async function generateItineraryPdf({
 
   /* ── helpers ──────────────────────────────────────────────── */
 
+  /** Starts a new page when `needed` mm won't fit; returns whether it did. */
   function checkPageBreak(needed) {
     if (y + needed > pageHeight - CONTENT_BOTTOM_GAP) {
       doc.addPage();
       y = MARGIN;
+      return true;
     }
+    return false;
   }
 
   function setStyle(fontSize, fontStyle, color) {
@@ -134,12 +137,16 @@ export async function generateItineraryPdf({
   }
 
   // splitTextToSize measures at the current font, so every measurement sets the font it is drawn in.
-  function measure(text, fontSize, fontStyle, width) {
-    const value = String(text ?? "");
+  function splitAt(value, fontSize, fontStyle, width) {
     if (!value) return [];
     doc.setFontSize(fontSize);
     doc.setFont("helvetica", fontStyle);
     return doc.splitTextToSize(value, width);
+  }
+
+  // Trimmed, so a trailing space or newline never counts as an extra line.
+  function measure(text, fontSize, fontStyle, width) {
+    return splitAt(String(text ?? "").trim(), fontSize, fontStyle, width);
   }
 
   function oneLine(text, fontSize, fontStyle, width) {
@@ -175,23 +182,27 @@ export async function generateItineraryPdf({
     const planWidth = cols.stops - cols.plan - 4;
     const weatherWidth = showWeather ? contentWidth - cols.weather : 0;
 
+    function drawHeaderRow() {
+      setStyle(8, "bold", SOFT);
+      doc.text("Day", MARGIN + cols.day, y);
+      doc.text("Date", MARGIN + cols.date, y);
+      doc.text("Plan", MARGIN + cols.plan, y);
+      doc.text("Stops", MARGIN + cols.stops, y);
+      if (showWeather) doc.text("Weather", MARGIN + cols.weather, y);
+      y += 2;
+      drawRule(HAIRLINE);
+      y += 4.5;
+    }
+
     checkPageBreak(12 + 5.5 * Math.min(safeDays.length, 3));
     setStyle(11, "bold", NAVY);
     doc.text("At a glance", MARGIN, y);
     y += 6;
-
-    setStyle(8, "bold", SOFT);
-    doc.text("Day", MARGIN + cols.day, y);
-    doc.text("Date", MARGIN + cols.date, y);
-    doc.text("Plan", MARGIN + cols.plan, y);
-    doc.text("Stops", MARGIN + cols.stops, y);
-    if (showWeather) doc.text("Weather", MARGIN + cols.weather, y);
-    y += 2;
-    drawRule(HAIRLINE);
-    y += 4.5;
+    drawHeaderRow();
 
     safeDays.forEach((day, index) => {
-      checkPageBreak(5.5);
+      // A table that runs onto a new page repeats its header row there.
+      if (checkPageBreak(5.5)) drawHeaderRow();
       const plan = oneLine(day?.title, 8.5, "normal", planWidth);
       const weatherCell = showWeather && weatherByDay[index]
         ? oneLine(weatherByDay[index].compactText || weatherByDay[index].label, 8.5, "normal", weatherWidth)
@@ -217,8 +228,10 @@ export async function generateItineraryPdf({
     const lines = measure(label, 8.5, "normal", TIME_COLUMN_WIDTH);
     const range = /^(.+?) – (.+)$/.exec(label);
     if (lines.length <= 1 || !range) return lines;
+    // The first part keeps its trailing space, so the two lines still read as one
+    // range when the text is extracted ("9:00 AM – 10:30 AM"); it prints as nothing.
     return [
-      ...measure(`${range[1]} – `, 8.5, "normal", TIME_COLUMN_WIDTH),
+      ...splitAt(`${range[1]} – `, 8.5, "normal", TIME_COLUMN_WIDTH),
       ...measure(range[2], 8.5, "normal", TIME_COLUMN_WIDTH),
     ].filter((line) => String(line).trim());
   }
@@ -372,8 +385,9 @@ export async function generateItineraryPdf({
     drawAtAGlance();
   }
 
-  // Separator before days
+  // Separator before days; it moves to the next page with the gap below it.
   y += 4;
+  checkPageBreak(12);
   drawRule([200, 210, 215]);
   y += 8;
 
@@ -411,7 +425,7 @@ export async function generateItineraryPdf({
       y += weatherLines.length * 4.5;
     }
 
-    if (day?.summary) {
+    if (summaryLines.length > 0) {
       y += 1;
       writeWrapped(day.summary, 9.5, "italic", [100, 120, 130], 4.8, 4);
     }
@@ -425,7 +439,7 @@ export async function generateItineraryPdf({
   if (safeDays.some((day) => describeDayWeather(day?.weatherEntry))) {
     checkPageBreak(8);
     y += 2;
-    setStyle(7.5, "normal", [150, 160, 170]);
+    setStyle(7.5, "normal", [110, 120, 130]);
     doc.text("Weather data by Open-Meteo.com", MARGIN, y);
     y += 4;
   }
@@ -439,7 +453,7 @@ export async function generateItineraryPdf({
     doc.setDrawColor(...HAIRLINE);
     doc.setLineWidth(0.25);
     doc.line(MARGIN, pageHeight - 15, pageWidth - MARGIN, pageHeight - 15);
-    setStyle(8, "normal", [160, 160, 160]);
+    setStyle(8, "normal", [110, 110, 110]);
     doc.text(footerBrand, MARGIN, pageHeight - 10);
     doc.text(`Page ${page} of ${pageCount}`, pageWidth - MARGIN, pageHeight - 10, { align: "right" });
   }
@@ -470,6 +484,7 @@ function formatShortDate(value) {
 }
 
 function buildTimeLabel(item) {
+  if (!item) return "";
   const fmt = (t) => {
     if (!t) return "";
     const [h, m] = t.split(":");
