@@ -24,6 +24,7 @@ import {
 } from "../../lib/agency-dashboard/selectors.js";
 import { buildPlaceEntities, getItineraryPlaceEntityId } from "../../lib/trip-dashboard/placeEntities.js";
 import { getSavedItineraryTrips } from "../../lib/trip-dashboard/savedItineraries.js";
+import { toPortfolioTrip } from "../../lib/trip-dashboard/portfolioTrips.js";
 import { buildPlanningOptions } from "../../lib/trip-dashboard/planningOptions.js";
 import { resolveVisibleTab } from "../../lib/deepLinks.js";
 
@@ -338,21 +339,7 @@ export default function HomePage({
 
   useEffect(() => {
     if (!Array.isArray(bootstrapTrips)) return;
-    setFetchedTrips(
-      bootstrapTrips.map((t) => {
-        const firstItinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : null;
-        return {
-          id: t.id,
-          clientName: t.clientName ?? null,
-          destination: t.destinationSummary ?? t.title,
-          travelWindow: formatTripDates(t.startDate, t.endDate),
-          status: t.status?.toLowerCase() === "archived" ? "archived" : "active",
-          approvalStatus: mapTripStatus(t.status),
-          itineraryId: firstItinerary?.id ?? null,
-          itineraryVersion: firstItinerary?.version ?? null,
-        };
-      })
-    );
+    setFetchedTrips(bootstrapTrips.map(toPortfolioTrip));
   }, [bootstrapTrips]);
 
   // Context management — skip cleanup when a dashboard action explicitly set
@@ -585,21 +572,7 @@ export default function HomePage({
       listAgencyTrips(agencyId)
         .then((r) => {
           const trips = Array.isArray(r?.trips) ? r.trips : [];
-          setFetchedTrips(
-            trips.map((t) => {
-              const firstItinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : null;
-              return {
-                id: t.id,
-                clientName: t.clientName ?? null,
-                destination: t.destinationSummary ?? t.title,
-                travelWindow: formatTripDates(t.startDate, t.endDate),
-                status: t.status?.toLowerCase() === "archived" ? "archived" : "active",
-                approvalStatus: mapTripStatus(t.status),
-                itineraryId: firstItinerary?.id ?? null,
-                itineraryVersion: firstItinerary?.version ?? null,
-              };
-            })
-          );
+          setFetchedTrips(trips.map(toPortfolioTrip));
         })
         .catch((err) => console.error("Failed to refresh agency trips:", err));
 

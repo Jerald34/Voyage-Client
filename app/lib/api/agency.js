@@ -33,3 +33,10 @@ export async function approveClientTrip(agencyId, tripId) {
     method: "POST",
   });
 }
+
+// Copy a trip as another option for the same client. Answers { trip, itinerary, thread }.
+export async function duplicateClientTrip(agencyId, tripId) {
+  return fetchApi(`/agencies/${agencyId}/itineraries/trips/${tripId}/duplicate`, {
+    method: "POST",
+  });
+}

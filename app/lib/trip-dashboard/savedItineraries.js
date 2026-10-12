@@ -158,3 +158,38 @@ export function resolveSavedPortfolioSelection({ clients, selectedClientId, sele
 export function normalizeItineraryResponse(responseData) {
   return responseData?.itinerary ?? responseData ?? null;
 }
+
+function createdTime(trip) {
+  const time = Date.parse(trip?.createdAt ?? "");
+  return Number.isNaN(time) ? null : time;
+}
+
+/**
+ * Tab labels for one client's trips. Trips to the same place are alternatives, so they
+ * are numbered as options in the order they were made: "Option 1 · Baguio City".
+ */
+export function buildTripTabLabels(trips = []) {
+  const list = Array.isArray(trips) ? trips : [];
+  const groups = new Map();
+  list.forEach((trip, index) => {
+    const key = normalizeText(trip?.destination).toLowerCase();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ trip, index });
+  });
+
+  const labels = new Map();
+  for (const members of groups.values()) {
+    const ordered = [...members].sort((a, b) => {
+      const timeA = createdTime(a.trip);
+      const timeB = createdTime(b.trip);
+      if (timeA !== null && timeB !== null && timeA !== timeB) return timeA - timeB;
+      // Trip lists come newest first, so a later position is an older trip.
+      return b.index - a.index;
+    });
+    ordered.forEach(({ trip }, position) => {
+      const base = normalizeText(trip?.destination) || "Unnamed Trip";
+      labels.set(trip.id, members.length > 1 ? `Option ${position + 1} · ${base}` : base);
+    });
+  }
+  return labels;
+}

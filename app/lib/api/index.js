@@ -31,6 +31,7 @@ export {
   updateAgencySettings,
   listAgencyTrips,
   deleteAgencyTrip,
+  duplicateClientTrip,
   fetchItineraryDraft,
   bootstrapAgentWorkspace,
   approveClientTrip,
