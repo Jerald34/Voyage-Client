@@ -4,7 +4,7 @@ import { resolveInitialView, resolveVisibleTab } from "../app/lib/deepLinks.js";
 const view = (query) => resolveInitialView(new URLSearchParams(query));
 
 describe("resolveInitialView", () => {
-  it("opens the Command Center by default", () => {
+  it("opens the Planner by default", () => {
     expect(view("authenticated=1")).toEqual({ initialTab: "command-center", showJoinedNotice: false, settingsSection: null });
   });
 
@@ -16,7 +16,7 @@ describe("resolveInitialView", () => {
     });
   });
 
-  it("opens the Command Center, with no notice, for an unknown tab", () => {
+  it("opens the Planner, with no notice, for an unknown tab", () => {
     expect(view("authenticated=1&tab=nonsense")).toEqual({ initialTab: "command-center", showJoinedNotice: false, settingsSection: null });
     expect(view("authenticated=1&tab=nonsense&invited=1")).toEqual({
       initialTab: "command-center",
@@ -51,7 +51,7 @@ describe("resolveVisibleTab", () => {
     expect(resolveVisibleTab({ activeTab: "settings", user: member, isPersonal: false, agencyId: "a1" })).toBe("settings");
   });
 
-  it("sends users without an agency workspace from the dashboard to the Command Center", () => {
+  it("sends users without an agency workspace from the dashboard to the Planner", () => {
     expect(resolveVisibleTab({ activeTab: "dashboard", user: member, isPersonal: true, agencyId: null })).toBe("command-center");
     expect(resolveVisibleTab({ activeTab: "dashboard", user: member, isPersonal: false, agencyId: null })).toBe("command-center");
     expect(resolveVisibleTab({ activeTab: "dashboard", user: member, isPersonal: false, agencyId: "a1" })).toBe("dashboard");

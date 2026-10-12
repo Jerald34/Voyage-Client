@@ -959,7 +959,7 @@ export default function ClientItineraryPage({
             <UsersIcon width={80} height={80} strokeWidth={1} className="text-secondary opacity-45" />
             <h3 className="font-serif text-[2.2rem] text-text-primary m-0 tracking-tight">No saved itineraries yet.</h3>
             <p className="max-w-[320px] mx-auto leading-relaxed text-[0.95rem] m-0">
-              Saved itineraries will appear here after approval from Command Center.
+              Saved itineraries will appear here after approval from the Planner.
             </p>
           </div>
         )}

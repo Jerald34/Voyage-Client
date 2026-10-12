@@ -62,7 +62,7 @@ const PALETTES =
   "red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|" +
   "slate|gray|zinc|neutral|stone|mauve|olive|mist|taupe";
 const PALE_TEXT = new RegExp(`^text-(${PALETTES})-(50|100|200|300|400)$`);
-// The Command Center's look is frozen until the colour sweep is signed off.
+// The Planner's look is frozen until the colour sweep is signed off.
 // Each entry pins one class in one file ("<path> <utility>", variants, `!` and opacity stripped).
 const PALE_TEXT_ALLOWED = new Set(["app/components/trip-dashboard/command-center/ChatInput.jsx text-red-400"]);
 

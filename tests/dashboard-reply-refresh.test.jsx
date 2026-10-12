@@ -95,7 +95,7 @@ describe.each(DASHBOARDS)("$name dashboard after a reply from the trip panel", (
 });
 
 describe.each(DASHBOARDS)("$name dashboard Recently viewed rows", ({ ui, payload }) => {
-  it("open the trip panel with the client's name, not the Command Center", async () => {
+  it("open the trip panel with the client's name, not the Planner", async () => {
     serve(payload);
     render(ui({ initialData: payload }));
 

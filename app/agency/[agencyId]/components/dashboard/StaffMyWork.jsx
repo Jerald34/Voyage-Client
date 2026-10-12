@@ -19,7 +19,7 @@ import { STAFF_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
  * own work on the right (continue, trips by status, recently viewed
  * itineraries, recent trips). Comment rows, calendar actions and Recently
  * viewed rows open the trip slide-over; other to-do rows open the trip in the
- * Command Center. Nothing here depends on a period, so there is no period
+ * Planner. Nothing here depends on a period, so there is no period
  * switcher.
  * The calendar loads on its own, so it is always mounted: only the parts that
  * need the dashboard payload wait for it, or say it failed.

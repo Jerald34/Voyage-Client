@@ -18,7 +18,7 @@ import { OWNER_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
  * left, Insights (KPIs, trip progress, recently viewed itineraries, reviews)
  * on the right.
  * Comment rows, calendar actions and Recently viewed rows open the trip
- * slide-over; other to-do rows open the trip in the Command Center.
+ * slide-over; other to-do rows open the trip in the Planner.
  * The calendar loads on its own, so it is always mounted: only the parts that
  * need the dashboard payload wait for it, or say it failed.
  */

@@ -184,7 +184,7 @@ describe("ClientItineraryPage saved itinerary portfolio", () => {
   it("shows the saved-portfolio empty state when there are no saved itineraries", () => {
     render(<ClientItineraryPage agencyId="agency-1" agencyTrips={unsavedTrips} />);
 
-    expect(screen.getByText("Saved itineraries will appear here after approval from Command Center.")).toBeInTheDocument();
+    expect(screen.getByText("Saved itineraries will appear here after approval from the Planner.")).toBeInTheDocument();
     expect(screen.getAllByText("No saved itineraries yet.")).toHaveLength(2);
     expect(fetchItineraryDraftMock).not.toHaveBeenCalled();
   });

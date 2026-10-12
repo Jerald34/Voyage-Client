@@ -454,7 +454,7 @@ export default function HomePage({
 
   // Deep links can open the Dashboard (e.g. `tab=team` after accepting an
   // invite). Users without an agency workspace have no dashboard, so fall back
-  // to the Command Center instead of leaving the main area empty. Only super
+  // to the Planner instead of leaving the main area empty. Only super
   // admins see the Admin tab.
   const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId });
 
@@ -856,7 +856,7 @@ export default function HomePage({
             </section>
           ) : currentTab === "dashboard" && agencyId ? (
             // Own scroll container: <main> is overflow-hidden at ≤900px (for the
-            // Command Center map), so the dashboard must scroll itself on phones.
+            // Planner map), so the dashboard must scroll itself on phones.
             <div
               data-testid="dashboard-scroll"
               className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-[900px]:pb-[env(safe-area-inset-bottom)]"
