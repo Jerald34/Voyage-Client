@@ -12,12 +12,12 @@ import SettingsPage from "../app/components/trip-dashboard/pages/SettingsPage.js
 
 const agency = { id: "agency-1", name: "Sunline Travel", status: "VERIFIED" };
 
-function renderSettings(role, user = { id: "u1", displayName: "Maria", accountType: "AGENCY_USER" }) {
+function renderSettings(role, user = { id: "u1", displayName: "Maria", accountType: "AGENCY_USER" }, status = "ACTIVE") {
   return render(
     <SettingsPage
       user={user}
       agency={role ? agency : null}
-      membership={role ? { role, status: "ACTIVE" } : null}
+      membership={role ? { role, status } : null}
       logout={vi.fn()}
       onUpdateProfile={vi.fn()}
       onUpdateAgency={vi.fn()}
@@ -31,6 +31,18 @@ describe("Settings plan card", () => {
     renderSettings("OWNER");
     expect(screen.getByRole("heading", { name: "Plan and usage" })).toBeInTheDocument();
     expect(screen.getByTestId("plan-usage")).toHaveAttribute("data-agency", "agency-1");
+  });
+
+  it("sits below the Team section, so the card growing after its fetch can't push Team down", () => {
+    renderSettings("OWNER");
+    const team = screen.getByRole("region", { name: "Team" });
+    const plan = screen.getByRole("heading", { name: "Plan and usage" });
+    expect(team.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("hides it from an owner whose membership isn't active", () => {
+    renderSettings("OWNER", undefined, "PENDING");
+    expect(screen.queryByRole("heading", { name: "Plan and usage" })).not.toBeInTheDocument();
   });
 
   it.each(["ADMIN", "STAFF"])("hides it from %s members", (role) => {

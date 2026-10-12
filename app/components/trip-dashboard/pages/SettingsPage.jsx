@@ -537,17 +537,6 @@ export default function SettingsPage({
           </div>
         </Panel>
 
-        {!isPersonal && membership?.role === "OWNER" && agency?.id ? (
-          <Panel
-            eyebrow="Plan"
-            title="Plan and usage"
-            description="What Voyage would cost your agency, based on this month's real use."
-            className="xl:col-span-2"
-          >
-            <PlanUsageCard agencyId={agency.id} />
-          </Panel>
-        ) : null}
-
         {!isPersonal && agency?.id ? (
           <section
             ref={teamRef}
@@ -558,6 +547,17 @@ export default function SettingsPage({
           >
             <TeamPage agencyId={agency.id} embedded />
           </section>
+        ) : null}
+
+        {!isPersonal && canEditWorkspace && agency?.id ? (
+          <Panel
+            eyebrow="Plan"
+            title="Plan and usage"
+            description="What Voyage would cost your agency, based on this month's real use."
+            className="xl:col-span-2"
+          >
+            <PlanUsageCard key={agency.id} agencyId={agency.id} />
+          </Panel>
         ) : null}
 
         {!isPersonal && membership?.role === "OWNER" && agency?.id ? (
