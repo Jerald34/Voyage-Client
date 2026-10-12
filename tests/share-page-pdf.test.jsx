@@ -131,7 +131,7 @@ describe("public share PDF", () => {
   });
 
   it("sends no logo for a personal share", async () => {
-    api.fetchPublicItinerary.mockResolvedValue(share({ type: "personal", displayName: "Ana" }));
+    api.fetchPublicItinerary.mockResolvedValue(share({ type: "personal", displayName: "Ana", logoUrl: "https://x.test/y.png" }));
     render(<PublicItineraryPage />);
     await readyButton();
 
