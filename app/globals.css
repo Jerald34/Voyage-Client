@@ -73,7 +73,7 @@
   --glass-border: rgba(255, 255, 255, 0.30);
 
   /* App frame glass (dashboard calendar redesign). Kept apart from --glass-*,
-     which the Command Center chat panel uses. */
+     which the Planner chat panel uses. */
   --frame-panel: rgba(255, 255, 255, 0.55);
   --frame-tile: rgba(255, 255, 255, 0.72);
   --frame-border: rgba(34, 56, 67, 0.10);
