@@ -27,4 +27,18 @@ describe("ReportProblemModal", () => {
     expect(alert.className).toContain("text-status-danger");
     expect(alert.className).not.toContain("text-red-400");
   });
+
+  it("starts from the category and subject it is given", () => {
+    render(
+      <ReportProblemModal
+        open
+        onClose={() => {}}
+        onSubmit={vi.fn()}
+        initialCategory="OTHER"
+        initialSubject="Agency application: Hillside Travel"
+      />,
+    );
+    expect(screen.getByLabelText(/category/i)).toHaveValue("OTHER");
+    expect(screen.getByLabelText(/subject/i)).toHaveValue("Agency application: Hillside Travel");
+  });
 });

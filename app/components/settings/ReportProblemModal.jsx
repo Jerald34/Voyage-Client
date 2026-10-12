@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 
-export default function ReportProblemModal({ open, onClose, onSubmit }) {
-  const [category, setCategory] = useState("BUG");
-  const [subject, setSubject] = useState("");
+export default function ReportProblemModal({ open, onClose, onSubmit, initialCategory = "BUG", initialSubject = "" }) {
+  const [category, setCategory] = useState(initialCategory);
+  const [subject, setSubject] = useState(initialSubject);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
