@@ -41,6 +41,23 @@ describe("buildTourSteps", () => {
     expect(staff).not.toContain("dashboard-insights");
   });
 
+  it("picks the role from the membership of the current agency, not the first one", () => {
+    const user = member("OWNER", {
+      memberships: [
+        { agencyId: "a2", role: "STAFF", status: "ACTIVE" },
+        { agencyId: "a1", role: "OWNER", status: "ACTIVE" },
+      ],
+    });
+
+    const inA1 = ids(buildTourSteps({ user, agencyId: "a1" }));
+    const inA2 = ids(buildTourSteps({ user, agencyId: "a2" }));
+
+    expect(inA1).toContain("dashboard-insights");
+    expect(inA1).not.toContain("dashboard-my-work");
+    expect(inA2).toContain("dashboard-my-work");
+    expect(inA2).not.toContain("dashboard-insights");
+  });
+
   it("treats an agency admin like the owner", () => {
     expect(ids(buildTourSteps({ user: member("ADMIN"), agencyId: "a1" }))).toContain("dashboard-insights");
   });
@@ -72,7 +89,7 @@ describe("buildTourSteps", () => {
     ).toHaveLength(12);
   });
 
-  it("points every step after the welcome card at a real control", () => {
+  it("gives every step after the welcome card a target and bullets", () => {
     const steps = buildTourSteps({ user: member("OWNER", { role: "SUPER_ADMIN" }), agencyId: "a1" });
     for (const step of steps.slice(1)) {
       expect(typeof step.target).toBe("string");
@@ -89,6 +106,10 @@ describe("buildTourSteps", () => {
     const steps = buildTourSteps();
     expect(steps[0].title).toBe("Welcome to Voyage");
     expect(steps[0].tab).toBe("command-center");
+  });
+
+  it("treats a null argument like no argument", () => {
+    expect(buildTourSteps(null)[0].title).toBe("Welcome to Voyage");
   });
 });
 

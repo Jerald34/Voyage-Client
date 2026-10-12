@@ -22,7 +22,7 @@ const DASHBOARD_STEPS = [
     placement: "bottom",
     compactPlacement: "bottom",
     title: "Start with what needs you",
-    description: "Needs you lists the trips waiting on you: replies to send, plans to approve and trips leaving soon.",
+    description: "Needs you lists what's waiting on you: client replies, share links about to expire and drafts that have stalled.",
     bullets: ["Each row says what to do next.", "Click a row to act on that trip."],
   },
   {
@@ -33,8 +33,8 @@ const DASHBOARD_STEPS = [
     placement: "top",
     compactPlacement: "top",
     title: "See trips by date",
-    description: "The calendar shows every trip on the days it runs, so busy weeks stand out.",
-    bullets: ["Click a day to see its trips.", "Open a trip from the day to see its details."],
+    description: "The calendar marks each trip on the days it runs, plus client replies, ratings and expiring links, so busy weeks stand out.",
+    bullets: ["Click a day to see everything on it.", "Open a trip from the day to see its details."],
   },
   {
     id: "dashboard-insights",
@@ -56,8 +56,8 @@ const DASHBOARD_STEPS = [
     target: "dashboard-side",
     placement: "left",
     compactPlacement: "top",
-    title: "Pick up your own trips",
-    description: "My work shows the trips assigned to you, starting with the one to continue next.",
+    title: "Pick up your work",
+    description: "Your work lists the trips you're handling, starting with the one to continue next.",
     bullets: ["Continue opens the trip in the Planner.", "Your recent trips are listed below it."],
   },
 ];
@@ -125,7 +125,11 @@ const ITINERARY_STEPS = [
     placement: "left",
     title: "Review saved itineraries",
     description: "The workspace shows the client's itinerary day by day, next to a map of every stop.",
-    bullets: ["Days are on the left, the map on the right.", "Hover a stop to find it on the map."],
+    bullets: [
+      "Days are on the left, the map on the right.",
+      "Hover a stop to find it on the map.",
+      "Another option in the header copies a trip as a starting point.",
+    ],
   },
   {
     id: "trip-selector",
@@ -135,7 +139,7 @@ const ITINERARY_STEPS = [
     placement: "bottom",
     title: "Compare options for a client",
     description: "When a client has more than one saved itinerary, each gets a tab. Trips to the same place are numbered as options.",
-    bullets: ["Each tab loads its own days and map.", "Use Another option to copy a trip as a starting point."],
+    bullets: ["Each tab loads its own days and map.", "Options are numbered in the order they were made."],
   },
   {
     id: "day-strip",
@@ -191,7 +195,8 @@ function firstName(user) {
 }
 
 /** The tour for one person: a welcome card, then the steps for their role, in tab order. */
-export function buildTourSteps({ user = null, agencyId = null } = {}) {
+export function buildTourSteps(options = {}) {
+  const { user = null, agencyId = null } = options ?? {};
   const isPersonal = user?.accountType === "PERSONAL";
   const hasDashboard = !isPersonal && Boolean(agencyId);
   const membership = Array.isArray(user?.memberships)
