@@ -298,10 +298,30 @@ describe("ItineraryHeader", () => {
     expect(screen.queryByRole("button", { name: /another option/i })).not.toBeInTheDocument();
   });
 
-  it("shows the copy in progress and blocks a second click", () => {
-    renderHeader({ onMakeOption: vi.fn(), isMakingOption: true });
-    const button = screen.getByRole("button", { name: "Make another option for Danang" });
-    expect(button).toBeDisabled();
+  it("shows the copy in progress and ignores a second click", () => {
+    const onMakeOption = vi.fn();
+    renderHeader({ onMakeOption, isMakingOption: true });
+    const button = screen.getByRole("button", { name: "Copying trip for Danang" });
+
     expect(button).toHaveTextContent("Copying…");
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    // aria-disabled, not disabled: a disabled button that has focus drops it to the page.
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(onMakeOption).not.toHaveBeenCalled();
+  });
+
+  it("keeps focus on Another option once the copy starts", () => {
+    function Page() {
+      const [busy, setBusy] = useState(false);
+      return <ItineraryHeader {...baseProps} onMakeOption={() => setBusy(true)} isMakingOption={busy} />;
+    }
+    render(<Page />);
+    const button = screen.getByRole("button", { name: "Make another option for Danang" });
+    button.focus();
+
+    fireEvent.click(button);
+
+    expect(screen.getByRole("button", { name: "Copying trip for Danang" })).toHaveFocus();
   });
 });

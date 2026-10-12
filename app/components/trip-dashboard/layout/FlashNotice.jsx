@@ -2,19 +2,32 @@
 
 import { useEffect } from "react";
 
-/** A short message pinned to the top of the dashboard that clears itself. The live region stays mounted. */
-export default function FlashNotice({ message, onDone, durationMs = 6000 }) {
+/**
+ * A short message under the dashboard header that clears itself after a few seconds. The live
+ * region stays mounted. `notice` is `{ text, id }` or null: a new id (even with the same text)
+ * announces again and restarts the timer.
+ */
+export default function FlashNotice({ notice, onDone, durationMs = 6000 }) {
+  const id = notice?.id ?? null;
   useEffect(() => {
-    if (!message) return undefined;
+    if (id === null) return undefined;
     const timer = window.setTimeout(() => onDone?.(), durationMs);
     return () => window.clearTimeout(timer);
-  }, [message, onDone, durationMs]);
+  }, [id, onDone, durationMs]);
 
+  // Just below the header: 16px frame padding + 84px header (desktop), 48px header (phones), plus a gap.
   return (
-    <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 top-4 z-[160] flex justify-center px-4">
-      {message ? (
-        <p className="m-0 max-w-[560px] rounded-pill bg-sidebar px-4 py-2 text-sm font-semibold text-white shadow-strong">
-          {message}
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 top-[108px] z-[160] flex justify-center px-4 max-[900px]:top-[56px]"
+    >
+      {notice?.text ? (
+        <p
+          key={notice.id}
+          className="m-0 max-w-[560px] rounded-pill border border-white/10 bg-sidebar px-4 py-2 text-sm font-semibold text-white shadow-strong"
+        >
+          {notice.text}
         </p>
       ) : null}
     </div>

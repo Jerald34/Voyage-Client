@@ -141,6 +141,11 @@ export default function ClientItineraryPage({
   // selectedClient.trips itself stays newest first, since the default selection reads trips[0].
   const tripTabLabels = useMemo(() => buildTripTabLabels(selectedClient?.trips ?? []), [selectedClient]);
   const tabTrips = useMemo(() => orderTripsForTabs(selectedClient?.trips ?? []), [selectedClient]);
+  // "Another option" copies the selected trip. Only a real, saved trip can be copied, never the tutorial's sample.
+  const makeOption =
+    onDuplicateTrip && selectedTrip?.id && selectedItineraryId && !isTutorialItinerary
+      ? () => onDuplicateTrip(selectedTrip.id)
+      : null;
   const itineraryWeather = useItineraryWeather({
     agencyId,
     itineraryId: selectedItineraryId,
@@ -681,8 +686,20 @@ export default function ClientItineraryPage({
               {selectedClient ? (
                 <div className="flex flex-col flex-1 overflow-hidden pt-2">
                   {/* Client name */}
-                  <div className="px-4 py-2 border-b border-border/5">
-                    <h2 className="font-serif text-[1.2rem] m-0 leading-tight truncate">{selectedClient.name}</h2>
+                  <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border/5">
+                    <h2 className="font-serif text-[1.2rem] m-0 min-w-0 leading-tight truncate">{selectedClient.name}</h2>
+                    {makeOption ? (
+                      // Stays enabled while copying so focus isn't lost; a second tap does nothing.
+                      <button
+                        type="button"
+                        onClick={() => { if (!isDuplicatingTrip) makeOption(); }}
+                        aria-disabled={isDuplicatingTrip ? "true" : undefined}
+                        aria-label={`${isDuplicatingTrip ? "Copying trip for" : "Make another option for"} ${selectedClient.name}`}
+                        className="inline-flex min-h-[40px] flex-shrink-0 cursor-pointer items-center rounded-md bg-transparent px-1 text-[0.8rem] font-semibold text-secondary-strong underline-offset-2 hover:underline aria-disabled:cursor-wait aria-disabled:opacity-60"
+                      >
+                        {isDuplicatingTrip ? "Copying…" : "Another option"}
+                      </button>
+                    ) : null}
                   </div>
 
                   {/* Trip selector */}
@@ -695,6 +712,7 @@ export default function ClientItineraryPage({
                             ? "bg-secondary text-white border-secondary"
                             : "bg-surface border-border/30 text-text-soft"
                             }`}
+                          aria-pressed={selectedTripId === t.id}
                           onClick={() => setSelectedTripId(t.id)}
                         >
                           {tripTabLabels.get(t.id) ?? (t.destination || "Unnamed Trip")}
@@ -856,11 +874,7 @@ export default function ClientItineraryPage({
               showCommentsPanel={showCommentsPanel}
               onBackToList={() => setMobilePane("list")}
               onAddTripForClient={onAddTripForClient}
-              onMakeOption={
-                onDuplicateTrip && selectedTrip?.id && selectedItineraryId && !isTutorialItinerary
-                  ? () => onDuplicateTrip(selectedTrip.id)
-                  : null
-              }
+              onMakeOption={makeOption}
               isMakingOption={isDuplicatingTrip}
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
@@ -899,6 +913,7 @@ export default function ClientItineraryPage({
                         ? "bg-secondary text-white border-secondary"
                         : "bg-surface border-border/30 text-text-soft hover:text-text-primary hover:border-secondary/40"
                         }`}
+                      aria-pressed={selectedTripId === t.id}
                       onClick={() => setSelectedTripId(t.id)}
                     >
                       {tripTabLabels.get(t.id) ?? (t.destination || "Unnamed Trip")}

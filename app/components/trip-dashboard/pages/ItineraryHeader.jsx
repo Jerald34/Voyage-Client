@@ -23,6 +23,9 @@ import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice.jsx";
 // PDF, Print and Approve all labelled, the actions take 583px and the status line
 // 272px, plus the header's padding and gap. Padding and gaps stay tight (px-3,
 // gap-1.5) so that, at 1280px, the name column still fits the status line on one row.
+// "· Another option" adds roughly 110px to the status line (estimated, not measured), so
+// from 920px up to about 1030px that line wraps onto a second row inside the name column
+// (it is flex-wrap) instead of overflowing. The 920 is unchanged for that reason.
 const ACTION_BUTTON =
   "inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 @min-[920px]:px-3 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
 const ACTION_IDLE = "bg-surface-elevated text-text-primary border-border/20 hover:bg-surface hover:border-border/40";
@@ -144,13 +147,14 @@ export default function ItineraryHeader({
               {onMakeOption ? (
                 <>
                   <span aria-hidden="true">·</span>
+                  {/* aria-disabled, not disabled: a disabled button that has focus drops it to the page. */}
                   <button
                     type="button"
-                    onClick={onMakeOption}
-                    disabled={isMakingOption}
-                    aria-label={`Make another option for ${selectedClient.name}`}
+                    onClick={() => { if (!isMakingOption) onMakeOption(); }}
+                    aria-disabled={isMakingOption ? "true" : undefined}
+                    aria-label={`${isMakingOption ? "Copying trip for" : "Make another option for"} ${selectedClient.name}`}
                     title="Copy this trip as the starting point for another option"
-                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-60"
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline aria-disabled:cursor-wait aria-disabled:opacity-60"
                   >
                     {isMakingOption ? "Copying…" : "Another option"}
                   </button>

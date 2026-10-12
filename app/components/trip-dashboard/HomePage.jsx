@@ -160,8 +160,10 @@ export default function HomePage({
   const [mobileMapPadding, setMobileMapPadding] = useState(0);
   const [pendingClientName, setPendingClientName] = useState(null);
   const [isMakingOption, setIsMakingOption] = useState(false);
-  const [flashNotice, setFlashNotice] = useState("");
-  const clearFlashNotice = useCallback(() => setFlashNotice(""), []);
+  const [flashNotice, setFlashNotice] = useState(null);
+  const flashNoticeCount = useRef(0);
+  const showFlashNotice = useCallback((text) => setFlashNotice({ text, id: ++flashNoticeCount.current }), []);
+  const clearFlashNotice = useCallback(() => setFlashNotice(null), []);
   const [cipTourState, setCipTourState] = useState({
     hasSelectedClient: false,
     hasMultipleTrips: false,
@@ -533,8 +535,17 @@ export default function HomePage({
     setIsMakingOption(true);
     try {
       const { trip, itinerary, thread } = await duplicateClientTrip(agencyId, tripId);
-      const listed = await listAgencyTrips(agencyId).catch(() => null);
-      if (Array.isArray(listed?.trips)) setFetchedTrips(listed.trips.map(toPortfolioTrip));
+      // Show the copy in the lists at once, then replace them with the server's list when it arrives
+      // (not awaited: the Planner opens without waiting). If that refresh fails, the copy stays listed.
+      setFetchedTrips((previous) => [
+        toPortfolioTrip({ ...trip, itineraries: [itinerary] }),
+        ...(previous ?? []).filter((row) => row.id !== trip.id),
+      ]);
+      listAgencyTrips(agencyId)
+        .then((result) => {
+          if (Array.isArray(result?.trips)) setFetchedTrips(result.trips.map(toPortfolioTrip));
+        })
+        .catch((err) => console.error("Failed to refresh agency trips:", err));
       // Seed the copy's chat so the Planner hydrates it instead of creating another thread.
       setTripStates((previous) => ({
         ...previous,
@@ -550,11 +561,11 @@ export default function HomePage({
       explicitContextRef.current = true;
       setActiveTab("command-center");
       setActiveContext(createPlanningContext("trip", trip.id));
-      setFlashNotice("New option created. Adjust it here, then approve it on the Itineraries page.");
+      showFlashNotice("New option created. Adjust it here, then approve it on the Itineraries page.");
     } catch (error) {
       console.error("Failed to copy the trip", error);
       // The server refuses to copy a trip that is still an unsaved draft or is archived.
-      setFlashNotice(
+      showFlashNotice(
         error?.code === "TRIP_NOT_SAVED"
           ? "Save this trip before making another option."
           : "Couldn't copy this trip. Try again.",
@@ -562,7 +573,7 @@ export default function HomePage({
     } finally {
       setIsMakingOption(false);
     }
-  }, [agencyId, isMakingOption, setTripStates, setActiveContext, createPlanningContext]);
+  }, [agencyId, isMakingOption, setTripStates, setActiveContext, createPlanningContext, showFlashNotice]);
 
   const handleDeleteOption = async (option) => {
     const threadId = option?.threadId;
@@ -661,7 +672,7 @@ export default function HomePage({
         onStepChange={handleFirstUseTutorialStepChange}
         steps={activeTourSteps}
       />
-      <FlashNotice message={flashNotice} onDone={clearFlashNotice} />
+      <FlashNotice notice={flashNotice} onDone={clearFlashNotice} />
 
       {isApprovalModalOpen && activeContext?.type === "draft" && (
         <SaveItineraryModal

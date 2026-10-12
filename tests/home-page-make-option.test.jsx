@@ -124,6 +124,22 @@ beforeEach(() => {
   api.listAgencyTrips.mockResolvedValue({ trips: [serverTrip("trip-2", "iter-2"), serverTrip("trip-1", "iter-1")] });
 });
 
+// What the server answers: the whole new trip row, and the new itinerary's id, status and version.
+function copyResponse() {
+  return {
+    trip: serverTrip("trip-2", "iter-2"),
+    itinerary: { id: "iter-2", status: "NEEDS_REVIEW", version: 1 },
+    thread: { id: "thread-2", tripId: "trip-2", title: "Alice (another option)", travelerNeeds: null, createdAt: CREATED["trip-2"] },
+  };
+}
+
+async function openPicker() {
+  fireEvent.click(await screen.findByRole("button", { name: /^Current client/ }));
+  await screen.findByRole("listbox");
+}
+
+const pickerOptions = () => within(screen.getByRole("listbox")).getAllByRole("option");
+
 async function clickAnotherOption() {
   const button = await screen.findByRole("button", { name: "Make another option for Alice" });
   fireEvent.click(button);
@@ -170,6 +186,35 @@ describe("HomePage: Another option on the Itineraries page", () => {
     expect(options[0]).toHaveTextContent("In review");
     expect(options[1]).toHaveTextContent("Alice itinerary");
     expect(options[1]).toHaveTextContent("Option 1 · Baguio City");
+  });
+
+  it("opens the Planner without waiting for the trip list, and the picker already names the copy", async () => {
+    api.duplicateClientTrip.mockResolvedValue(copyResponse());
+    // The refresh never answers.
+    api.listAgencyTrips.mockReturnValue(new Promise(() => {}));
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+
+    expect(await screen.findByText(/New option created/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Planner" })).toHaveAttribute("aria-current", "page");
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()[0]).toHaveTextContent("Option 2 · Baguio City"));
+    expect(pickerOptions()[0]).toHaveTextContent("In review");
+  });
+
+  it("keeps the copy listed when refreshing the trip list fails", async () => {
+    api.duplicateClientTrip.mockResolvedValue(copyResponse());
+    api.listAgencyTrips.mockRejectedValue(new Error("offline"));
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+
+    expect(await screen.findByText(/New option created/)).toBeInTheDocument();
+    await waitFor(() => expect(console.error).toHaveBeenCalledWith("Failed to refresh agency trips:", expect.any(Error)));
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()[0]).toHaveTextContent("Option 2 · Baguio City"));
+    expect(pickerOptions()[1]).toHaveTextContent("Option 1 · Baguio City");
   });
 
   it("asks to save the trip first when the server refuses an unsaved or archived trip", async () => {
