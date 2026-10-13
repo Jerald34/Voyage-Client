@@ -157,7 +157,9 @@ describe("HomePage: Another option on the Itineraries page", () => {
     await clickAnotherOption();
 
     expect(api.duplicateClientTrip).toHaveBeenCalledWith("agency-1", "trip-1");
-    expect(await screen.findByText(/New option created/)).toBeInTheDocument();
+    // Phones have no Approve button, so the notice says where the copy waits, not what to press.
+    expect(await screen.findByText("New option created. Adjust it here; it's waiting in review on the Itineraries page.")).toBeInTheDocument();
+    expect(screen.queryByText(/approve it/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Planner" })).toHaveAttribute("aria-current", "page");
     // The seeded thread and itinerary are what the Planner hydrates; no second thread is created.
     await waitFor(() => expect(api.fetchThreadMessages).toHaveBeenCalledWith("agency-1", "thread-2", { limit: 50 }));
@@ -203,6 +205,52 @@ describe("HomePage: Another option on the Itineraries page", () => {
     expect(pickerOptions()[0]).toHaveTextContent("In review");
   });
 
+  it("names the copy in the picker right away, before its chat and itinerary have loaded", async () => {
+    // The server's itinerary answer has no title, so the copy is named by its trip.
+    api.duplicateClientTrip.mockResolvedValue({
+      ...copyResponse(),
+      trip: { ...serverTrip("trip-2", "iter-2"), title: "Alice Baguio weekend" },
+    });
+    // The copy's own chat and itinerary never arrive, so the picker only has what the copy seeded.
+    api.fetchThreadMessages.mockImplementation((_agencyId, threadId) =>
+      threadId === "thread-2" ? new Promise(() => {}) : Promise.resolve({ messages: [] }),
+    );
+    api.fetchItineraryDraft.mockImplementation((_agencyId, id) =>
+      id === "iter-2" ? new Promise(() => {}) : Promise.resolve({ id, title: "Alice itinerary" }),
+    );
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+
+    expect(await screen.findByText(/New option created/)).toBeInTheDocument();
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()[0]).toHaveTextContent("Option 2 · Baguio City"));
+    expect(pickerOptions()[0]).toHaveTextContent("Alice Baguio weekend");
+    expect(pickerOptions()[0]).not.toHaveTextContent("Client trip");
+  });
+
+  it("prefers the itinerary's own title when the server sends one", async () => {
+    api.duplicateClientTrip.mockResolvedValue({
+      ...copyResponse(),
+      trip: { ...serverTrip("trip-2", "iter-2"), title: "Trip title" },
+      itinerary: { id: "iter-2", status: "NEEDS_REVIEW", version: 1, title: "Itinerary title" },
+    });
+    api.fetchThreadMessages.mockImplementation((_agencyId, threadId) =>
+      threadId === "thread-2" ? new Promise(() => {}) : Promise.resolve({ messages: [] }),
+    );
+    api.fetchItineraryDraft.mockImplementation((_agencyId, id) =>
+      id === "iter-2" ? new Promise(() => {}) : Promise.resolve({ id, title: "Alice itinerary" }),
+    );
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+
+    await screen.findByText(/New option created/);
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()[0]).toHaveTextContent("Itinerary title"));
+    expect(pickerOptions()[0]).not.toHaveTextContent("Trip title");
+  });
+
   it("keeps the copy listed when refreshing the trip list fails", async () => {
     api.duplicateClientTrip.mockResolvedValue(copyResponse());
     api.listAgencyTrips.mockRejectedValue(new Error("offline"));
@@ -224,6 +272,28 @@ describe("HomePage: Another option on the Itineraries page", () => {
     await clickAnotherOption();
 
     expect(await screen.findByText("Save this trip before making another option.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Itineraries" })).toHaveAttribute("aria-current", "page");
+    expect(api.createAgentThread).not.toHaveBeenCalled();
+  });
+
+  it("says there is nothing to copy when the trip has no itinerary yet", async () => {
+    api.duplicateClientTrip.mockRejectedValue(Object.assign(new Error("No itinerary"), { code: "ITINERARY_REQUIRED", status: 409 }));
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+
+    expect(await screen.findByText("This trip has no itinerary to copy yet.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Itineraries" })).toHaveAttribute("aria-current", "page");
+    expect(api.createAgentThread).not.toHaveBeenCalled();
+  });
+
+  it("asks for a refresh when the trip no longer exists", async () => {
+    api.duplicateClientTrip.mockRejectedValue(Object.assign(new Error("Gone"), { code: "TRIP_NOT_FOUND", status: 404 }));
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+
+    expect(await screen.findByText("This trip no longer exists. Refresh the page.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Itineraries" })).toHaveAttribute("aria-current", "page");
     expect(api.createAgentThread).not.toHaveBeenCalled();
   });

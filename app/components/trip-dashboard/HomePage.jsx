@@ -80,6 +80,21 @@ export function getAgencyMapFallbackFromUser(user) {
   };
 }
 
+// What to tell the agent when the server refuses to copy a trip.
+function copyTripErrorNotice(code) {
+  switch (code) {
+    // Only saved trips can be copied; a draft or archived trip has no save step behind it.
+    case "TRIP_NOT_SAVED":
+      return "Save this trip before making another option.";
+    case "ITINERARY_REQUIRED":
+      return "This trip has no itinerary to copy yet.";
+    case "TRIP_NOT_FOUND":
+      return "This trip no longer exists. Refresh the page.";
+    default:
+      return "Couldn't copy this trip. Try again.";
+  }
+}
+
 export default function HomePage({
   user: userProp,
   agencyTrips: agencyTripsProp = [],
@@ -546,11 +561,14 @@ export default function HomePage({
           if (Array.isArray(result?.trips)) setFetchedTrips(result.trips.map(toPortfolioTrip));
         })
         .catch((err) => console.error("Failed to refresh agency trips:", err));
-      // Seed the copy's chat so the Planner hydrates it instead of creating another thread.
+      // Seed the copy's chat so the Planner hydrates it instead of creating another thread. The
+      // seeded title names the copy in the picker until the itinerary has loaded; the server's
+      // itinerary answer carries no title, so in practice the trip's own title is used.
       setTripStates((previous) => ({
         ...previous,
         [trip.id]: {
           threadId: thread.id,
+          title: String(itinerary?.title || trip?.title || "").trim(),
           messages: [],
           itinerary: { id: itinerary.id },
           loaded: false,
@@ -561,15 +579,10 @@ export default function HomePage({
       explicitContextRef.current = true;
       setActiveTab("command-center");
       setActiveContext(createPlanningContext("trip", trip.id));
-      showFlashNotice("New option created. Adjust it here, then approve it on the Itineraries page.");
+      showFlashNotice("New option created. Adjust it here; it's waiting in review on the Itineraries page.");
     } catch (error) {
       console.error("Failed to copy the trip", error);
-      // The server refuses to copy a trip that is still an unsaved draft or is archived.
-      showFlashNotice(
-        error?.code === "TRIP_NOT_SAVED"
-          ? "Save this trip before making another option."
-          : "Couldn't copy this trip. Try again.",
-      );
+      showFlashNotice(copyTripErrorNotice(error?.code));
     } finally {
       setIsMakingOption(false);
     }
