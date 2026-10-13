@@ -122,7 +122,7 @@ export default function ClientList({
                       id={deleteNoteId}
                       className="m-0 basis-full min-w-0 px-3 pb-1.5 text-[0.75rem] leading-snug text-text-muted break-words"
                     >
-                      {`Deletes all of ${c.name}'s trips, chats, share links and ratings.`}
+                      {`Deletes ${c.name}'s ${formatSavedItineraryCount(c.trips.length)} and their chats, share links, comments and ratings. This can't be undone.`}
                     </p>
                   </>
                 ) : (

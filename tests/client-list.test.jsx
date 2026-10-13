@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 // components/icons/index.js contains JSX in a .js file, which vitest cannot parse.
@@ -34,6 +34,14 @@ describe("ClientList", () => {
       { id: "c2", name: "Leo Tan", trips: [{ id: "t2" }, { id: "t3" }] },
     ];
 
+    // Elen has one saved itinerary and Leo two, so the line is checked in the singular and the plural.
+    const ELEN_NOTE =
+      "Deletes Elen Cruz's 1 saved itinerary and their chats, share links, comments and ratings. This can't be undone.";
+    const LEO_NOTE =
+      "Deletes Leo Tan's 2 saved itineraries and their chats, share links, comments and ratings. This can't be undone.";
+    // Each row's own "N saved itineraries" label stays on screen, so match the confirm line by its tail.
+    const ANY_NOTE = /their chats, share links, comments and ratings/;
+
     function renderList(onRequestDeleteClient = () => {}) {
       return render(
         <ClientList
@@ -50,29 +58,37 @@ describe("ClientList", () => {
 
     it("says nothing about deletion until a client's trash button is pressed", () => {
       renderList();
-      expect(screen.queryByText(/Deletes all of/)).not.toBeInTheDocument();
+      expect(screen.queryByText(ANY_NOTE)).not.toBeInTheDocument();
     });
 
-    it("names the client and everything their delete removes, and the Delete button is described by that line", () => {
+    it("names the client, counts their saved itineraries in the plural, and describes the Delete button with that line", () => {
       renderList();
       fireEvent.click(screen.getAllByTitle("Delete client record")[1]);
 
-      const note = screen.getByText("Deletes all of Leo Tan's trips, chats, share links and ratings.");
+      const note = screen.getByText(LEO_NOTE);
       // Only the open row shows a line; the other client is not mentioned.
-      expect(screen.queryByText(/Elen Cruz's trips/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Deletes Elen Cruz/)).not.toBeInTheDocument();
 
       const deleteButton = screen.getByRole("button", { name: "Delete" });
       expect(note.id).toBeTruthy();
       expect(deleteButton).toHaveAttribute("aria-describedby", note.id);
-      expect(deleteButton).toHaveAccessibleDescription("Deletes all of Leo Tan's trips, chats, share links and ratings.");
+      expect(deleteButton).toHaveAccessibleDescription(LEO_NOTE);
       expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    });
+
+    it("counts a single saved itinerary in the singular", () => {
+      renderList();
+      fireEvent.click(screen.getAllByTitle("Delete client record")[0]);
+
+      expect(screen.getByText(ELEN_NOTE)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Delete" })).toHaveAccessibleDescription(ELEN_NOTE);
     });
 
     it("puts the line on its own full-width row in a readable grey, wrapping long names", () => {
       renderList();
       fireEvent.click(screen.getAllByTitle("Delete client record")[0]);
 
-      const note = screen.getByText(/Deletes all of Elen Cruz's/);
+      const note = screen.getByText(ELEN_NOTE);
       expect(note.className).toContain("basis-full");
       expect(note.className).toContain("text-text-muted");
       expect(note.className).not.toContain("text-text-soft");
@@ -84,10 +100,10 @@ describe("ClientList", () => {
     it("removes the line again on Cancel and leaves other rows unwrapped", () => {
       renderList();
       fireEvent.click(screen.getAllByTitle("Delete client record")[0]);
-      expect(screen.getByText(/Deletes all of/)).toBeInTheDocument();
+      expect(screen.getByText(ANY_NOTE)).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(screen.queryByText(/Deletes all of/)).not.toBeInTheDocument();
+      expect(screen.queryByText(ANY_NOTE)).not.toBeInTheDocument();
       for (const trash of screen.getAllByTitle("Delete client record")) {
         expect(trash.parentElement.className).not.toContain("flex-wrap");
       }
@@ -100,7 +116,10 @@ describe("ClientList", () => {
       fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
       expect(onRequestDeleteClient).toHaveBeenCalledWith(clients[1]);
-      await screen.findAllByTitle("Delete client record");
+      // The confirm closes once the delete resolves: the line and the Delete button go, the trash buttons return.
+      await waitFor(() => expect(screen.queryByText(ANY_NOTE)).not.toBeInTheDocument());
+      expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+      expect(screen.getAllByTitle("Delete client record")).toHaveLength(2);
     });
   });
 });
