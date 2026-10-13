@@ -268,6 +268,23 @@ describe("Options on ClientItineraryPage", () => {
   });
 });
 
+describe("Delete client on ClientItineraryPage", () => {
+  it("tells every delete which trips are going, so the Planner isn't moved onto the next one", async () => {
+    const onDeleteTrip = vi.fn().mockResolvedValue(undefined);
+    renderPage({ onDeleteTrip });
+
+    fireEvent.click(await screen.findByTitle("Delete client record"));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(onDeleteTrip).toHaveBeenCalledTimes(3));
+    expect(onDeleteTrip.mock.calls.map(([, tripId]) => tripId)).toEqual(["t3", "t2", "t1"]);
+    for (const [agencyId, , options] of onDeleteTrip.mock.calls) {
+      expect(agencyId).toBe("agency-1");
+      expect(options).toEqual({ alsoDeleting: ["t3", "t2", "t1"] });
+    }
+  });
+});
+
 // "Remove option" takes back an unpicked option through the page's own delete, after a question.
 describe("Remove option on ClientItineraryPage", () => {
   const removeButton = (name = /^Remove /) => screen.queryByRole("button", { name });
@@ -285,9 +302,12 @@ describe("Remove option on ClientItineraryPage", () => {
 
       const button = await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" });
       expect(button).toHaveTextContent("Remove option");
-      // Same size as the Another option control beside it.
+      // Same size as the Another option control beside it, but calmer: muted until hovered or focused.
       expect(button.className).toContain(minHeight);
-      expect(button.className).toContain("text-secondary-strong");
+      expect(button.className).toContain("text-text-muted");
+      expect(button.className).toContain("hover:text-status-danger");
+      expect(button.className).toContain("focus-visible:text-status-danger");
+      expect(button.className).not.toContain("text-secondary-strong");
       // It follows the open tab.
       fireEvent.click(screen.getAllByRole("button", { name: "Option 1 · Baguio City" })[0]);
       expect(await screen.findByRole("button", { name: "Remove Option 1 · Baguio City" })).toBeInTheDocument();
@@ -336,7 +356,7 @@ describe("Remove option on ClientItineraryPage", () => {
 
       const dialog = await openDialog();
       expect(within(dialog).getByText(
-        "Remove Option 2 · Baguio City for Alice? Its itinerary, share links and comments will be deleted. This can't be undone.",
+        "Remove Option 2 · Baguio City for Alice? Its itinerary, Planner chat, share links, comments and any client rating will be deleted. This can't be undone.",
       )).toBeInTheDocument();
       expect(onDeleteTrip).not.toHaveBeenCalled();
 
@@ -358,6 +378,54 @@ describe("Remove option on ClientItineraryPage", () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
 
       await waitFor(() => expect(onDeleteTrip).toHaveBeenCalledWith("agency-1", "t1"));
+    });
+
+    it("moves focus to the client's name once the option is removed", async () => {
+      const onDeleteTrip = vi.fn().mockResolvedValue(undefined);
+      renderPage({ onDeleteTrip }, { phone });
+
+      // A real press focuses the button, which is where the dialog sends focus back to.
+      const remove = await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" });
+      remove.focus();
+      fireEvent.click(remove);
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      // The dialog hands focus back to the Remove button as it closes; the name has it after that.
+      await waitFor(() => expect(screen.getByRole("heading", { name: "Alice" })).toHaveFocus());
+      expect(document.activeElement.tagName).toBe("H2");
+      expect(document.activeElement).toHaveAttribute("tabindex", "-1");
+    });
+
+    it("leaves focus alone when the removal fails or is cancelled", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const onDeleteTrip = vi.fn().mockRejectedValue(new Error("boom"));
+      renderPage({ onDeleteTrip }, { phone });
+
+      const dialog = await openDialog();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+      await within(dialog).findByRole("alert");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(screen.getByRole("heading", { name: "Alice" })).not.toHaveFocus();
+      errorSpy.mockRestore();
+    });
+
+    it("treats a trip the server no longer has as removed, without an error", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const onDeleteTrip = vi.fn().mockRejectedValue(Object.assign(new Error("Trip not found."), { code: "TRIP_NOT_FOUND", status: 404 }));
+      renderPage({ onDeleteTrip }, { phone });
+
+      const dialog = await openDialog();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(errorSpy).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.getByRole("heading", { name: "Alice" })).toHaveFocus());
+      errorSpy.mockRestore();
     });
 
     it("does nothing when the question is cancelled", async () => {

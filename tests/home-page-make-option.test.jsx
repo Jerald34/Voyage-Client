@@ -70,8 +70,9 @@ const api = vi.hoisted(() => ({
 }));
 
 // trip-1 is the original; trip-2 is the copy the server makes, a day-and-a-bit newer.
-const CREATED = { "trip-1": "2026-10-01T02:00:00Z", "trip-2": "2026-10-12T03:00:00Z" };
-const serverTrip = (id, itineraryId) => ({
+// trip-3 is another client's, older than both.
+const CREATED = { "trip-1": "2026-10-01T02:00:00Z", "trip-2": "2026-10-12T03:00:00Z", "trip-3": "2026-09-01T02:00:00Z" };
+const serverTrip = (id, itineraryId, overrides = {}) => ({
   id,
   clientName: "Alice",
   title: "Alice itinerary",
@@ -79,6 +80,7 @@ const serverTrip = (id, itineraryId) => ({
   status: "IN_REVIEW",
   createdAt: CREATED[id],
   itineraries: [{ id: itineraryId, version: 1 }],
+  ...overrides,
 });
 
 vi.mock("../app/lib/api/index.js", async (importOriginal) => ({
@@ -339,6 +341,8 @@ describe("HomePage: Remove option on the Itineraries page", () => {
     // Alice is left with one trip, which is no longer an option, and the Itineraries page opens on it.
     expect(await screen.findAllByRole("button", { name: "Make another option for Alice" })).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
+    // The Remove button went with the option, so focus is on the client's name, not the page.
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Alice" })).toHaveFocus());
 
     // The Planner has dropped the removed copy and sits on the trip that is left.
     fireEvent.click(screen.getByRole("button", { name: "Planner" }));
@@ -368,5 +372,68 @@ describe("HomePage: Remove option on the Itineraries page", () => {
     await openPicker();
     await waitFor(() => expect(pickerOptions()).toHaveLength(1));
     expect(pickerOptions()[0]).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("HomePage: removing trips that the Planner is working on", () => {
+  const bobTrip = () => serverTrip("trip-3", "iter-3", { clientName: "Bob", title: "Bob itinerary", destinationSummary: "Cebu" });
+
+  // Alice (trips 1 and, once copied, 2) and Bob (trip 3). Alice's copy is the newest chat, Bob's the oldest.
+  function seedAliceAndBob() {
+    api.bootstrapAgentWorkspace.mockResolvedValue({
+      trips: [serverTrip("trip-1", "iter-1"), bobTrip()],
+      threads: [
+        { id: "thread-1", tripId: "trip-1", itineraryId: "iter-1", createdAt: CREATED["trip-1"] },
+        { id: "thread-3", tripId: "trip-3", itineraryId: "iter-3", createdAt: CREATED["trip-3"] },
+      ],
+      itinerarySummaries: { "iter-1": { id: "iter-1", title: "Alice itinerary" }, "iter-3": { id: "iter-3", title: "Bob itinerary" } },
+    });
+    api.listAgencyTrips.mockResolvedValue({ trips: [serverTrip("trip-2", "iter-2"), serverTrip("trip-1", "iter-1"), bobTrip()] });
+    api.duplicateClientTrip.mockResolvedValue(copyResponse());
+    api.deleteAgencyTrip.mockResolvedValue({ deleted: true });
+  }
+
+  it("Delete client leaves the Planner on another client's chat, not on a trip it deletes next", async () => {
+    seedAliceAndBob();
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    // The Planner opens on Alice's copy, trip-2. Delete client removes trip-2 first, then trip-1.
+    await clickAnotherOption();
+    await screen.findByText(/New option created/);
+    fireEvent.click(screen.getByRole("button", { name: "Itineraries" }));
+    const aliceRow = (await screen.findByTitle("View Alice's itineraries")).parentElement;
+    fireEvent.click(within(aliceRow).getByTitle("Delete client record"));
+    fireEvent.click(within(aliceRow).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(api.deleteAgencyTrip).toHaveBeenCalledTimes(2));
+    expect(api.deleteAgencyTrip.mock.calls.map(([, tripId]) => tripId)).toEqual(["trip-2", "trip-1"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Planner" }));
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()).toHaveLength(1));
+    expect(pickerOptions()[0]).toHaveAttribute("aria-selected", "true");
+    expect(pickerOptions()[0]).toHaveTextContent("Cebu");
+  });
+
+  it("carries on as if removed when the server says the option is already gone", async () => {
+    seedAliceAndBob();
+    api.deleteAgencyTrip.mockRejectedValue(
+      Object.assign(new Error("Trip not found."), { code: "TRIP_NOT_FOUND", status: 404 }),
+    );
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+    await screen.findByText(/New option created/);
+    fireEvent.click(screen.getByRole("button", { name: "Itineraries" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove option" }));
+
+    // No "Try again": the copy is dropped from the page and the Planner, as if the delete had worked.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Planner" }));
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()).toHaveLength(2));
+    expect(pickerOptions().some((option) => option.getAttribute("aria-selected") === "true")).toBe(true);
   });
 });

@@ -946,8 +946,15 @@ export default function HomePage({
               }}
               onDuplicateTrip={agencyId && !isPersonal ? handleMakeOption : null}
               isDuplicatingTrip={isMakingOption}
-              onDeleteTrip={async (aid, tripId) => {
-                await deleteAgencyTrip(aid, tripId);
+              // alsoDeleting: the other trips being deleted in the same run (Delete client), which the
+              // Planner must not be moved on to.
+              onDeleteTrip={async (aid, tripId, { alsoDeleting = [] } = {}) => {
+                try {
+                  await deleteAgencyTrip(aid, tripId);
+                } catch (err) {
+                  // The server no longer has it (another tab removed it): tidy up here all the same.
+                  if (err?.code !== "TRIP_NOT_FOUND") throw err;
+                }
                 setFetchedTrips(prev => (prev || []).filter(t => t.id !== tripId));
                 if (tripStates[tripId]) {
                   setTripStates(prev => { const next = { ...prev }; delete next[tripId]; return next; });
@@ -956,7 +963,10 @@ export default function HomePage({
                 // another chat, as deleting that chat from the Planner does, not leave it on a trip that is gone.
                 if (activeContext?.type === "trip" && activeContext.id === tripId) {
                   if (runTargetRef.current === createRunTargetKey(activeContext)) runTargetRef.current = null;
-                  const next = getNextPlanningContextAfterDelete(planningOptions, activeContext);
+                  const going = new Set([tripId, ...alsoDeleting]);
+                  const staying = planningOptions.filter((option) => !(option.type === "trip" && going.has(option.id)));
+                  const next = getNextPlanningContextAfterDelete(staying, activeContext);
+                  if (selectedPlaceId) setSelectedPlaceId("");
                   setActiveContext(next ? createPlanningContext(next.type, next.id) : null);
                 }
               }}

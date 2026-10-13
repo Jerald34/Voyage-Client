@@ -60,6 +60,8 @@ export default function ItineraryHeader({
   // removeOptionName is how the page names that trip on its tab, e.g. "Option 2 · Baguio City".
   onRemoveOption = null,
   removeOptionName = "",
+  // Counts the page's asks for focus on the client's name (after a removal, whose button may be gone).
+  nameFocusRequest = 0,
   onToggleComments,
   onShare,
   onDownloadPdf,
@@ -97,6 +99,9 @@ export default function ItineraryHeader({
     const focusIsLost = !document.activeElement || document.activeElement === document.body;
     if (reopenWentAway && focusIsLost) nameRef.current?.focus();
   }, [canReopen]);
+  useEffect(() => {
+    if (nameFocusRequest > 0) nameRef.current?.focus();
+  }, [nameFocusRequest]);
   const rawStatus = selectedTrip ? getSavedStatusLabel(selectedTrip) : "";
   // Tutorial data stores lowercase labels ("client approved").
   const statusLabel = rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "";
@@ -173,7 +178,7 @@ export default function ItineraryHeader({
                     onClick={onRemoveOption}
                     aria-label={`Remove ${removeOptionName}`}
                     title="Remove this option"
-                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline"
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-text-muted underline-offset-2 hover:text-status-danger hover:underline focus-visible:text-status-danger"
                   >
                     Remove option
                   </button>

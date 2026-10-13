@@ -94,6 +94,9 @@ export default function ClientItineraryPage({
   const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
   // The option the "Remove option" dialog is asking about: its id and the name to show for it.
   const [removeTarget, setRemoveTarget] = useState(null);
+  // Counts removals; each one asks for focus on the client's name once the dialog has closed.
+  const [nameFocusRequest, setNameFocusRequest] = useState(0);
+  const phoneNameRef = useRef(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [fullItinerary, setFullItinerary] = useState(null);
@@ -400,9 +403,11 @@ export default function ClientItineraryPage({
   const handleDeleteClient = async (client) => {
     if (!agencyId || !client) return;
     try {
-      // Delete each trip sequentially to avoid overwhelming the server
+      // Delete each trip sequentially to avoid overwhelming the server. Each call is told which
+      // trips are going, so the Planner is never moved on to one that is deleted next.
+      const alsoDeleting = client.trips.map((trip) => trip.id);
       for (const trip of client.trips) {
-        await onDeleteTrip?.(agencyId, trip.id);
+        await onDeleteTrip?.(agencyId, trip.id, { alsoDeleting });
       }
       // Auto-select next client if the deleted one was selected
       if (selectedClientId === client.id) {
@@ -541,23 +546,32 @@ export default function ClientItineraryPage({
     try {
       await onDeleteTrip(agencyId, tripId);
     } catch (err) {
-      console.error(err);
-      return { ok: false, message: "Couldn't remove this option. Try again." };
+      // A trip the server no longer has is as good as removed (another tab did it): carry on.
+      if (err?.code !== "TRIP_NOT_FOUND") {
+        console.error(err);
+        return { ok: false, message: "Couldn't remove this option. Try again." };
+      }
     }
     // Land on the client's newest remaining trip, the one a click on the client opens.
     if (selectedTripId === tripId) {
       setSelectedTripId(selectedClient?.trips.find((trip) => trip.id !== tripId)?.id ?? null);
     }
     setRemoveTarget(null);
+    setNameFocusRequest((count) => count + 1);
     return { ok: true };
   }, [agencyId, onDeleteTrip, removeTarget, selectedClient, selectedTripId]);
+  // The Remove button may be gone by now (a lone trip is no option), and the dialog hands focus back
+  // to it as it closes. This runs after that, so focus ends on the name, the nearest stable place.
+  useEffect(() => {
+    if (nameFocusRequest > 0) phoneNameRef.current?.focus();
+  }, [nameFocusRequest]);
   const removeOptionDialog = (
     <ConfirmActionDialog
       open={Boolean(removeTarget)}
       title="Remove this option?"
       body={
         removeTarget
-          ? `Remove ${removeTarget.name} for ${removeTarget.clientName}? Its itinerary, share links and comments will be deleted. This can't be undone.`
+          ? `Remove ${removeTarget.name} for ${removeTarget.clientName}? Its itinerary, Planner chat, share links, comments and any client rating will be deleted. This can't be undone.`
           : ""
       }
       confirmLabel="Remove option"
@@ -743,7 +757,13 @@ export default function ClientItineraryPage({
                   {/* Client name */}
                   <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border/5">
                     {/* flex-1 keeps the name on the left and the option buttons together on the right. */}
-                    <h2 className="font-serif text-[1.2rem] m-0 min-w-0 flex-1 leading-tight truncate">{selectedClient.name}</h2>
+                    <h2
+                      ref={phoneNameRef}
+                      tabIndex={-1}
+                      className="font-serif text-[1.2rem] m-0 min-w-0 flex-1 leading-tight truncate rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                    >
+                      {selectedClient.name}
+                    </h2>
                     {makeOption ? (
                       // Stays enabled while copying so focus isn't lost; a second tap does nothing.
                       <button
@@ -761,7 +781,7 @@ export default function ClientItineraryPage({
                         type="button"
                         onClick={requestRemoveOption}
                         aria-label={`Remove ${removeOptionName}`}
-                        className="inline-flex min-h-[40px] flex-shrink-0 cursor-pointer items-center rounded-md bg-transparent px-1 text-[0.8rem] font-semibold text-secondary-strong underline-offset-2 hover:underline"
+                        className="inline-flex min-h-[40px] flex-shrink-0 cursor-pointer items-center rounded-md bg-transparent px-1 text-[0.8rem] font-semibold text-text-muted underline-offset-2 hover:text-status-danger hover:underline focus-visible:text-status-danger"
                       >
                         Remove option
                       </button>
@@ -945,6 +965,7 @@ export default function ClientItineraryPage({
               isMakingOption={isDuplicatingTrip}
               onRemoveOption={requestRemoveOption}
               removeOptionName={removeOptionName}
+              nameFocusRequest={nameFocusRequest}
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
               onDownloadPdf={handleDownloadPdf}
