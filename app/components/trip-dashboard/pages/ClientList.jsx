@@ -1,6 +1,6 @@
 // ClientList — sidebar listing saved clients with search and delete-confirm UI. Extracted from ClientItineraryPage.jsx.
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { EmptyState } from "../../ui/index.js";
 import { SearchIcon, TrashIcon, UsersIcon } from "../../icons/index.js";
 import { formatSavedItineraryCount } from "../../../lib/trip-dashboard/savedItineraries.js";
@@ -17,6 +17,8 @@ export default function ClientList({
 }) {
   const [showClientDeleteConfirm, setShowClientDeleteConfirm] = useState(null);
   const [isDeletingClient, setIsDeletingClient] = useState(false);
+  // Only one row can be confirming at a time, so one id is enough for the Delete button to point at.
+  const deleteNoteId = useId();
 
   const handleConfirmDelete = async (client) => {
     if (isDeletingClient) return;
@@ -58,7 +60,7 @@ export default function ClientList({
             return (
               <div
                 key={c.id}
-                className={`flex items-center gap-2 p-1 rounded-md transition-all duration-300 relative mb-0.5 ${isSelected
+                className={`flex items-center gap-2 p-1 rounded-md transition-all duration-300 relative mb-0.5 ${isConfirming ? "flex-wrap" : ""} ${isSelected
                   ? "bg-secondary/20 shadow-soft border border-secondary/30"
                   : "hover:bg-background border border-transparent"
                   }`}
@@ -97,22 +99,32 @@ export default function ClientList({
                 </button>
 
                 {isConfirming ? (
-                  <div className="flex gap-1 pr-2 flex-shrink-0" style={{ animation: "cip-slide-in 0.2s ease-out" }}>
-                    <button
-                      className="px-2.5 py-1.5 rounded-[6px] border-none bg-[#dc2626] text-white text-[0.7rem] font-extrabold cursor-pointer transition-all duration-200 shadow-[0_2px_8px_rgba(220,38,38,0.25)] whitespace-nowrap hover:enabled:bg-[#b91c1c] hover:enabled:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={isDeletingClient}
-                      onClick={() => handleConfirmDelete(c)}
+                  <>
+                    <div className="flex gap-1 pr-2 flex-shrink-0" style={{ animation: "cip-slide-in 0.2s ease-out" }}>
+                      <button
+                        className="px-2.5 py-1.5 rounded-[6px] border-none bg-[#dc2626] text-white text-[0.7rem] font-extrabold cursor-pointer transition-all duration-200 shadow-[0_2px_8px_rgba(220,38,38,0.25)] whitespace-nowrap hover:enabled:bg-[#b91c1c] hover:enabled:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-describedby={deleteNoteId}
+                        disabled={isDeletingClient}
+                        onClick={() => handleConfirmDelete(c)}
+                      >
+                        {isDeletingClient ? "..." : "Delete"}
+                      </button>
+                      <button
+                        className="px-2 py-1.5 rounded-[6px] border border-border bg-surface text-[0.7rem] font-bold text-text-soft cursor-pointer transition-all duration-200 whitespace-nowrap hover:enabled:bg-background"
+                        disabled={isDeletingClient}
+                        onClick={() => setShowClientDeleteConfirm(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {/* Full-width line under the name and buttons, so the narrow row never gets squeezed. */}
+                    <p
+                      id={deleteNoteId}
+                      className="m-0 basis-full min-w-0 px-3 pb-1.5 text-[0.75rem] leading-snug text-text-muted break-words"
                     >
-                      {isDeletingClient ? "..." : "Delete"}
-                    </button>
-                    <button
-                      className="px-2 py-1.5 rounded-[6px] border border-border bg-surface text-[0.7rem] font-bold text-text-soft cursor-pointer transition-all duration-200 whitespace-nowrap hover:enabled:bg-background"
-                      disabled={isDeletingClient}
-                      onClick={() => setShowClientDeleteConfirm(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                      {`Deletes all of ${c.name}'s trips, chats, share links and ratings.`}
+                    </p>
+                  </>
                 ) : (
                   <button
                     className="border-none w-8 h-8 flex items-center justify-center cursor-pointer rounded-lg transition-all duration-200 flex-shrink-0 mr-1 bg-transparent text-text-muted hover:bg-status-danger/10 hover:text-status-danger hover:scale-110"
