@@ -63,6 +63,7 @@ const api = vi.hoisted(() => ({
   bootstrapAgentWorkspace: vi.fn(),
   createAgentThread: vi.fn(),
   duplicateClientTrip: vi.fn(),
+  deleteAgencyTrip: vi.fn(),
   listAgencyTrips: vi.fn(),
   fetchThreadMessages: vi.fn(),
   fetchItineraryDraft: vi.fn(),
@@ -84,6 +85,7 @@ vi.mock("../app/lib/api/index.js", async (importOriginal) => ({
   ...(await importOriginal()),
   createAgentThread: api.createAgentThread,
   duplicateClientTrip: api.duplicateClientTrip,
+  deleteAgencyTrip: api.deleteAgencyTrip,
   listAgencyTrips: api.listAgencyTrips,
   fetchThreadMessages: api.fetchThreadMessages,
   fetchItineraryDraft: api.fetchItineraryDraft,
@@ -308,5 +310,63 @@ describe("HomePage: Another option on the Itineraries page", () => {
     expect(screen.getByRole("button", { name: "Itineraries" })).toHaveAttribute("aria-current", "page");
     // The button comes back so the agent can try again.
     expect(screen.getByRole("button", { name: "Make another option for Alice" })).toBeEnabled();
+  });
+});
+
+describe("HomePage: Remove option on the Itineraries page", () => {
+  it("takes the Planner off a copy that is removed, back to the client's other trip", async () => {
+    api.duplicateClientTrip.mockResolvedValue(copyResponse());
+    api.deleteAgencyTrip.mockResolvedValue({ deleted: true });
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    // Copy the trip: the Planner opens on the copy, trip-2.
+    await clickAnotherOption();
+    await screen.findByText(/New option created/);
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()[0]).toHaveTextContent("Option 2 · Baguio City"));
+    expect(pickerOptions()[0]).toHaveAttribute("aria-selected", "true");
+    // Close the picker again by its button.
+    fireEvent.click(screen.getByRole("button", { name: /^Current client/ }));
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+
+    // Remove it again from the Itineraries page.
+    fireEvent.click(screen.getByRole("button", { name: "Itineraries" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove option" }));
+    await waitFor(() => expect(api.deleteAgencyTrip).toHaveBeenCalledWith("agency-1", "trip-2"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // Alice is left with one trip, which is no longer an option, and the Itineraries page opens on it.
+    expect(await screen.findAllByRole("button", { name: "Make another option for Alice" })).not.toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
+
+    // The Planner has dropped the removed copy and sits on the trip that is left.
+    fireEvent.click(screen.getByRole("button", { name: "Planner" }));
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()).toHaveLength(1));
+    expect(pickerOptions()[0]).toHaveTextContent("Baguio City");
+    expect(pickerOptions()[0]).not.toHaveTextContent("Option");
+    expect(pickerOptions()[0]).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("leaves the Planner where it is when a different trip is removed", async () => {
+    api.duplicateClientTrip.mockResolvedValue(copyResponse());
+    api.deleteAgencyTrip.mockResolvedValue({ deleted: true });
+    render(<HomePage user={user} initialTab="itineraries" />);
+
+    await clickAnotherOption();
+    await screen.findByText(/New option created/);
+    fireEvent.click(screen.getByRole("button", { name: "Itineraries" }));
+    // Option 1 (trip-1) is removed while the Planner is on the copy, trip-2.
+    fireEvent.click((await screen.findAllByRole("button", { name: "Option 1 · Baguio City" }))[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Option 1 · Baguio City" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove option" }));
+    await waitFor(() => expect(api.deleteAgencyTrip).toHaveBeenCalledWith("agency-1", "trip-1"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Planner" }));
+    await openPicker();
+    await waitFor(() => expect(pickerOptions()).toHaveLength(1));
+    expect(pickerOptions()[0]).toHaveAttribute("aria-selected", "true");
   });
 });

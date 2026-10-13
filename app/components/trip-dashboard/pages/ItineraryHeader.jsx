@@ -26,6 +26,7 @@ import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice.jsx";
 // "· Another option" adds roughly 110px to the status line (estimated, not measured), so
 // from 920px up to about 1030px that line wraps onto a second row inside the name column
 // (it is flex-wrap) instead of overflowing. The 920 is unchanged for that reason.
+// "· Remove option" (on unapproved trips that sit beside others) adds a similar amount and wraps the same way.
 const ACTION_BUTTON =
   "inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 @min-[920px]:px-3 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
 const ACTION_IDLE = "bg-surface-elevated text-text-primary border-border/20 hover:bg-surface hover:border-border/40";
@@ -55,6 +56,10 @@ export default function ItineraryHeader({
   // "Another option" shows only when the page passes a handler (a real, saved trip).
   onMakeOption = null,
   isMakingOption = false,
+  // "Remove option" shows only when the page passes a handler (an unapproved trip beside others).
+  // removeOptionName is how the page names that trip on its tab, e.g. "Option 2 · Baguio City".
+  onRemoveOption = null,
+  removeOptionName = "",
   onToggleComments,
   onShare,
   onDownloadPdf,
@@ -157,6 +162,20 @@ export default function ItineraryHeader({
                     className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline aria-disabled:cursor-wait aria-disabled:opacity-60"
                   >
                     {isMakingOption ? "Copying…" : "Another option"}
+                  </button>
+                </>
+              ) : null}
+              {onRemoveOption ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <button
+                    type="button"
+                    onClick={onRemoveOption}
+                    aria-label={`Remove ${removeOptionName}`}
+                    title="Remove this option"
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline"
+                  >
+                    Remove option
                   </button>
                 </>
               ) : null}

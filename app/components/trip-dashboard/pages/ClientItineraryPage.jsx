@@ -92,6 +92,8 @@ export default function ClientItineraryPage({
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [approvingTripId, setApprovingTripId] = useState(null);
   const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
+  // The option the "Remove option" dialog is asking about: its id and the name to show for it.
+  const [removeTarget, setRemoveTarget] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [fullItinerary, setFullItinerary] = useState(null);
@@ -513,6 +515,59 @@ export default function ClientItineraryPage({
     setReopenConfirmOpen(false);
     return { ok: true };
   }, [agencyId, onTripStatusChange, selectedItineraryId, selectedTrip]);
+
+  // "Remove option" takes back an option that was not picked. It needs a second trip to stay beside
+  // (a lone trip is not an option; Delete client covers that), never an approved trip, and never the
+  // tutorial's sample. The server deletes the trip with its itinerary, share links and comments.
+  const canRemoveOption = Boolean(
+    onDeleteTrip &&
+      agencyId &&
+      selectedClient &&
+      selectedClient.trips.length > 1 &&
+      selectedTrip?.id &&
+      selectedTrip.approvalStatus !== "Approved" &&
+      !itineraryApprovedElsewhere &&
+      !isTutorialItinerary,
+  );
+  const removeOptionName = selectedTrip ? tripTabLabels.get(selectedTrip.id) ?? (selectedTrip.destination || "Unnamed Trip") : "";
+  const requestRemoveOption = canRemoveOption
+    ? () => setRemoveTarget({ tripId: selectedTrip.id, name: removeOptionName, clientName: selectedClient.name })
+    : null;
+  const closeRemoveConfirm = useCallback(() => setRemoveTarget(null), []);
+  // Not optimistic: the dialog stays open, with the error, until the server has removed the trip.
+  const handleRemoveOption = useCallback(async () => {
+    if (!removeTarget || !agencyId) return { ok: false, message: "" };
+    const { tripId } = removeTarget;
+    try {
+      await onDeleteTrip(agencyId, tripId);
+    } catch (err) {
+      console.error(err);
+      return { ok: false, message: "Couldn't remove this option. Try again." };
+    }
+    // Land on the client's newest remaining trip, the one a click on the client opens.
+    if (selectedTripId === tripId) {
+      setSelectedTripId(selectedClient?.trips.find((trip) => trip.id !== tripId)?.id ?? null);
+    }
+    setRemoveTarget(null);
+    return { ok: true };
+  }, [agencyId, onDeleteTrip, removeTarget, selectedClient, selectedTripId]);
+  const removeOptionDialog = (
+    <ConfirmActionDialog
+      open={Boolean(removeTarget)}
+      title="Remove this option?"
+      body={
+        removeTarget
+          ? `Remove ${removeTarget.name} for ${removeTarget.clientName}? Its itinerary, share links and comments will be deleted. This can't be undone.`
+          : ""
+      }
+      confirmLabel="Remove option"
+      busyLabel="Removing…"
+      tone="danger"
+      onConfirm={handleRemoveOption}
+      onClose={closeRemoveConfirm}
+    />
+  );
+
   const handleDownloadPdf = itineraryPdf.download;
   const handlePrintPdf = itineraryPdf.print;
 
@@ -687,7 +742,8 @@ export default function ClientItineraryPage({
                 <div className="flex flex-col flex-1 overflow-hidden pt-2">
                   {/* Client name */}
                   <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border/5">
-                    <h2 className="font-serif text-[1.2rem] m-0 min-w-0 leading-tight truncate">{selectedClient.name}</h2>
+                    {/* flex-1 keeps the name on the left and the option buttons together on the right. */}
+                    <h2 className="font-serif text-[1.2rem] m-0 min-w-0 flex-1 leading-tight truncate">{selectedClient.name}</h2>
                     {makeOption ? (
                       // Stays enabled while copying so focus isn't lost; a second tap does nothing.
                       <button
@@ -698,6 +754,16 @@ export default function ClientItineraryPage({
                         className="inline-flex min-h-[40px] flex-shrink-0 cursor-pointer items-center rounded-md bg-transparent px-1 text-[0.8rem] font-semibold text-secondary-strong underline-offset-2 hover:underline aria-disabled:cursor-wait aria-disabled:opacity-60"
                       >
                         {isDuplicatingTrip ? "Copying…" : "Another option"}
+                      </button>
+                    ) : null}
+                    {requestRemoveOption ? (
+                      <button
+                        type="button"
+                        onClick={requestRemoveOption}
+                        aria-label={`Remove ${removeOptionName}`}
+                        className="inline-flex min-h-[40px] flex-shrink-0 cursor-pointer items-center rounded-md bg-transparent px-1 text-[0.8rem] font-semibold text-secondary-strong underline-offset-2 hover:underline"
+                      >
+                        Remove option
                       </button>
                     ) : null}
                   </div>
@@ -830,6 +896,7 @@ export default function ClientItineraryPage({
           tripTitle={tripTitle}
         />
         <ItineraryEditDialogs editor={editor} days={safeDays} />
+        {removeOptionDialog}
       </div>
     );
   }
@@ -876,6 +943,8 @@ export default function ClientItineraryPage({
               onAddTripForClient={onAddTripForClient}
               onMakeOption={makeOption}
               isMakingOption={isDuplicatingTrip}
+              onRemoveOption={requestRemoveOption}
+              removeOptionName={removeOptionName}
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
               onDownloadPdf={handleDownloadPdf}
@@ -1013,6 +1082,7 @@ export default function ClientItineraryPage({
         onConfirm={handleReopenTrip}
         onClose={closeReopenConfirm}
       />
+      {removeOptionDialog}
 
       <style>{`
         @keyframes cip-slide-in {

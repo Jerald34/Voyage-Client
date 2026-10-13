@@ -562,8 +562,8 @@ export default function HomePage({
         })
         .catch((err) => console.error("Failed to refresh agency trips:", err));
       // Seed the copy's chat so the Planner hydrates it instead of creating another thread. The
-      // seeded title names the copy in the picker until the itinerary has loaded; the server's
-      // itinerary answer carries no title, so in practice the trip's own title is used.
+      // seeded title names the copy in the picker until the itinerary has loaded: the itinerary's
+      // own title, which the server numbers ("Baguio weekend (option 2)"), else the trip's.
       setTripStates((previous) => ({
         ...previous,
         [trip.id]: {
@@ -951,6 +951,13 @@ export default function HomePage({
                 setFetchedTrips(prev => (prev || []).filter(t => t.id !== tripId));
                 if (tripStates[tripId]) {
                   setTripStates(prev => { const next = { ...prev }; delete next[tripId]; return next; });
+                }
+                // The Planner can have this trip open (a fresh "Another option" copy is): move it on to
+                // another chat, as deleting that chat from the Planner does, not leave it on a trip that is gone.
+                if (activeContext?.type === "trip" && activeContext.id === tripId) {
+                  if (runTargetRef.current === createRunTargetKey(activeContext)) runTargetRef.current = null;
+                  const next = getNextPlanningContextAfterDelete(planningOptions, activeContext);
+                  setActiveContext(next ? createPlanningContext(next.type, next.id) : null);
                 }
               }}
               onTripStatusChange={(tripId, label) => {

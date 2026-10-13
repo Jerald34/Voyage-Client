@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import ClientItineraryPage from "../app/components/trip-dashboard/pages/ClientItineraryPage.jsx";
 
 // ── Module mocks ─────────────────────────────────────────────────────────────
@@ -264,6 +264,157 @@ describe("Options on ClientItineraryPage", () => {
       expect(button).toHaveAttribute("aria-disabled", "true");
       fireEvent.click(button);
       expect(onDuplicateTrip).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// "Remove option" takes back an unpicked option through the page's own delete, after a question.
+describe("Remove option on ClientItineraryPage", () => {
+  const removeButton = (name = /^Remove /) => screen.queryByRole("button", { name });
+  const openDialog = async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" }));
+    return screen.findByRole("dialog");
+  };
+
+  describe.each([
+    ["wide", false, "min-h-[28px]"],
+    ["phone", true, "min-h-[40px]"],
+  ])("on the %s layout", (_name, phone, minHeight) => {
+    it("is offered for an unapproved option of a client with other trips, named for its tab", async () => {
+      renderPage({ onDeleteTrip: vi.fn() }, { phone });
+
+      const button = await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" });
+      expect(button).toHaveTextContent("Remove option");
+      // Same size as the Another option control beside it.
+      expect(button.className).toContain(minHeight);
+      expect(button.className).toContain("text-secondary-strong");
+      // It follows the open tab.
+      fireEvent.click(screen.getAllByRole("button", { name: "Option 1 · Baguio City" })[0]);
+      expect(await screen.findByRole("button", { name: "Remove Option 1 · Baguio City" })).toBeInTheDocument();
+      expect(removeButton("Remove Option 2 · Baguio City")).toBeNull();
+    });
+
+    it("sits beside Another option, not apart from it", async () => {
+      renderPage({ onDeleteTrip: vi.fn(), onDuplicateTrip: vi.fn() }, { phone });
+
+      const remove = await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" });
+      const another = screen.getByRole("button", { name: "Make another option for Alice" });
+      expect(remove.parentElement).toBe(another.parentElement);
+    });
+
+    it("is still offered when the page can't copy", async () => {
+      renderPage({ onDeleteTrip: vi.fn() }, { phone });
+      expect(await screen.findByRole("button", { name: "Remove Option 2 · Baguio City" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /another option/i })).not.toBeInTheDocument();
+    });
+
+    it("is hidden for an approved trip", async () => {
+      renderPage({ onDeleteTrip: vi.fn() }, { phone });
+
+      fireEvent.click((await screen.findAllByRole("button", { name: "Tokyo" }))[0]);
+      await waitFor(() => expect(screen.getAllByRole("button", { name: "Tokyo" })[0]).toHaveAttribute("aria-pressed", "true"));
+      expect(removeButton()).toBeNull();
+    });
+
+    it("is hidden for a client with a single trip", async () => {
+      renderPage({ agencyTrips: [baguioOld], onDeleteTrip: vi.fn() }, { phone });
+
+      await screen.findAllByText("Alice");
+      expect(removeButton()).toBeNull();
+    });
+
+    it("is hidden when the page can't delete trips", async () => {
+      renderPage({}, { phone });
+
+      await screen.findAllByRole("button", { name: "Option 2 · Baguio City" });
+      expect(removeButton()).toBeNull();
+    });
+
+    it("asks first, and removes the option only after Remove option is pressed", async () => {
+      const onDeleteTrip = vi.fn().mockResolvedValue(undefined);
+      renderPage({ onDeleteTrip }, { phone });
+
+      const dialog = await openDialog();
+      expect(within(dialog).getByText(
+        "Remove Option 2 · Baguio City for Alice? Its itinerary, share links and comments will be deleted. This can't be undone.",
+      )).toBeInTheDocument();
+      expect(onDeleteTrip).not.toHaveBeenCalled();
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+
+      await waitFor(() => expect(onDeleteTrip).toHaveBeenCalledWith("agency-1", "t3"));
+      expect(onDeleteTrip).toHaveBeenCalledOnce();
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    });
+
+    it("removes the option whose tab is open", async () => {
+      const onDeleteTrip = vi.fn().mockResolvedValue(undefined);
+      renderPage({ onDeleteTrip }, { phone });
+
+      fireEvent.click((await screen.findAllByRole("button", { name: "Option 1 · Baguio City" }))[0]);
+      fireEvent.click(await screen.findByRole("button", { name: "Remove Option 1 · Baguio City" }));
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent("Remove Option 1 · Baguio City for Alice?");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+
+      await waitFor(() => expect(onDeleteTrip).toHaveBeenCalledWith("agency-1", "t1"));
+    });
+
+    it("does nothing when the question is cancelled", async () => {
+      const onDeleteTrip = vi.fn();
+      renderPage({ onDeleteTrip }, { phone });
+
+      const dialog = await openDialog();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(onDeleteTrip).not.toHaveBeenCalled();
+      // The option is still there to remove.
+      expect(screen.getByRole("button", { name: "Remove Option 2 · Baguio City" })).toBeInTheDocument();
+    });
+
+    it("opens the client's newest remaining trip once the option is gone", async () => {
+      const onDeleteTrip = vi.fn().mockResolvedValue(undefined);
+      const { rerender } = renderPage({ onDeleteTrip }, { phone });
+
+      const dialog = await openDialog();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+      await waitFor(() => expect(onDeleteTrip).toHaveBeenCalled());
+
+      // The parent drops the trip from the list it passes down; the first one left is the newest.
+      rerender(
+        <ClientItineraryPage
+          agencyTrips={[tokyo, baguioOld]}
+          agencyId="agency-1"
+          onDeleteTrip={onDeleteTrip}
+          {...(phone ? { tourMobilePaneOverride: "detail" } : {})}
+        />,
+      );
+      const pressed = (await screen.findAllByRole("button", { name: "Tokyo" }))[0];
+      await waitFor(() => expect(pressed).toHaveAttribute("aria-pressed", "true"));
+      // With one Baguio trip left it is no longer an option.
+      expect(screen.getAllByRole("button", { name: "Baguio City" }).length).toBeGreaterThan(0);
+      expect(screen.queryByRole("button", { name: /Option \d · Baguio City/ })).toBeNull();
+    });
+
+    it("keeps the question open with the error when the server refuses", async () => {
+      const onDeleteTrip = vi.fn().mockRejectedValue(new Error("boom"));
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      renderPage({ onDeleteTrip }, { phone });
+
+      const dialog = await openDialog();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent("Couldn't remove this option. Try again.");
+      expect(screen.getByRole("dialog")).toBe(dialog);
+      // Nothing moved: the same option is still the open tab.
+      expect(screen.getAllByRole("button", { name: "Option 2 · Baguio City" })[0]).toHaveAttribute("aria-pressed", "true");
+      // And the question can be tried again.
+      onDeleteTrip.mockResolvedValue(undefined);
+      fireEvent.click(within(dialog).getByRole("button", { name: "Remove option" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(onDeleteTrip).toHaveBeenCalledTimes(2);
+      errorSpy.mockRestore();
     });
   });
 });

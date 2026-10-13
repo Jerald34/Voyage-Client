@@ -324,4 +324,28 @@ describe("ItineraryHeader", () => {
 
     expect(screen.getByRole("button", { name: "Copying trip for Danang" })).toHaveFocus();
   });
+
+  it("offers Remove option, named for the trip's tab, when the page passes a handler", () => {
+    const onRemoveOption = vi.fn();
+    renderHeader({ onRemoveOption, removeOptionName: "Option 2 · Danang" });
+
+    const button = screen.getByRole("button", { name: "Remove Option 2 · Danang" });
+    expect(button).toHaveTextContent("Remove option");
+    expect(button.className).toContain("min-h-[28px]");
+    fireEvent.click(button);
+    expect(onRemoveOption).toHaveBeenCalledOnce();
+  });
+
+  it("has no Remove option without a handler", () => {
+    renderHeader({ removeOptionName: "Option 2 · Danang" });
+    expect(screen.queryByRole("button", { name: /remove/i })).not.toBeInTheDocument();
+  });
+
+  it("puts Remove option right after Another option on the status line", () => {
+    renderHeader({ onMakeOption: vi.fn(), onRemoveOption: vi.fn(), removeOptionName: "Option 2 · Danang" });
+    const another = screen.getByRole("button", { name: "Make another option for Danang" });
+    const remove = screen.getByRole("button", { name: "Remove Option 2 · Danang" });
+    expect(remove.parentElement).toBe(another.parentElement);
+    expect(another.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
