@@ -465,9 +465,9 @@ export default function SettingsPage({
           <div className="grid gap-4 rounded-[22px] border border-border bg-surface/80 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:grid-cols-[320px_minmax(0,1fr)]">
             <div className="flex flex-col gap-4 xl:border-r xl:border-border/70 xl:pr-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-soft">Tutorial replay</p>
-                <h3 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-text-primary">Walk through the live dashboard</h3>
-                <p className="mt-1 text-sm leading-6 text-text-soft">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Tutorial replay</p>
+                <h3 className="mt-2 font-sans text-lg font-semibold tracking-[-0.02em] text-text-primary">Walk through the live dashboard</h3>
+                <p className="mt-1 text-sm leading-6 text-text-muted">
                   A compact reference for the guided tour that highlights real controls in place.
                 </p>
               </div>
@@ -485,7 +485,7 @@ export default function SettingsPage({
                 {voyageTourHelpBullets.map((bullet) => (
                   <li
                     key={bullet}
-                    className="rounded-2xl border border-border bg-background px-3 py-2.5 text-sm leading-5 text-text-soft"
+                    className="rounded-2xl border border-border bg-background px-3 py-2.5 text-sm leading-5 text-text-muted"
                   >
                     {bullet}
                   </li>
@@ -495,8 +495,8 @@ export default function SettingsPage({
 
             <div className="min-w-0">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-soft">Quick steps</p>
-                <p className="hidden text-xs text-text-soft lg:block">{tourSteps.length} guided stops</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Quick steps</p>
+                <p className="hidden text-xs text-text-muted lg:block">{tourSteps.length} guided stops</p>
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                 {tourSteps.map((step, index) => (
@@ -508,8 +508,8 @@ export default function SettingsPage({
                     <p className="inline-flex h-6 items-center rounded-pill bg-secondary/10 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary">
                       Step {index + 1}
                     </p>
-                    <h4 className="mt-2 text-sm font-semibold leading-5 text-text-primary">{step.title}</h4>
-                    <p className="mt-1 text-xs leading-5 text-text-soft">{step.description}</p>
+                    <h4 className="mt-2 font-sans text-sm font-semibold leading-5 text-text-primary">{step.title}</h4>
+                    <p className="mt-1 text-xs leading-5 text-text-muted">{step.description}</p>
                   </article>
                 ))}
               </div>

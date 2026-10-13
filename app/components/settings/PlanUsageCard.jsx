@@ -22,6 +22,9 @@ function Stat({ label, value }) {
   );
 }
 
+const LOADING_MESSAGE = "Loading this month's usage…";
+const ERROR_MESSAGE = "Couldn't load this month's usage. Try again later.";
+
 /** This month's usage next to the price list. Display only: the agency pays nothing during the pilot. */
 export default function PlanUsageCard({ agencyId }) {
   const [state, setState] = useState({ status: "loading", usage: null });
@@ -40,14 +43,22 @@ export default function PlanUsageCard({ agencyId }) {
     };
   }, [agencyId]);
 
-  if (state.status === "loading") {
-    return <p role="status" className="m-0 text-sm text-text-muted">Loading this month's usage…</p>;
-  }
-  if (state.status === "error" || !state.usage) {
-    return <p role="status" className="m-0 text-sm text-text-muted">Couldn't load this month's usage. Try again later.</p>;
-  }
+  const usage = state.status === "ready" ? state.usage : null;
+  // One status element stays mounted for the card's life. Screen readers announce a live region's
+  // text changing, but often miss one that is swapped in already filled, so the loading and error
+  // text go into this element and it stays empty once the numbers are showing.
+  const statusMessage = state.status === "loading" ? LOADING_MESSAGE : usage ? "" : ERROR_MESSAGE;
 
-  const { periodStart, itinerariesCreated, agentRequests, activeMembers } = state.usage;
+  return (
+    <div>
+      <p role="status" className="m-0 text-sm text-text-muted">{statusMessage}</p>
+      {usage ? <PlanUsageBody usage={usage} /> : null}
+    </div>
+  );
+}
+
+function PlanUsageBody({ usage }) {
+  const { periodStart, itinerariesCreated, agentRequests, activeMembers } = usage;
   const fit = suggestPlan({ itineraries: itinerariesCreated, members: activeMembers });
 
   return (
@@ -68,7 +79,7 @@ export default function PlanUsageCard({ agencyId }) {
           ? `At this month's usage, ${fit.name} (${formatPeso(fit.monthlyPrice)} a month) covers you.`
           : "This month's usage is above every plan. Use Report a problem under Need help? to ask about a custom plan."}
       </p>
-      <ul aria-label="Plans" className="m-0 grid list-none gap-2 p-0 sm:grid-cols-3">
+      <ul role="list" aria-label="Plans" className="m-0 grid list-none gap-2 p-0 sm:grid-cols-3">
         {PLANS.map((plan) => {
           const isFit = fit?.id === plan.id;
           // The fitting card's border is 2px, so its padding is 1px smaller and the content doesn't shift.

@@ -231,6 +231,6 @@ export const voyageTourSteps = buildTourSteps();
 
 export const voyageTourHelpBullets = [
   "The tour opens once per account. Replay it here any time.",
-  "It highlights real controls on the Dashboard, Planner and Itineraries.",
+  "It highlights real controls on the pages you use.",
   "Voyage switches tabs for you as the tour moves on.",
 ];

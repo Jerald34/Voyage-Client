@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ fetchPlanUsage: vi.fn() }));
@@ -97,6 +97,42 @@ describe("PlanUsageCard", () => {
       expect(item).not.toHaveAttribute("aria-current");
     });
     expect(screen.queryByText("Fits this month")).not.toBeInTheDocument();
+  });
+
+  it("keeps one status element: loading text first, then the error, so screen readers hear the change", async () => {
+    let failLoading;
+    api.fetchPlanUsage.mockReturnValue(new Promise((_resolve, reject) => { failLoading = reject; }));
+    render(<PlanUsageCard agencyId="agency-1" />);
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Loading this month's usage…");
+
+    failLoading(new Error("offline"));
+    await waitFor(() => expect(status).toHaveTextContent("Couldn't load this month's usage. Try again later."));
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toBeInTheDocument();
+  });
+
+  it("keeps the same status element once the usage arrives, now empty beside the numbers", async () => {
+    let finishLoading;
+    api.fetchPlanUsage.mockReturnValue(new Promise((resolve) => { finishLoading = resolve; }));
+    render(<PlanUsageCard agencyId="agency-1" />);
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Loading this month's usage…");
+
+    finishLoading(usage());
+    expect(await screen.findByText("Itineraries created")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toBeEmptyDOMElement();
+  });
+
+  it("lists the plans as a list for VoiceOver, which drops the role from unstyled lists", async () => {
+    api.fetchPlanUsage.mockResolvedValue(usage());
+    render(<PlanUsageCard agencyId="agency-1" />);
+
+    const plans = await screen.findByRole("list", { name: "Plans" });
+    expect(plans).toHaveAttribute("role", "list");
   });
 
   it("says so when usage can't load", async () => {

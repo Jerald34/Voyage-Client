@@ -551,14 +551,14 @@ export default function FirstUseTutorial({
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/90 max-[820px]:text-[10px] max-[820px]:tracking-[0.16em]">
               Step {activeIndex + 1} of {steps.length}
             </p>
-            <h2 id="first-use-tutorial-title" className="mt-1 text-xl font-semibold tracking-[-0.02em] text-white max-[820px]:mt-0.5 max-[820px]:text-[1rem]">
+            <h2 id="first-use-tutorial-title" className="mt-1 font-sans text-xl font-semibold tracking-[-0.02em] text-white max-[820px]:mt-0.5 max-[820px]:text-[1rem]">
               {title}
             </h2>
           </div>
           <TutorialProgress activeIndex={activeIndex} steps={steps} />
         </div>
 
-        <h3 id="first-use-tutorial-step-title" className="mt-4 text-lg font-semibold leading-6 tracking-[-0.01em] text-white max-[820px]:mt-3 max-[820px]:text-[0.98rem] max-[820px]:leading-5">
+        <h3 id="first-use-tutorial-step-title" className="mt-4 font-sans text-lg font-semibold leading-6 tracking-[-0.01em] text-white max-[820px]:mt-3 max-[820px]:text-[0.98rem] max-[820px]:leading-5">
           {activeStep.title}
         </h3>
         <p id="first-use-tutorial-description" className="mt-2 text-sm leading-6 text-white/70 max-[820px]:mt-1.5 max-[820px]:text-[0.78rem] max-[820px]:leading-5">
