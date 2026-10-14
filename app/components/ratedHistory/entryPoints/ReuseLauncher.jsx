@@ -20,7 +20,7 @@ export default function ReuseLauncher({
 
   // Fetch unfiltered so the badge reflects total agency rated trips,
   // not just trips matching the current destination.
-  const { trips: allTrips, isLoading, error } = useRatedHistory({
+  const { trips: allTrips, isLoading, error, getDetail } = useRatedHistory({
     agencyId,
     filters: {},
   });
@@ -81,6 +81,7 @@ export default function ReuseLauncher({
           trips={allTrips}
           isLoading={isLoading}
           error={error}
+          getDetail={getDetail}
           onConfirmInsertions={() => {}}
         />
       )}

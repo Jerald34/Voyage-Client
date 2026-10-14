@@ -74,7 +74,7 @@ export default function ReuseSlashCommand({
 
   // Fetch unfiltered so the picker receives all agency rated trips.
   // The destination chip is pre-seeded via defaultDestinationFilter below.
-  const { trips } = useRatedHistory({
+  const { trips, getDetail } = useRatedHistory({
     agencyId: agencyId ?? "",
     filters: {},
   });
@@ -294,6 +294,7 @@ export default function ReuseSlashCommand({
           mode="slash"
           agencyId={agencyId}
           trips={trips}
+          getDetail={getDetail}
           onConfirmInsertions={handleConfirm}
         />
       )}
