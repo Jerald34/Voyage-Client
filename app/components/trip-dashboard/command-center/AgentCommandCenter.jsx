@@ -8,6 +8,9 @@ import RichItineraryMessage from "./RichItineraryMessage.jsx";
 import useImageAttachments from "../../../hooks/useImageAttachments.js";
 import { summarize, activeLabelFor } from "../../agent/process-bubble/processBubbleLabels.js";
 import ReuseSlashCommand from "../../ratedHistory/entryPoints/ReuseSlashCommand.jsx";
+import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
+import { getWeatherRefreshKey } from "../../../lib/weather/weatherDisplay.js";
+import { TUTORIAL_ITINERARY_ID_PREFIX } from "../tutorial/tutorialMockData.js";
 
 function getInitials(name) {
   const parts = String(name ?? "")
@@ -173,6 +176,20 @@ export default function AgentCommandCenter({
   const userInitials = getInitials(userName);
   const itineraryId = itinerary?.id != null ? String(itinerary.id) : null;
 
+  // Weather for the draft while it is still being planned. It refetches when a date, stop time or
+  // location changes, but only once a run settles: a half-built day's weather would only flicker.
+  const weatherRefreshKey = useMemo(() => getWeatherRefreshKey(itinerary), [itinerary]);
+  const [settledWeatherKey, setSettledWeatherKey] = useState(() => (isStreaming ? null : weatherRefreshKey));
+  useEffect(() => {
+    if (!isStreaming) setSettledWeatherKey(weatherRefreshKey);
+  }, [isStreaming, weatherRefreshKey]);
+  const draftWeather = useItineraryWeather({
+    agencyId,
+    itineraryId,
+    version: settledWeatherKey,
+    enabled: Boolean(agencyId && itineraryId) && !itineraryId.startsWith(TUTORIAL_ITINERARY_ID_PREFIX),
+  });
+
   function shouldRenderMessageAsItinerary(message) {
     if (!itineraryId || message?.role !== "assistant") return false;
     return String(message?.itineraryId ?? "") === itineraryId || String(message?.metadata?.itineraryId ?? "") === itineraryId;
@@ -335,6 +352,7 @@ export default function AgentCommandCenter({
               userInitials={userInitials}
               itinerary={itinerary}
               renderAsItinerary={shouldRenderMessageAsItinerary(message)}
+              weather={draftWeather}
               placeEntities={placeEntities}
               selectedPlaceId={selectedPlaceId}
               onPlaceSelect={onPlaceSelect}
@@ -361,6 +379,7 @@ export default function AgentCommandCenter({
             userInitials={userInitials}
             itinerary={liveStreamingItinerary ?? itinerary}
             renderAsItinerary={Boolean(liveStreamingItinerary?.id)}
+            weather={draftWeather}
             placeEntities={placeEntities}
             selectedPlaceId={selectedPlaceId}
             onPlaceSelect={onPlaceSelect}
