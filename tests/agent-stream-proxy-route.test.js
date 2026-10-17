@@ -32,6 +32,26 @@ describe("agent run SSE proxy route (/api/stream)", () => {
     expect(res.headers.get("x-accel-buffering")).toBe("no");
   });
 
+  it("forwards the upstream Set-Cookie headers (sliding session renewal)", async () => {
+    const upstreamHeaders = new Headers();
+    upstreamHeaders.append("set-cookie", "voyage_session=renewed; Path=/; HttpOnly; SameSite=Lax");
+    upstreamHeaders.append("set-cookie", "other=1; Path=/");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: upstreamHeaders,
+      body: new ReadableStream({ start(c) { c.close(); } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await GET(makeRequest());
+
+    expect(res.headers.getSetCookie()).toEqual([
+      "voyage_session=renewed; Path=/; HttpOnly; SameSite=Lax",
+      "other=1; Path=/",
+    ]);
+  });
+
   it("forwards the session cookie and targets the correct upstream run", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

@@ -109,22 +109,24 @@ export default function LoginForm() {
           <input id="auth-password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className={`!pl-[46px] !pr-14 py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
         </FormField>
 
-        <label className="flex items-start gap-3 cursor-pointer py-0.5" htmlFor="auth-remember">
+        <div className="flex items-start gap-3 py-0.5">
           <input
             type="checkbox"
             id="auth-remember"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
             aria-describedby="auth-remember-hint"
-            className="mt-0.5 w-4.5 h-4.5 shrink-0 rounded border-border text-secondary accent-secondary focus:ring-secondary cursor-pointer"
+            className="mt-1 w-4.5 h-4.5 shrink-0 accent-secondary cursor-pointer"
           />
-          <span className="leading-tight">
-            <span className="block text-[0.92rem] text-text-primary font-semibold">Keep me signed in</span>
-            <span id="auth-remember-hint" className="block text-[0.8rem] text-text-muted mt-0.5">
-              Untick on a shared device. You'll be signed out when the browser closes.
-            </span>
-          </span>
-        </label>
+          <div className="leading-tight">
+            <label htmlFor="auth-remember" className="block py-1 text-[0.92rem] text-text-primary font-semibold cursor-pointer">
+              Keep me signed in
+            </label>
+            <p id="auth-remember-hint" className="text-[0.8rem] text-text-muted mb-0">
+              On a shared device, untick this to be signed out when you close the browser or after 12 hours of inactivity.
+            </p>
+          </div>
+        </div>
 
         {notice && (
           <div className="p-3 rounded-sm bg-[rgba(32,178,170,0.08)] border border-[rgba(32,178,170,0.22)] text-text-primary text-[0.86rem] font-semibold leading-relaxed text-center" role="status">

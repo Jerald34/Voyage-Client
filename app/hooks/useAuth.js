@@ -118,7 +118,8 @@ export function useAuth() {
     try {
       const data = await fetchApi("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password, rememberMe }),
+        // Only send the opt-out: older servers reject unknown keys, and the server defaults to remembered.
+        body: JSON.stringify(rememberMe ? { email, password } : { email, password, rememberMe: false }),
       });
       localStorage.setItem("voyage-user", JSON.stringify(data.user));
       const inviteResult = await replayPendingInvite();

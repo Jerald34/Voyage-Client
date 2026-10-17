@@ -32,13 +32,25 @@ describe("useAuth — keep me signed in", () => {
     });
   });
 
-  it("defaults rememberMe to true", async () => {
+  // Older servers have a strict login schema that rejects unknown keys, and the
+  // server treats a missing rememberMe as remembered, so true is never sent.
+  it("omits rememberMe from the body by default", async () => {
     fetchApi.mockResolvedValueOnce({ user: { id: "user-1" } });
     const { result } = renderHook(() => useAuth());
 
     await act(() => result.current.login({ email: "a@example.com", password: "password123" }));
 
-    expect(JSON.parse(fetchApi.mock.calls[0][1].body).rememberMe).toBe(true);
+    expect(JSON.parse(fetchApi.mock.calls[0][1].body)).toEqual({ email: "a@example.com", password: "password123" });
+    expect(JSON.parse(fetchApi.mock.calls[0][1].body)).not.toHaveProperty("rememberMe");
+  });
+
+  it("omits rememberMe from the body when it is explicitly true", async () => {
+    fetchApi.mockResolvedValueOnce({ user: { id: "user-1" } });
+    const { result } = renderHook(() => useAuth());
+
+    await act(() => result.current.login({ email: "a@example.com", password: "password123", rememberMe: true }));
+
+    expect(JSON.parse(fetchApi.mock.calls[0][1].body)).not.toHaveProperty("rememberMe");
   });
 });
 

@@ -52,7 +52,9 @@ describe("login form — keep me signed in", () => {
   it("is ticked by default and sends rememberMe: true", () => {
     render(<LoginForm />);
 
-    expect(screen.getByRole("checkbox", { name: /keep me signed in/i })).toBeChecked();
+    const checkbox = screen.getByRole("checkbox", { name: /^keep me signed in$/i });
+    expect(checkbox).toBeChecked();
+    expect(checkbox).toHaveAccessibleDescription(/shared device/i);
     fillCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Sign in to Voyage" }));
 
@@ -66,7 +68,7 @@ describe("login form — keep me signed in", () => {
   it("sends rememberMe: false once unticked", () => {
     render(<LoginForm />);
 
-    fireEvent.click(screen.getByRole("checkbox", { name: /keep me signed in/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^keep me signed in$/i }));
     fillCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Sign in to Voyage" }));
 
@@ -80,9 +82,11 @@ describe("login form — keep me signed in", () => {
   it("passes the choice to Google sign-in", () => {
     render(<LoginForm />);
 
-    fireEvent.click(screen.getByRole("checkbox", { name: /keep me signed in/i }));
     fireEvent.click(screen.getByRole("button", { name: /continue with google/i }));
+    expect(authState.startOAuth).toHaveBeenLastCalledWith("google", { rememberMe: true });
 
-    expect(authState.startOAuth).toHaveBeenCalledWith("google", { rememberMe: false });
+    fireEvent.click(screen.getByRole("checkbox", { name: /^keep me signed in$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue with google/i }));
+    expect(authState.startOAuth).toHaveBeenLastCalledWith("google", { rememberMe: false });
   });
 });

@@ -63,13 +63,17 @@ export async function GET(request) {
     return new Response(body, { status: upstream.status });
   }
 
-  return new Response(upstream.body, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
+  const headers = new Headers({
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
   });
+  // Pass on the backend's session renewal cookie; otherwise a long-running
+  // stream request would swallow it.
+  for (const cookie of upstream.headers?.getSetCookie?.() ?? []) {
+    headers.append("set-cookie", cookie);
+  }
+
+  return new Response(upstream.body, { status: 200, headers });
 }
