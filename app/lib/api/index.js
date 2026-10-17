@@ -31,9 +31,11 @@ export {
   updateAgencySettings,
   listAgencyTrips,
   deleteAgencyTrip,
+  duplicateClientTrip,
   fetchItineraryDraft,
   bootstrapAgentWorkspace,
   approveClientTrip,
+  fetchPlanUsage,
 } from "./agency.js";
 
 // Hand edits to a saved itinerary, and reopening an approved trip

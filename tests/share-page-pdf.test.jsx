@@ -117,4 +117,46 @@ describe("public share PDF", () => {
     expect(link).toHaveAttribute("href", "blob:fallback");
     expect(link).toHaveAttribute("target", "_blank");
   });
+
+  it("passes the agency's logo and the client's name to the PDF", async () => {
+    api.fetchPublicItinerary.mockResolvedValue(
+      share({ type: "agency", name: "Island Hops Travel", logoUrl: "https://cdn.example.com/hops.png" }),
+    );
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(
+      expect.objectContaining({ logoUrl: "https://cdn.example.com/hops.png", clientName: "Garcia" }),
+    );
+  });
+
+  it("falls back to the trip's client name when the share has none", async () => {
+    const data = share({ type: "agency", name: "Island Hops Travel", logoUrl: null });
+    api.fetchPublicItinerary.mockResolvedValue({
+      ...data,
+      share: { ...data.share, clientName: null },
+      trip: { ...data.trip, clientName: "Reyes Family" },
+    });
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ clientName: "Reyes Family" }));
+  });
+
+  it("prefers the share's client name over the trip's", async () => {
+    const data = share({ type: "agency", name: "Island Hops Travel", logoUrl: null });
+    api.fetchPublicItinerary.mockResolvedValue({ ...data, trip: { ...data.trip, clientName: "Reyes Family" } });
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ clientName: "Garcia" }));
+  });
+
+  it("sends no logo for a personal share", async () => {
+    api.fetchPublicItinerary.mockResolvedValue(share({ type: "personal", displayName: "Ana", logoUrl: "https://x.test/y.png" }));
+    render(<PublicItineraryPage />);
+    await readyButton();
+
+    expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ logoUrl: null }));
+  });
 });

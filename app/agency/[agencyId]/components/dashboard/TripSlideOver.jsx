@@ -708,7 +708,7 @@ export default function TripSlideOver({
               "focus-visible:ring-secondary focus-visible:ring-offset-2"
             }
           >
-            Open in Command Center →
+            Open in Planner →
           </button>
         </div>
       </aside>

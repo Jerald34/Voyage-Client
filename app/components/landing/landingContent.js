@@ -4,6 +4,7 @@ export const LANDING_NAV = [
   { label: "What it does", href: "#what-it-does" },
   { label: "How it works", href: "#how-it-works" },
   { label: "For agencies", href: "#for-agencies" },
+  { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ];
 

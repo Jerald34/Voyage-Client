@@ -5,6 +5,7 @@ import RichItineraryMessage from "./RichItineraryMessage.jsx";
 import AnswerPairs from "./AnswerPairs.jsx";
 import useMobileViewport from "../mobile/useMobileViewport.js";
 import CompactPlaceCard from "../mobile/CompactPlaceCard.jsx";
+import WeatherChip from "../../weather/WeatherChip.jsx";
 import MessageImageGrid from "../../chat/MessageImageGrid";
 import ProcessBubble from "../../agent/process-bubble/ProcessBubble.jsx";
 import { getAnswers, getAskUser } from "../../../lib/agent/askUser.js";
@@ -113,6 +114,8 @@ export default function ChatMessage({
   userInitials,
   itinerary = null,
   renderAsItinerary = false,
+  // Draft weather from useItineraryWeather: { byDayId, attribution }.
+  weather = null,
   placeEntities = [],
   selectedPlaceId = "",
   onPlaceSelect,
@@ -207,6 +210,7 @@ export default function ChatMessage({
                     <span className="text-[0.65rem] font-extrabold uppercase tracking-[0.06em] text-text-soft">
                       Day {day.dayNumber}{day.title ? ` — ${day.title}` : ""}
                     </span>
+                    <WeatherChip entry={weather?.byDayId?.get(day.id)} className="self-start" />
                     {(day.items || []).map((item, iIdx) => {
                       const entityId = getItineraryPlaceEntityId(item, day, iIdx);
                       return (
@@ -216,6 +220,7 @@ export default function ChatMessage({
                           isSelected={selectedPlaceId === entityId}
                           dayNumber={day.dayNumber}
                           stopNumber={iIdx + 1}
+                          dayWeather={weather?.byDayId?.get(day.id) ?? null}
                           onSelect={() => onPlaceSelect?.(entityId)}
                         />
                       );
@@ -228,6 +233,7 @@ export default function ChatMessage({
               <div className="flex flex-col gap-4">
                 <RichItineraryMessage
                   itinerary={itinerary}
+                  weather={weather}
                   placeEntities={placeEntities}
                   selectedPlaceId={selectedPlaceId}
                   onPlaceSelect={onPlaceSelect}

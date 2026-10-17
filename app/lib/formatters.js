@@ -140,7 +140,7 @@ export function getRunStatusLabel(runStatus, streamError) {
   if (streamError) return "Needs attention";
   if (runStatus === "completed") return "Idle";
   if (runStatus === "in_progress" || runStatus === "running")
-    return "Agent streaming";
+    return "Working";
   return "Ready";
 }
 

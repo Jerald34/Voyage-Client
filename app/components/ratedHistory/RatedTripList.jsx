@@ -16,7 +16,11 @@
  * itineraryByTripId Record<string, RatedItinerary>  (optional)
  *   When a trip is expanded and its entry exists here, render
  *   <RatedTripExpanded itinerary={…} />. When missing, render a loading
- *   placeholder. Real fetching lands in Stage 5A.
+ *   placeholder. RatedHistoryPicker fills this via getDetail on expand.
+ * itineraryErrorByTripId Record<string, Error>  (optional)
+ *   When the expanded trip has an entry here (and no itinerary), render an
+ *   error with a Retry button instead of the loading placeholder.
+ * onRetryItinerary  (tripId: string) => void   (optional) — Retry click
  *
  * RatedTripSummary shape (§5.1)
  * ─────────────────────────────
@@ -90,6 +94,39 @@ function InlineLoading() {
 }
 
 /**
+ * InlineError — shown inside an expanded row when its itinerary failed to
+ * load. Retry asks the parent to fetch it again.
+ *
+ * @param {{ onRetry?: () => void }} props
+ */
+function InlineError({ onRetry }) {
+  return (
+    <div
+      role="alert"
+      className="px-4 py-4 flex items-center justify-between gap-3 text-[12px] text-text-soft"
+    >
+      <span>Couldn't load this itinerary.</span>
+      {typeof onRetry === "function" && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className={[
+            "shrink-0 h-7 px-3 rounded-full",
+            "text-[12px] font-medium text-text-primary",
+            "border border-border/[0.20] bg-transparent cursor-pointer",
+            "hover:bg-border/[0.06]",
+            "focus-visible:outline-none focus-visible:ring-2",
+            "focus-visible:ring-[var(--accent,var(--rating-star))]/60",
+          ].join(" ")}
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * DraftBadge — small pill shown next to the title when the trip's loaded
  * itinerary has status === 'DRAFT'. Only rendered after expansion supplies
  * itinerary data (spec §11 open question 5: v1 includes drafts).
@@ -129,6 +166,8 @@ function DraftBadge() {
  *   selection: { kind?: string, itemIds?: string[], dayIds?: string[] },
  *   onSelectionChange: (next: object) => void,
  *   itineraryByTripId?: Record<string, object>,
+ *   itineraryErrorByTripId?: Record<string, Error>,
+ *   onRetryItinerary?: (tripId: string) => void,
  * }} props
  */
 export default function RatedTripList({
@@ -138,6 +177,8 @@ export default function RatedTripList({
   selection,
   onSelectionChange,
   itineraryByTripId = {},
+  itineraryErrorByTripId = {},
+  onRetryItinerary,
 }) {
   if (trips.length === 0) {
     // The picker shell renders <EmptyRatedState>; guard here for standalone safety.
@@ -155,6 +196,7 @@ export default function RatedTripList({
         const tripMonth = formatTripMonth(trip.startDate);
         const dayLabel = `${trip.dayCount} day${trip.dayCount !== 1 ? "s" : ""}`;
         const itinerary = itineraryByTripId[trip.tripId] ?? null;
+        const itineraryError = itineraryErrorByTripId[trip.tripId] ?? null;
 
         // Draft badge: only visible when itinerary is loaded and status === 'DRAFT'
         const showDraftBadge = isExpanded && itinerary?.status === "DRAFT";
@@ -248,6 +290,14 @@ export default function RatedTripList({
                     tripId={trip.tripId}
                     selection={selection}
                     onSelectionChange={onSelectionChange}
+                  />
+                ) : itineraryError ? (
+                  <InlineError
+                    onRetry={
+                      typeof onRetryItinerary === "function"
+                        ? () => onRetryItinerary(trip.tripId)
+                        : undefined
+                    }
                   />
                 ) : (
                   <InlineLoading />

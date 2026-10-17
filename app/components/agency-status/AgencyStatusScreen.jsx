@@ -1,6 +1,9 @@
 "use client";
 
+import { useRef, useState } from "react";
 import ThemeToggle from "../theme/ThemeToggle";
+import ReportProblemModal from "../settings/ReportProblemModal.jsx";
+import { createProblemReport } from "../../lib/api/support.js";
 
 function DetailRow({ label, value }) {
   if (!value) return null;
@@ -24,6 +27,18 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
     : isSuspended
     ? agency.suspensionReason
     : null;
+
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
+  const supportButtonRef = useRef(null);
+  // The server caps a report subject at 150 chars; the longest prefix is 20, so 125 leaves room.
+  const agencyLabel = (agency.name || "my agency").slice(0, 125);
+  const supportSubject = isSuspended ? `Suspended agency: ${agencyLabel}` : `Agency application: ${agencyLabel}`;
+
+  const closeSupport = () => {
+    setSupportOpen(false);
+    supportButtonRef.current?.focus();
+  };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-8">
@@ -110,12 +125,17 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
 
         {/* Description */}
         <p className="text-text-muted text-base leading-relaxed mb-6">
-          {isPending &&
-            "We're reviewing your agency registration. This usually takes 1–2 business days. You'll receive access to your workspace once approved."}
+          {isPending && (
+            <>
+              We&apos;re reviewing your agency registration, usually within 1–2 business days. We&apos;ll email{" "}
+              {user?.email ? <strong className="text-text-primary">{user.email}</strong> : "you"} when it&apos;s done, and
+              this page updates by itself.
+            </>
+          )}
           {isRejected &&
-            "Unfortunately, your agency registration was not approved. Please review the reason below and contact support or resubmit your application."}
+            "Your agency registration wasn't approved. Check the reason below, then contact support if you'd like us to take another look."}
           {isSuspended &&
-            "Your agency account has been suspended by an administrator. Please contact support for assistance or to appeal this decision."}
+            "Your agency account has been suspended by an administrator. Contact support for help or to appeal this decision."}
         </p>
 
         {/* Rejection / Suspension Reason */}
@@ -150,16 +170,20 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
 
         {/* Action CTA */}
         <button
+          ref={supportButtonRef}
           type="button"
           className="w-full py-3 rounded-pill font-bold text-sm bg-secondary text-white hover:opacity-90 transition-opacity mb-3"
           onClick={() => {
-            if (typeof window !== "undefined") {
-              window.location.href = "mailto:support@voyageagency.com";
-            }
+            setReportSent(false);
+            setSupportOpen(true);
           }}
         >
-          {isRejected ? "Resubmit Application" : "Contact Support"}
+          Contact support
         </button>
+        {/* Always rendered so screen readers register it as a live region; no height or margin while empty */}
+        <p role="status" aria-live="polite" className={reportSent ? "text-sm text-text-muted mb-3" : undefined}>
+          {reportSent ? "Report sent. We'll reply by email." : ""}
+        </p>
 
         {/* Logout */}
         <button
@@ -169,6 +193,20 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
         >
           Sign out
         </button>
+
+        {/* Mounted only while open so each report starts fresh with the right subject */}
+        {supportOpen && (
+          <ReportProblemModal
+            open
+            onClose={closeSupport}
+            onSubmit={async (payload) => {
+              await createProblemReport(payload);
+              setReportSent(true);
+            }}
+            initialCategory="OTHER"
+            initialSubject={supportSubject}
+          />
+        )}
       </div>
 
       {/* Keyframe styles injected inline for spin override and progress pulse */}

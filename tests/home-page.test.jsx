@@ -791,8 +791,11 @@ describe("Agency portfolio HomePage", () => {
     expect(screen.getByText("No conversation yet")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "No client trips available" }));
     expect(screen.getByRole("button", { name: "No client trips available" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("No client trips available");
-    expect(screen.getByRole("status")).toHaveTextContent("Use New Itinerary to create the first trip.");
+    // The title is on the menu button and in the open menu, and the flash notice is a second
+    // status region, so find the menu's region by its unique body line.
+    const emptyMenu = screen.getByText("Use New Itinerary to create the first trip.").closest('[role="status"]');
+    expect(emptyMenu).toHaveTextContent("No client trips available");
+    expect(emptyMenu).toHaveTextContent("Use New Itinerary to create the first trip.");
   });
 
   it("switches the active trip and thread when a client is selected", async () => {

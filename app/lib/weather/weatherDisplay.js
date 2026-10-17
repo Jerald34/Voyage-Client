@@ -118,6 +118,30 @@ export function buildWeatherByDayId(weather) {
   return byDayId;
 }
 
+/**
+ * Changes whenever something the weather depends on changes: day dates, the trip start, and each
+ * stop's time and location. The itinerary version alone misses stop edits, which don't bump it.
+ */
+export function getWeatherRefreshKey(itinerary) {
+  if (!itinerary) return null;
+  const days = Array.isArray(itinerary.days) ? itinerary.days : [];
+  const dayKeys = days.map((day) => {
+    const items = Array.isArray(day?.items) ? day.items : [];
+    const itemKeys = items.map((item) => {
+      const snapshot = item?.placeSnapshot ?? null;
+      return [item?.id ?? "", item?.startTime ?? "", item?.endTime ?? "", snapshot?.latitude ?? "", snapshot?.longitude ?? ""].join("/");
+    });
+    return `${day?.id ?? ""}@${day?.date ?? ""}#${day?.dayNumber ?? ""}:${itemKeys.join(",")}`;
+  });
+  return `${itinerary.trip?.startDate ?? itinerary.startDate ?? ""}|${dayKeys.join(";")}`;
+}
+
+/** True when the server answered for every day but none had a date to look up: the trip needs dates first. */
+export function isMissingTripDates(weatherByDayId) {
+  const entries = weatherByDayId instanceof Map ? Array.from(weatherByDayId.values()) : [];
+  return entries.length > 0 && entries.every((entry) => entry?.status === "NO_DATE");
+}
+
 export function formatTemperatureRange(weather) {
   const low = isNumber(weather?.temperatureMinC) ? Math.round(weather.temperatureMinC) : null;
   const high = isNumber(weather?.temperatureMaxC) ? Math.round(weather.temperatureMaxC) : null;

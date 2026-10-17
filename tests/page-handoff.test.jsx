@@ -1,5 +1,4 @@
-import { render } from "@testing-library/react";
-import { waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Page from "../app/page.jsx";
@@ -29,10 +28,12 @@ vi.mock("../app/hooks/useAuth.js", () => ({
   useAuth: () => ({ logout: vi.fn() }),
 }));
 
+// Next's real router is referentially stable. A fresh object per render would
+// re-run page.jsx's [authenticatedParam, router] /auth/me effect on every render.
+const stableRouter = { push: (...args) => mockState.routerPush(...args) };
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockState.routerPush,
-  }),
+  useRouter: () => stableRouter,
   useSearchParams: () => ({
     get: (key) => {
       if (key === "authenticated") return mockState.searchParamsAuthenticated;
@@ -45,6 +46,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../app/hooks/usePrototypeState.js", () => ({
   usePrototypeState: () => mockState.prototypeState,
+}));
+
+vi.mock("../app/components/theme/ThemeToggle", () => ({
+  default: () => null,
 }));
 
 vi.mock("../app/components/landing/LandingPage.jsx", () => ({
@@ -400,5 +405,63 @@ describe("auth routing — fully set-up users reach the dashboard (Bug B)", () =
       expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=agency");
     });
     expect(mockState.setActiveScreen).not.toHaveBeenCalledWith("trip-brief");
+  });
+});
+
+describe("agency review screen refresh", () => {
+  const agency = { id: "agency-1", name: "Hillside Travel", status: "PENDING_REVIEW" };
+  const pendingUser = { id: "user-1", email: "owner@hillside.test", accountType: "AGENCY_USER", memberships: [{ agency }] };
+
+  beforeEach(() => {
+    mockState.searchParamsAuthenticated = "1";
+    // The dashboard is the post-landing screen; with it active, the app opening is observable.
+    mockState.prototypeState = { ...landingPrototypeState(), activeScreen: "trip-brief" };
+  });
+
+  async function showReviewScreen() {
+    render(<Page />);
+    expect(await screen.findByText("Application Under Review")).toBeInTheDocument();
+    expect(screen.queryByTestId("home-page")).not.toBeInTheDocument();
+  }
+
+  async function focusWindow() {
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+  }
+
+  it("opens the app by itself once the agency is approved", async () => {
+    const approvedUser = { ...pendingUser, memberships: [{ agency: { ...agency, status: "VERIFIED" } }] };
+    mockState.fetchApi.mockResolvedValueOnce({ user: pendingUser }).mockResolvedValueOnce({ user: approvedUser });
+
+    await showReviewScreen();
+    await focusWindow();
+
+    expect(await screen.findByTestId("home-page")).toBeInTheDocument();
+    expect(screen.queryByText("Application Under Review")).not.toBeInTheDocument();
+    expect(mockState.homePageProps.user).toEqual(approvedUser);
+    expect(JSON.parse(window.localStorage.getItem("voyage-user"))).toEqual(approvedUser);
+    expect(mockState.fetchApi).toHaveBeenLastCalledWith("/auth/me");
+  });
+
+  it("goes to sign-in when the session has ended", async () => {
+    const authError = Object.assign(new Error("Sign in is required."), { status: 401, code: "AUTH_REQUIRED" });
+    mockState.fetchApi.mockResolvedValueOnce({ user: pendingUser }).mockRejectedValueOnce(authError);
+
+    await showReviewScreen();
+    await focusWindow();
+
+    await waitFor(() => expect(mockState.routerPush).toHaveBeenCalledWith("/login"));
+    expect(window.localStorage.getItem("voyage-user")).toBeNull();
+  });
+
+  it("sends the owner back to the agency setup when the agency is gone", async () => {
+    const detachedUser = { ...pendingUser, memberships: [] };
+    mockState.fetchApi.mockResolvedValueOnce({ user: pendingUser }).mockResolvedValueOnce({ user: detachedUser });
+
+    await showReviewScreen();
+    await focusWindow();
+
+    await waitFor(() => expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=agency"));
   });
 });

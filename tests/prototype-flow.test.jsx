@@ -83,7 +83,7 @@ describe("prototype entry points", () => {
     expect(screen.getByText("Selected place")).toBeInTheDocument();
   }, 10000);
 
-  it("keeps New Itinerary inside the command center when agency context is cached", async () => {
+  it("keeps New Itinerary inside the Planner when agency context is cached", async () => {
     mockNavigationState.authenticated = "1";
     window.localStorage.setItem(
       "voyage-user",

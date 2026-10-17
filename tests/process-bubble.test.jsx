@@ -2,13 +2,23 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProcessBubble from "../app/components/agent/process-bubble/ProcessBubble.jsx";
 
+// One visible step, so the bubble has a step list to toggle.
+const ONE_STEP = [{ id: "s1", kind: "tool", name: "search_google_places" }];
+
+// The status text appears twice by design: a screen-reader-only live region that stays
+// mounted, and the visible label (the button's accessible name).
+function expectLabel(text) {
+  expect(screen.getAllByText(text)).toHaveLength(2);
+  expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent(text);
+}
+
 // Helper: render ProcessBubble with required defaults.
 function renderBubble(props = {}) {
   return render(
     <ProcessBubble
       status="done"
       activeLabel="Researched 4 places · 2.3s"
-      timeline={[]}
+      timeline={ONE_STEP}
       durationMs={2300}
       defaultOpen={false}
       msgId="msg-test"
@@ -18,14 +28,13 @@ function renderBubble(props = {}) {
 }
 
 describe("ProcessBubble — state: live-thinking", () => {
-  it("shows the thinking label and breathing dot while live with no tools", () => {
-    renderBubble({ status: "live", activeLabel: "Thinking…", timeline: [] });
+  it("shows the reading label and breathing dot, with no toggle, while live with no steps yet", () => {
+    renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: [] });
 
-    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expectLabel("Reading your request…");
 
-    // Button should be collapsed by default
-    const button = screen.getByRole("button");
-    expect(button).toHaveAttribute("aria-expanded", "false");
+    // Nothing to expand yet, so there is no toggle
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
 
     // Dot should have the breathing class (rendered via CSS module — non-scoped classNameStrategy)
     const dot = document.querySelector(".pb-dot");
@@ -40,11 +49,11 @@ describe("ProcessBubble — state: live-tool", () => {
     const timeline = [{ id: "t1", kind: "tool", name: "add_itinerary_item" }];
     renderBubble({
       status: "live",
-      activeLabel: "Adding itinerary item…",
+      activeLabel: "Adding a stop…",
       timeline,
     });
 
-    expect(screen.getByText("Adding itinerary item…")).toBeInTheDocument();
+    expectLabel("Adding a stop…");
 
     const button = screen.getByRole("button");
     expect(button).toHaveAttribute("aria-expanded", "false");
@@ -53,8 +62,8 @@ describe("ProcessBubble — state: live-tool", () => {
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-expanded", "true");
 
-    // Tool row content: humanized name "Add Itinerary Item"
-    expect(screen.getByText("Add Itinerary Item")).toBeInTheDocument();
+    // Tool row content: the past-tense label
+    expect(screen.getByText("Added a stop")).toBeInTheDocument();
   });
 });
 
@@ -67,7 +76,7 @@ describe("ProcessBubble — state: done", () => {
       timeline,
     });
 
-    expect(screen.getByText("Built itinerary · 2.3s")).toBeInTheDocument();
+    expectLabel("Built itinerary · 2.3s");
 
     const dot = document.querySelector(".pb-dot");
     expect(dot).not.toBeNull();
@@ -105,10 +114,13 @@ describe("ProcessBubble — ARIA attributes", () => {
     const button = screen.getByRole("button");
     expect(button).toHaveAttribute("aria-controls", "process-timeline-msg-test");
 
-    // The label span has aria-live and aria-atomic
-    const label = document.querySelector('[aria-live="polite"]');
-    expect(label).not.toBeNull();
-    expect(label).toHaveAttribute("aria-atomic", "true");
+    // One screen-reader-only live region carries the status text; the visible label is not live
+    const liveRegions = document.querySelectorAll('[aria-live="polite"]');
+    expect(liveRegions).toHaveLength(1);
+    expect(liveRegions[0]).toHaveAttribute("aria-atomic", "true");
+    expect(liveRegions[0]).toHaveClass("sr-only");
+    expect(liveRegions[0]).toHaveTextContent("Researched 4 places · 2.3s");
+    expect(button).toHaveAccessibleName(/Researched 4 places/);
   });
 
   it("exposes the timeline region with correct role and label when open", () => {
@@ -150,10 +162,89 @@ describe("ProcessBubble — reduced-motion", () => {
 
   it("renders without throwing under prefers-reduced-motion", () => {
     expect(() =>
-      renderBubble({ status: "live", activeLabel: "Thinking…", timeline: [] }),
+      renderBubble({ status: "live", activeLabel: "Reading your request…", timeline: ONE_STEP }),
     ).not.toThrow();
 
-    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expectLabel("Reading your request…");
+    expect(screen.getByRole("button")).toBeInTheDocument();
+  });
+});
+
+describe("ProcessBubble — wording", () => {
+  it("hides the agent's progress-tracking tools from the step list", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "record_agent_task" },
+      { id: "t2", kind: "tool", name: "search_google_places" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Finished in 1.0s", timeline, defaultOpen: true });
+
+    expect(screen.getByText("Searched for places")).toBeInTheDocument();
+    expect(screen.queryByText(/record agent task/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Finished a step")).not.toBeInTheDocument();
+  });
+
+  it("shows a saved run's old summary in the new wording", () => {
+    renderBubble({ status: "done", activeLabel: "Thought for 1.2s", timeline: ONE_STEP });
+
+    expectLabel("Replied in 1.2s");
+  });
+
+  it("does not reword a live label", () => {
+    renderBubble({ status: "live", activeLabel: "Thought for 1.2s", timeline: ONE_STEP });
+
+    expectLabel("Thought for 1.2s");
+  });
+
+  it("shows only the header, with no toggle, when every step is a progress-tracking tool", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "record_agent_task" },
+      { id: "t2", kind: "tool", name: "update_agent_task" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Replied in 1.0s", timeline });
+
+    expectLabel("Replied in 1.0s");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("groups repeated steps by their visible label, even across a hidden tracking tool", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "add_itinerary_item" },
+      { id: "t2", kind: "tool", name: "update_agent_task" },
+      { id: "t3", kind: "tool", name: "add_itinerary_item" },
+      { id: "t4", kind: "tool", name: "add_itinerary_item" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Built itinerary · 1.0s", timeline, defaultOpen: true });
+
+    expect(screen.getAllByText("Added a stop")).toHaveLength(1);
+    expect(screen.getByLabelText("3 times")).toBeInTheDocument();
+  });
+
+  it("groups adjacent unknown tools into one generic row", () => {
+    const timeline = [
+      { id: "t1", kind: "tool", name: "mystery_a" },
+      { id: "t2", kind: "tool", name: "mystery_b" },
+    ];
+    renderBubble({ status: "done", activeLabel: "Finished in 1.0s", timeline, defaultOpen: true });
+
+    expect(screen.getAllByText("Finished a step")).toHaveLength(1);
+    expect(screen.getByLabelText("2 times")).toBeInTheDocument();
+  });
+});
+
+describe("ProcessBubble — live region", () => {
+  it("keeps the same live region mounted when the first step arrives", () => {
+    const props = { status: "live", durationMs: 0, msgId: "msg-test" };
+    const { container, rerender } = render(
+      <ProcessBubble {...props} activeLabel="Reading your request…" timeline={[]} />,
+    );
+    const live = container.querySelector('[aria-live="polite"]');
+    expect(live).not.toBeNull();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+
+    rerender(<ProcessBubble {...props} activeLabel="Searching for places…" timeline={ONE_STEP} />);
+
+    expect(container.querySelector('[aria-live="polite"]')).toBe(live);
+    expect(live).toHaveTextContent("Searching for places…");
     expect(screen.getByRole("button")).toBeInTheDocument();
   });
 });

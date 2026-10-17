@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import prototypeData from "./data/prototype/trip-dashboard.js";
 import { usePrototypeState } from "./hooks/usePrototypeState.js";
@@ -8,6 +8,7 @@ import { useTripDashboard } from "./hooks/useTripDashboard.js";
 import { useAuth } from "./hooks/useAuth.js";
 import { fetchApi } from "./lib/api/index.js";
 import { resolveInitialView } from "./lib/deepLinks.js";
+import useAgencyStatusPolling from "./hooks/useAgencyStatusPolling.js";
 
 import LandingPage from "./components/landing/LandingPage.jsx";
 import HomePage from "./components/trip-dashboard/HomePage.jsx";
@@ -50,6 +51,58 @@ function HomePageInner() {
     mapPlaces,
   });
 
+  // The session is no longer accepted: drop the cached identity and go to sign-in.
+  const handleSessionEnded = useCallback(() => {
+    if (typeof window !== "undefined") localStorage.removeItem("voyage-user");
+    setUser(null);
+    router.push("/login");
+  }, [router]);
+
+  // Store a freshly read user and route it: used by the first /auth/me read and by
+  // the pending-screen polling, so both react the same way to every account state.
+  const applyAuthUser = useCallback((authUser) => {
+    localStorage.setItem("voyage-user", JSON.stringify(authUser));
+    setUser(authUser);
+
+    const accountType = authUser?.accountType;
+
+    // PENDING — user hasn't chosen account type yet (e.g. OAuth user, or
+    // closed the tab mid-signup). Send them to the type picker.
+    // Use ?step=type so login/page.jsx can distinguish a fresh server-confirmed
+    // PENDING redirect from a stale localStorage entry.
+    if (accountType === "PENDING") {
+      router.push("/login?step=type");
+      return;
+    }
+
+    // PERSONAL — no agency expected. Stay on the personal dashboard.
+    if (accountType === "PERSONAL") {
+      setAgencyStatus(null);
+      setShouldBypassLanding(true);
+      return;
+    }
+
+    const hasMembership = Array.isArray(authUser?.memberships) && authUser.memberships.length > 0;
+    if (!hasMembership) {
+      // Agency user without a membership — finish the agency wizard.
+      router.push("/login?step=agency");
+      return;
+    }
+
+    const agency = authUser.memberships[0].agency;
+
+    if (agency && agency.status !== "VERIFIED") {
+      // Agency not yet verified — show status screen
+      setAgencyStatus(agency);
+      setShouldBypassLanding(true);
+      return;
+    }
+
+    // Agency is verified — proceed to dashboard
+    setAgencyStatus(null);
+    setShouldBypassLanding(true);
+  }, [router]);
+
   useEffect(() => {
     if (authenticatedParam !== "1") return;
 
@@ -57,46 +110,7 @@ function HomePageInner() {
     fetchApi("/auth/me")
       .then((data) => {
         if (cancelled) return;
-
-        localStorage.setItem("voyage-user", JSON.stringify(data.user));
-        setUser(data.user);
-
-        const accountType = data.user?.accountType;
-
-        // PENDING — user hasn't chosen account type yet (e.g. OAuth user, or
-        // closed the tab mid-signup). Send them to the type picker.
-        // Use ?step=type so login/page.jsx can distinguish a fresh server-confirmed
-        // PENDING redirect from a stale localStorage entry.
-        if (accountType === "PENDING") {
-          router.push("/login?step=type");
-          return;
-        }
-
-        // PERSONAL — no agency expected. Stay on the personal dashboard.
-        if (accountType === "PERSONAL") {
-          setShouldBypassLanding(true);
-          return;
-        }
-
-        const hasMembership = Array.isArray(data.user?.memberships) && data.user.memberships.length > 0;
-        if (!hasMembership) {
-          // Agency user without a membership — finish the agency wizard.
-          router.push("/login?step=agency");
-          return;
-        }
-
-        const membership = data.user.memberships[0];
-        const agency = membership.agency;
-
-        if (agency && agency.status !== "VERIFIED") {
-          // Agency not yet verified — show status screen
-          setAgencyStatus(agency);
-          setShouldBypassLanding(true);
-          return;
-        }
-
-        // Agency is verified — proceed to dashboard
-        setShouldBypassLanding(true);
+        applyAuthUser(data.user);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -107,10 +121,7 @@ function HomePageInner() {
         // on the welcome screen with no error and no recovery path. Surface it by
         // sending them to the sign-in screen instead of silently swallowing it.
         if (error?.status === 401) {
-          // Drop any stale cached identity so /login starts clean.
-          if (typeof window !== "undefined") localStorage.removeItem("voyage-user");
-          setUser(null);
-          router.push("/login");
+          handleSessionEnded();
           return;
         }
 
@@ -128,13 +139,22 @@ function HomePageInner() {
       });
 
     return () => { cancelled = true; };
-  }, [authenticatedParam, router]);
+  }, [authenticatedParam, applyAuthUser, handleSessionEnded]);
 
   useEffect(() => {
     if (shouldBypassLanding && activeScreen === "landing") {
       setActiveScreen("trip-brief");
     }
   }, [activeScreen, setActiveScreen, shouldBypassLanding]);
+
+  // While the agency waits (or is rejected/suspended), re-read the user so an
+  // approval opens the app without a manual refresh. A session that ended or an
+  // agency that was removed leaves the screen the same way the first read would.
+  useAgencyStatusPolling({
+    enabled: Boolean(agencyStatus) && agencyStatus.status !== "VERIFIED",
+    onUser: applyAuthUser,
+    onUnauthorized: handleSessionEnded,
+  });
 
   // Show agency status screen for non-verified agencies
   if (agencyStatus && agencyStatus.status !== "VERIFIED") {

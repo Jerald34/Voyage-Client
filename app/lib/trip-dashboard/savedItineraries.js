@@ -158,3 +158,70 @@ export function resolveSavedPortfolioSelection({ clients, selectedClientId, sele
 export function normalizeItineraryResponse(responseData) {
   return responseData?.itinerary ?? responseData ?? null;
 }
+
+function createdTime(trip) {
+  const time = Date.parse(trip?.createdAt ?? "");
+  return Number.isNaN(time) ? null : time;
+}
+
+function destinationKey(trip) {
+  return normalizeText(trip?.destination).toLowerCase();
+}
+
+/** Groups trips by destination, keeping each trip's list position. Trips without an id are skipped. */
+function groupByDestination(list) {
+  const groups = new Map();
+  list.forEach((trip, index) => {
+    if (!trip?.id) return;
+    const key = destinationKey(trip);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ trip, index });
+  });
+  return groups;
+}
+
+// Oldest first. Creation times decide only when every trip in the group has one; otherwise
+// list order does (trip lists come newest first, so a later position is an older trip).
+function orderGroupOldestFirst(members) {
+  const allTimed = members.every((member) => createdTime(member.trip) !== null);
+  return [...members].sort((a, b) => {
+    const timeA = createdTime(a.trip);
+    const timeB = createdTime(b.trip);
+    return allTimed && timeA !== timeB ? timeA - timeB : b.index - a.index;
+  });
+}
+
+/**
+ * Tab labels for one client's trips. Trips to the same place are alternatives, so they
+ * are numbered as options in the order they were made: "Option 1 · Baguio City".
+ */
+export function buildTripTabLabels(trips = []) {
+  const list = Array.isArray(trips) ? trips : [];
+  const labels = new Map();
+  for (const members of groupByDestination(list).values()) {
+    orderGroupOldestFirst(members).forEach(({ trip }, position) => {
+      const base = normalizeText(trip.destination) || "Unnamed Trip";
+      labels.set(trip.id, members.length > 1 ? `Option ${position + 1} · ${base}` : base);
+    });
+  }
+  return labels;
+}
+
+/** Tab order for one client's trips: same-destination trips sit together, oldest first, each group where its first trip appeared. */
+export function orderTripsForTabs(trips = []) {
+  const list = Array.isArray(trips) ? trips : [];
+  const groups = groupByDestination(list);
+  const placed = new Set();
+  const ordered = [];
+  list.forEach((trip) => {
+    if (!trip?.id) {
+      ordered.push(trip);
+      return;
+    }
+    const key = destinationKey(trip);
+    if (placed.has(key)) return;
+    placed.add(key);
+    orderGroupOldestFirst(groups.get(key)).forEach((member) => ordered.push(member.trip));
+  });
+  return ordered;
+}

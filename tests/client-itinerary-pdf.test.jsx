@@ -187,6 +187,27 @@ describe("dashboard itinerary PDF", () => {
     expect(delivery.deliverPdf).not.toHaveBeenCalled();
   });
 
+  it("brands the PDF with the agency and names the client", async () => {
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" agencyName="Island Hops Travel" />);
+
+    await waitFor(
+      () =>
+        expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(
+          expect.objectContaining({ agencyName: "Island Hops Travel", clientName: "Garcia" }),
+        ),
+      { timeout: 5000 },
+    );
+  });
+
+  it("falls back to Voyage branding without an agency name", async () => {
+    render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
+
+    await waitFor(
+      () => expect(pdfExport.generateItineraryPdf).toHaveBeenCalledWith(expect.objectContaining({ agencyName: "Voyage" })),
+      { timeout: 5000 },
+    );
+  });
+
   describe("on the mobile layout", () => {
     const originalMatchMedia = window.matchMedia;
     afterEach(() => {

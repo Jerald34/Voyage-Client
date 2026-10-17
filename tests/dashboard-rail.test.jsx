@@ -173,7 +173,7 @@ function renderRail(props = {}) {
 describe("DashboardSidebar rail", () => {
   it("names every destination and marks the current one", () => {
     renderRail();
-    for (const name of ["Dashboard", "Command Center", "Itineraries", "Settings"]) {
+    for (const name of ["Dashboard", "Planner", "Itineraries", "Settings"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
     expect(screen.getByRole("button", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");

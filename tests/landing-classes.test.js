@@ -1,8 +1,14 @@
 // tests/landing-classes.test.js
 import { describe, expect, it } from "vitest";
-import { FOCUS, FOCUS_INSET, PRIMARY_BUTTON, SECONDARY_BUTTON } from "../app/components/landing/landingClasses.js";
+import { FOCUS, FOCUS_INSET, LANDING_SECTION, PRIMARY_BUTTON, SECONDARY_BUTTON } from "../app/components/landing/landingClasses.js";
 
 const classesOf = (value) => value.split(/\s+/);
+
+describe("landing section class", () => {
+  it("keeps the sticky header off the heading a nav link scrolls to", () => {
+    expect(classesOf(LANDING_SECTION)).toContain("scroll-mt-24");
+  });
+});
 
 describe("landing button classes", () => {
   it("gives the secondary button the same press feedback as the primary", () => {

@@ -116,7 +116,7 @@ export default function DashboardSidebar({
     hasAgencyMembership && !isPersonal && agencyId
       ? { tab: "dashboard", label: "Dashboard", icon: ICONS.dashboard, tourTarget: "dashboard-overview" }
       : null,
-    { tab: "command-center", label: "Command Center", icon: ICONS.commandCenter },
+    { tab: "command-center", label: "Planner", icon: ICONS.commandCenter },
     { tab: "itineraries", label: "Itineraries", icon: ICONS.itineraries },
     isAdmin
       ? {

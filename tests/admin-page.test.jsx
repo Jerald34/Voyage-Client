@@ -53,4 +53,10 @@ describe("AdminPage", () => {
     render(<AdminPage />);
     expect(screen.getByRole("heading", { name: "Agencies" })).toBeInTheDocument();
   });
+
+  it("marks the section switcher for the tour", () => {
+    const { container } = render(<AdminPage />);
+    const marker = container.querySelector('[data-tour-target="admin-sections"]');
+    expect(marker).toContainElement(screen.getByRole("tab", { name: "Agencies" }));
+  });
 });
