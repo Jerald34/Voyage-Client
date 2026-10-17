@@ -23,6 +23,7 @@ export default function LoginForm() {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [notice, setNotice] = useState("");
   const [resendState, setResendState] = useState({ loading: false, sent: false, error: null });
 
@@ -44,7 +45,7 @@ export default function LoginForm() {
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    auth.login({ email, password });
+    auth.login({ email, password, rememberMe });
   };
 
   const handleResend = async () => {
@@ -71,7 +72,7 @@ export default function LoginForm() {
         </p>
       </div>
 
-      <OAuthButtons onSelect={(id) => auth.startOAuth(id)} />
+      <OAuthButtons onSelect={(id) => auth.startOAuth(id, { rememberMe })} />
 
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 h-px bg-border/[0.12]" />
@@ -107,6 +108,23 @@ export default function LoginForm() {
         >
           <input id="auth-password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className={`!pl-[46px] !pr-14 py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
         </FormField>
+
+        <label className="flex items-start gap-3 cursor-pointer py-0.5" htmlFor="auth-remember">
+          <input
+            type="checkbox"
+            id="auth-remember"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            aria-describedby="auth-remember-hint"
+            className="mt-0.5 w-4.5 h-4.5 shrink-0 rounded border-border text-secondary accent-secondary focus:ring-secondary cursor-pointer"
+          />
+          <span className="leading-tight">
+            <span className="block text-[0.92rem] text-text-primary font-semibold">Keep me signed in</span>
+            <span id="auth-remember-hint" className="block text-[0.8rem] text-text-muted mt-0.5">
+              Untick on a shared device. You'll be signed out when the browser closes.
+            </span>
+          </span>
+        </label>
 
         {notice && (
           <div className="p-3 rounded-sm bg-[rgba(32,178,170,0.08)] border border-[rgba(32,178,170,0.22)] text-text-primary text-[0.86rem] font-semibold leading-relaxed text-center" role="status">
