@@ -5,6 +5,7 @@ import LandingHeader from "./LandingHeader.jsx";
 import LandingHero from "./LandingHero.jsx";
 import SampleTripSection from "./SampleTripSection.jsx";
 import AfterThePlanTabs from "./after-the-plan/AfterThePlanTabs.jsx";
+import PricingSection from "./PricingSection.jsx";
 import { Faq, FinalCta, ForAgencies, HowItWorks, LandingFooter, WhatItDoes } from "./LandingSections.jsx";
 import VideoModal from "./VideoModal.jsx";
 import { FOCUS } from "./landingClasses.js";
@@ -34,6 +35,7 @@ export default function LandingPage({ onLogin, onStartPlanning }) {
         <WhatItDoes />
         <HowItWorks />
         <ForAgencies />
+        <PricingSection onStartPlanning={onStartPlanning} />
         <Faq />
         <FinalCta onStartPlanning={onStartPlanning} />
       </main>

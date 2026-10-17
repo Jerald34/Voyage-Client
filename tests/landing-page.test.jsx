@@ -40,14 +40,12 @@ afterEach(() => {
 });
 
 describe("landing page", () => {
-  it("has one h1 and every section, in the approved order, with no pricing", () => {
+  it("has one h1 and every section, in the approved order", () => {
     const { container } = renderPage();
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const ids = [...container.querySelectorAll("main section[id]")].map((s) => s.id);
-    expect(ids).toEqual(["sample-trip", "after-the-plan", "what-it-does", "how-it-works", "for-agencies", "faq"]);
-    expect(container.textContent).not.toMatch(/pricing/i);
-    expect(container.querySelector("#pricing")).toBeNull();
+    expect(ids).toEqual(["sample-trip", "after-the-plan", "what-it-does", "how-it-works", "for-agencies", "pricing", "faq"]);
   });
 
   it("shows the real sample trip in the hero and the annotated section", () => {
@@ -63,6 +61,12 @@ describe("landing page", () => {
     for (const button of screen.getAllByRole("button", { name: "Log in" })) fireEvent.click(button);
     expect(onStartPlanning).toHaveBeenCalledTimes(3); // header, hero, final CTA
     expect(onLogin).toHaveBeenCalledTimes(2); // header, footer
+  });
+
+  it("starts the free trial from the Pricing section through sign-up", () => {
+    const { onStartPlanning } = renderPage();
+    for (const button of screen.getAllByRole("button", { name: "Start free trial" })) fireEvent.click(button);
+    expect(onStartPlanning).toHaveBeenCalledTimes(3);
   });
 
   it("opens the demo video", () => {

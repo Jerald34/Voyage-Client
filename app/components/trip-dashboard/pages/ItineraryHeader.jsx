@@ -23,6 +23,10 @@ import PdfDeliveryNotice from "../../ui/PdfDeliveryNotice.jsx";
 // PDF, Print and Approve all labelled, the actions take 583px and the status line
 // 272px, plus the header's padding and gap. Padding and gaps stay tight (px-3,
 // gap-1.5) so that, at 1280px, the name column still fits the status line on one row.
+// "· Another option" adds roughly 110px to the status line (estimated, not measured), so
+// from 920px up to about 1030px that line wraps onto a second row inside the name column
+// (it is flex-wrap) instead of overflowing. The 920 is unchanged for that reason.
+// "· Remove option" (on unapproved trips that sit beside others) adds a similar amount and wraps the same way.
 const ACTION_BUTTON =
   "inline-flex items-center justify-center gap-1.5 min-w-[40px] min-h-[40px] px-2 @min-[920px]:px-3 rounded-lg border text-[0.85rem] font-bold cursor-pointer transition-[background-color,border-color,color,scale] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none";
 const ACTION_IDLE = "bg-surface-elevated text-text-primary border-border/20 hover:bg-surface hover:border-border/40";
@@ -49,6 +53,15 @@ export default function ItineraryHeader({
   showCommentsPanel,
   onBackToList,
   onAddTripForClient,
+  // "Another option" shows only when the page passes a handler (a real, saved trip).
+  onMakeOption = null,
+  isMakingOption = false,
+  // "Remove option" shows only when the page passes a handler (an unapproved trip beside others).
+  // removeOptionName is how the page names that trip on its tab, e.g. "Option 2 · Baguio City".
+  onRemoveOption = null,
+  removeOptionName = "",
+  // Counts the page's asks for focus on the client's name (after a removal, whose button may be gone).
+  nameFocusRequest = 0,
   onToggleComments,
   onShare,
   onDownloadPdf,
@@ -86,6 +99,9 @@ export default function ItineraryHeader({
     const focusIsLost = !document.activeElement || document.activeElement === document.body;
     if (reopenWentAway && focusIsLost) nameRef.current?.focus();
   }, [canReopen]);
+  useEffect(() => {
+    if (nameFocusRequest > 0) nameRef.current?.focus();
+  }, [nameFocusRequest]);
   const rawStatus = selectedTrip ? getSavedStatusLabel(selectedTrip) : "";
   // Tutorial data stores lowercase labels ("client approved").
   const statusLabel = rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "";
@@ -135,6 +151,36 @@ export default function ItineraryHeader({
                   >
                     <PlusIcon width={12} height={12} strokeWidth={2.5} aria-hidden="true" />
                     New trip
+                  </button>
+                </>
+              ) : null}
+              {onMakeOption ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  {/* aria-disabled, not disabled: a disabled button that has focus drops it to the page. */}
+                  <button
+                    type="button"
+                    onClick={() => { if (!isMakingOption) onMakeOption(); }}
+                    aria-disabled={isMakingOption ? "true" : undefined}
+                    aria-label={`${isMakingOption ? "Copying trip for" : "Make another option for"} ${selectedClient.name}`}
+                    title="Copy this trip as the starting point for another option"
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-secondary-strong underline-offset-2 hover:underline aria-disabled:cursor-wait aria-disabled:opacity-60"
+                  >
+                    {isMakingOption ? "Copying…" : "Another option"}
+                  </button>
+                </>
+              ) : null}
+              {onRemoveOption ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <button
+                    type="button"
+                    onClick={onRemoveOption}
+                    aria-label={`Remove ${removeOptionName}`}
+                    title="Remove this option"
+                    className="inline-flex min-h-[28px] cursor-pointer items-center gap-1 rounded-md bg-transparent font-semibold text-text-muted underline-offset-2 hover:text-status-danger hover:underline focus-visible:text-status-danger"
+                  >
+                    Remove option
                   </button>
                 </>
               ) : null}

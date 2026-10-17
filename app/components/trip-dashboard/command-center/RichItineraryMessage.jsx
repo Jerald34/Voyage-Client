@@ -3,10 +3,14 @@ import PlaceStatusBadge from "../itinerary/PlaceStatusBadge.jsx";
 import AccessibilityBadges from "../../accessibility/AccessibilityBadges.jsx";
 import TripAccessibilitySummary from "../../accessibility/TripAccessibilitySummary.jsx";
 import StopNumberBadge from "../itinerary/StopNumberBadge.jsx";
+import DayWeatherSummary from "../../weather/DayWeatherSummary.jsx";
+import StopWeatherTag from "../../weather/StopWeatherTag.jsx";
+import WeatherAttribution from "../../weather/WeatherAttribution.jsx";
 import { buildRichItinerarySections } from "../../../lib/trip-dashboard/richItinerary.js";
 import { describeAccessibilityBadges } from "../../../lib/accessibility/placeAccessibility.js";
+import { describeDayWeather, isMissingTripDates } from "../../../lib/weather/weatherDisplay.js";
 
-function StopShell({ stop, dayNumber, stopNumber, selectedPlaceId, onPlaceSelect }) {
+function StopShell({ stop, dayNumber, stopNumber, dayWeather = null, selectedPlaceId, onPlaceSelect }) {
   const isSelected = stop.isSelectable && stop.placeId === selectedPlaceId;
   
   // Base Container Styles - Luxury Editorial Feel
@@ -65,6 +69,8 @@ function StopShell({ stop, dayNumber, stopNumber, selectedPlaceId, onPlaceSelect
         </div>
       </div>
 
+      <StopWeatherTag entry={dayWeather} itemId={stop.id} className="self-start -mt-1" />
+
       {/* Narrative Section - airy and readable */}
       {stop.description || stop.highlights.length > 0 ? (
         <div className="grid gap-3 pt-1">
@@ -111,6 +117,8 @@ function StopShell({ stop, dayNumber, stopNumber, selectedPlaceId, onPlaceSelect
 
 export default function RichItineraryMessage({
   itinerary,
+  // { byDayId, attribution } from useItineraryWeather; the draft shows weather as soon as its days have dates.
+  weather = null,
   placeEntities = [],
   selectedPlaceId = "",
   onPlaceSelect,
@@ -119,6 +127,12 @@ export default function RichItineraryMessage({
     () => buildRichItinerarySections({ itinerary, placeEntities }),
     [itinerary, placeEntities],
   );
+  const weatherByDayId = weather?.byDayId ?? null;
+  const hasVisibleWeather = useMemo(
+    () => Boolean(weatherByDayId) && Array.from(weatherByDayId.values()).some((entry) => Boolean(describeDayWeather(entry))),
+    [weatherByDayId],
+  );
+  const needsTripDates = useMemo(() => isMissingTripDates(weatherByDayId), [weatherByDayId]);
 
   return (
     <article className="grid gap-8 min-w-[min(100%,400px)] bg-surface-elevated/40 backdrop-blur-md p-6 rounded-[24px] border border-border/10 shadow-2xl" aria-label="Generated itinerary">
@@ -135,6 +149,11 @@ export default function RichItineraryMessage({
           </p>
         ) : null}
         <TripAccessibilitySummary days={itinerary?.days} className="justify-center text-center text-balance" />
+        {needsTripDates ? (
+          <p className="m-0 text-text-soft text-[12px] font-medium text-center">
+            Tell the agent the travel dates to see each day&rsquo;s weather.
+          </p>
+        ) : null}
       </header>
 
       <div className="grid gap-8">
@@ -151,6 +170,7 @@ export default function RichItineraryMessage({
                 </span>
               ) : null}
             </div>
+            <DayWeatherSummary entry={weatherByDayId?.get(day.id) ?? null} />
             <div className="grid gap-4">
               {day.stops.map((stop, stopIndex) => (
                 <StopShell
@@ -158,6 +178,7 @@ export default function RichItineraryMessage({
                   stop={stop}
                   dayNumber={day.dayNumber}
                   stopNumber={stopIndex + 1}
+                  dayWeather={weatherByDayId?.get(day.id) ?? null}
                   selectedPlaceId={selectedPlaceId}
                   onPlaceSelect={onPlaceSelect}
                 />
@@ -171,6 +192,8 @@ export default function RichItineraryMessage({
         <p className="m-0 text-text-soft text-[11px] font-bold tracking-wide uppercase opacity-60">
           Curated by Voyage Agent
         </p>
+        {/* One Open-Meteo credit whenever any day's weather is on screen. */}
+        {hasVisibleWeather ? <WeatherAttribution attribution={weather?.attribution} className="mt-1" /> : null}
       </footer>
     </article>
   );

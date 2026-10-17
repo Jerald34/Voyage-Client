@@ -27,10 +27,28 @@ describe("SamplePdfDemo", () => {
     expect(
       screen.getByText("Weather forecast: Afternoon rain, 1–2 PM, 16–26°C, dry until 11 AM, about 4 mm of rain"),
     ).toBeInTheDocument();
-    // pdfExport.js writes a stop as its time and weather on one line, with the title below it.
-    expect(screen.getByText("9:00 AM – 10:00 AM · Likely dry")).toBeInTheDocument();
-    expect(screen.getByText("1:30 PM – 3:00 PM · Rain likely (up to 94% chance of rain)")).toBeInTheDocument();
+    expect(screen.getByText("Rain likely (up to 94% chance of rain)")).toBeInTheDocument();
     expect(screen.getByText("SM City Baguio")).toBeInTheDocument();
+  });
+
+  it("quotes the day line the way the PDF's navy day bar writes it", () => {
+    render(<SamplePdfDemo />);
+
+    // "Day N  ·  Sat, Oct 10, 2026  —  title", double spaces kept (the paragraph preserves whitespace).
+    const dayLine = screen.getByText((_, element) => element.textContent === "Day 2  ·  Sat, Oct 10, 2026  —  Views & Shopping");
+    expect(dayLine.tagName).toBe("P");
+    expect(dayLine.className).toContain("whitespace-pre-wrap");
+  });
+
+  it("writes each stop as time, then title, then its weather on its own line, as the PDF does", () => {
+    render(<SamplePdfDemo />);
+
+    const item = screen.getByText("SM City Baguio").closest("li");
+    expect([...item.querySelectorAll("p")].map((line) => line.textContent)).toEqual([
+      "1:30 PM – 3:00 PM",
+      "SM City Baguio",
+      "Rain likely (up to 94% chance of rain)",
+    ]);
   });
 
   it("keeps list semantics on the stop list, which has list-style: none", () => {

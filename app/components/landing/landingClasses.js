@@ -4,6 +4,9 @@ export const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 foc
 // For rows that fill their container (the FAQ summaries), where an outside ring would be clipped or collide with a neighbour.
 export const FOCUS_INSET = "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-secondary-strong";
 
+// The shared wrapper for the landing sections the header nav scrolls to; scroll-mt-24 keeps the sticky header off the heading.
+export const LANDING_SECTION = "mx-auto w-full max-w-[1220px] scroll-mt-24 px-4 pb-24";
+
 export const PRIMARY_BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-pill border-0 bg-secondary-strong px-5 text-sm font-semibold text-on-secondary-strong no-underline transition-[filter,scale] duration-150 hover:brightness-95 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${FOCUS}`;
 
 export const SECONDARY_BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-pill border border-border/25 bg-transparent px-5 text-sm font-semibold text-text-primary no-underline transition-[background-color,scale] duration-150 hover:bg-secondary/[0.08] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${FOCUS}`;

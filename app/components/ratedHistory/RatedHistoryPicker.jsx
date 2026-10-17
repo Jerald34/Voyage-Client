@@ -68,6 +68,8 @@ import RatedTripList from "./RatedTripList.jsx";
  * @param {string}   props.agencyId
  * @param {RatedTripSummary[]} [props.trips]        - Omit → empty state; provide → render list.
  * @param {boolean}  [props.isLoading]              - When true, shows a loading skeleton in the trip-list area.
+ * @param {(tripId: string) => Promise<object>} [props.getDetail] - useRatedHistory's cached detail
+ *   fetch; called when a trip is expanded. Omit → expanded rows stay in the loading state.
  * @param {(payload: object) => void} [props.onConfirmInsertions] - Slot for Stage 5B/6C.
  */
 export default function RatedHistoryPicker({
@@ -79,6 +81,7 @@ export default function RatedHistoryPicker({
   agencyId,
   trips,
   isLoading = false,
+  getDetail,
   onConfirmInsertions,
 }) {
   /* ─────────────────────────────────────────────────────────────
@@ -116,6 +119,60 @@ export default function RatedHistoryPicker({
 
   const handleSelectionChange = useCallback((next) => {
     setSelection(next);
+  }, []);
+
+  /* ─────────────────────────────────────────────────────────────
+     Itinerary detail for the expanded trip
+     Expanding a trip loads its itinerary through `getDetail` (the
+     caller's useRatedHistory instance, which caches per tripId) and
+     keeps the result keyed by tripId for RatedTripList. A failed load
+     is kept per trip so the row can show an error with Retry;
+     re-expanding or Retry tries again.
+  ──────────────────────────────────────────────────────────────── */
+  const [itineraryByTripId, setItineraryByTripId] = useState(
+    /** @type {Record<string, object>} */ ({})
+  );
+  const [itineraryErrorByTripId, setItineraryErrorByTripId] = useState(
+    /** @type {Record<string, Error>} */ ({})
+  );
+  const [detailAttempt, setDetailAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!expandedTripId || typeof getDetail !== "function") return;
+    const tripId = expandedTripId;
+    let active = true;
+
+    setItineraryErrorByTripId((prev) => {
+      if (!(tripId in prev)) return prev;
+      const { [tripId]: _cleared, ...rest } = prev;
+      return rest;
+    });
+
+    getDetail(tripId).then(
+      (itinerary) => {
+        if (!active) return;
+        if (itinerary) {
+          setItineraryByTripId((prev) => ({ ...prev, [tripId]: itinerary }));
+        } else {
+          setItineraryErrorByTripId((prev) => ({
+            ...prev,
+            [tripId]: new Error("Itinerary missing from response"),
+          }));
+        }
+      },
+      (err) => {
+        if (!active) return;
+        setItineraryErrorByTripId((prev) => ({ ...prev, [tripId]: err }));
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [expandedTripId, getDetail, detailAttempt]);
+
+  const handleRetryItinerary = useCallback(() => {
+    setDetailAttempt((n) => n + 1);
   }, []);
 
   /* ─────────────────────────────────────────────────────────────
@@ -473,6 +530,9 @@ export default function RatedHistoryPicker({
               onTripToggle={handleTripToggle}
               selection={selection}
               onSelectionChange={handleSelectionChange}
+              itineraryByTripId={itineraryByTripId}
+              itineraryErrorByTripId={itineraryErrorByTripId}
+              onRetryItinerary={handleRetryItinerary}
             />
           )}
         </div>

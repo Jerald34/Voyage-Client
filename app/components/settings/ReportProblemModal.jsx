@@ -1,14 +1,20 @@
 "use client";
 import { useState } from "react";
 
-export default function ReportProblemModal({ open, onClose, onSubmit }) {
-  const [category, setCategory] = useState("BUG");
-  const [subject, setSubject] = useState("");
+export default function ReportProblemModal({ open, onClose, onSubmit, initialCategory = "BUG", initialSubject = "" }) {
+  const [category, setCategory] = useState(initialCategory);
+  const [subject, setSubject] = useState(initialSubject);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
+
+  // Ignore dismissals while a send is in flight so a failure can't be lost with the dialog.
+  const requestClose = () => {
+    if (submitting) return;
+    onClose?.();
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -34,7 +40,7 @@ export default function ReportProblemModal({ open, onClose, onSubmit }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={requestClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
@@ -54,7 +60,7 @@ export default function ReportProblemModal({ open, onClose, onSubmit }) {
           </div>
           <div className="block">
             <label htmlFor="report-subject" className="text-xs font-semibold uppercase tracking-[0.08em] text-text-soft">Subject</label>
-            <input id="report-subject" value={subject} onChange={(e) => setSubject(e.target.value)} className={field} placeholder="Short summary" />
+            <input id="report-subject" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={150} className={field} placeholder="Short summary" />
           </div>
           <div className="block">
             <label htmlFor="report-message" className="text-xs font-semibold uppercase tracking-[0.08em] text-text-soft">Details</label>
@@ -62,7 +68,7 @@ export default function ReportProblemModal({ open, onClose, onSubmit }) {
           </div>
           {error && <p className="text-sm font-medium text-status-danger" role="alert">{error}</p>}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="min-h-11 rounded-pill border border-border bg-background px-4 text-sm font-semibold text-text-primary transition active:scale-[0.97] motion-reduce:transition-none">Cancel</button>
+            <button type="button" onClick={requestClose} className="min-h-11 rounded-pill border border-border bg-background px-4 text-sm font-semibold text-text-primary transition active:scale-[0.97] motion-reduce:transition-none">Cancel</button>
             <button type="submit" disabled={submitting} className="min-h-11 rounded-pill bg-secondary px-5 text-sm font-semibold text-white transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">
               {submitting ? "Sending…" : "Send report"}
             </button>

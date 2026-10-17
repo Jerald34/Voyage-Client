@@ -1,6 +1,7 @@
 import { Plus_Jakarta_Sans, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "./components/theme/ThemeProvider";
+import UnsupportedBrowserBanner from "./components/system/UnsupportedBrowserBanner.jsx";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -80,6 +81,7 @@ export default function RootLayout({ children }) {
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
+          <UnsupportedBrowserBanner />
           {children}
         </ThemeProvider>
         <script

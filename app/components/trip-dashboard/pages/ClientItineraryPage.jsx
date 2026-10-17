@@ -10,11 +10,13 @@ import {
 import { getItineraryPlaceEntityId } from "../../../lib/trip-dashboard/placeEntities.js";
 import { getReadablePlaceType } from "../../../lib/trip-dashboard/richItinerary.js";
 import {
+  buildTripTabLabels,
   formatSavedItineraryCount,
   getSavedItineraryTrips,
   getStableItineraryId,
   groupSavedTripsByClient,
   normalizeItineraryResponse,
+  orderTripsForTabs,
   resolveSavedPortfolioSelection,
 } from "../../../lib/trip-dashboard/savedItineraries.js";
 import {
@@ -79,12 +81,22 @@ export default function ClientItineraryPage({
   onTourStateChange,
   tourMobilePaneOverride = null,
   onAddTripForClient,
+  // Copies a saved trip as another option for the same client (HomePage supplies it).
+  onDuplicateTrip = null,
+  isDuplicatingTrip = false,
   onTripStatusChange,
+  // The signed-in agency's name, printed on the PDF; Voyage's own brand when missing.
+  agencyName = null,
 }) {
   const { theme } = useTheme();
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [approvingTripId, setApprovingTripId] = useState(null);
   const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
+  // The option the "Remove option" dialog is asking about: its id and the name to show for it.
+  const [removeTarget, setRemoveTarget] = useState(null);
+  // Counts removals; each one asks for focus on the client's name once the dialog has closed.
+  const [nameFocusRequest, setNameFocusRequest] = useState(0);
+  const phoneNameRef = useRef(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [fullItinerary, setFullItinerary] = useState(null);
@@ -130,6 +142,15 @@ export default function ClientItineraryPage({
   const selectedTrip = selectedClient?.trips.find(t => t.id === selectedTripId) || null;
   const selectedItineraryId = getStableItineraryId(selectedTrip);
   const isTutorialItinerary = String(selectedItineraryId ?? "").startsWith(TUTORIAL_ITINERARY_ID_PREFIX);
+  // Trips to the same place are options: numbered labels, and placed side by side in the tab strips.
+  // selectedClient.trips itself stays newest first, since the default selection reads trips[0].
+  const tripTabLabels = useMemo(() => buildTripTabLabels(selectedClient?.trips ?? []), [selectedClient]);
+  const tabTrips = useMemo(() => orderTripsForTabs(selectedClient?.trips ?? []), [selectedClient]);
+  // "Another option" copies the selected trip. Only a real, saved trip can be copied, never the tutorial's sample.
+  const makeOption =
+    onDuplicateTrip && selectedTrip?.id && selectedItineraryId && !isTutorialItinerary
+      ? () => onDuplicateTrip(selectedTrip.id)
+      : null;
   const itineraryWeather = useItineraryWeather({
     agencyId,
     itineraryId: selectedItineraryId,
@@ -382,9 +403,11 @@ export default function ClientItineraryPage({
   const handleDeleteClient = async (client) => {
     if (!agencyId || !client) return;
     try {
-      // Delete each trip sequentially to avoid overwhelming the server
+      // Delete each trip sequentially to avoid overwhelming the server. Each call is told which
+      // trips are going, so the Planner is never moved on to one that is deleted next.
+      const alsoDeleting = client.trips.map((trip) => trip.id);
       for (const trip of client.trips) {
-        await onDeleteTrip?.(agencyId, trip.id);
+        await onDeleteTrip?.(agencyId, trip.id, { alsoDeleting });
       }
       // Auto-select next client if the deleted one was selected
       if (selectedClientId === client.id) {
@@ -433,10 +456,11 @@ export default function ClientItineraryPage({
             dateRange: tripDateRange,
             travelerCount,
             days: attachWeatherToDays(safeDays, itineraryWeather.byDayId),
-            agencyName: "Voyage",
+            agencyName: agencyName || "Voyage",
+            clientName: selectedTrip?.clientName ?? null,
           }
         : null,
-    [fullItinerary, itineraryIsCurrent, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId],
+    [fullItinerary, itineraryIsCurrent, tripTitle, tripSummary, tripDateRange, travelerCount, safeDays, itineraryWeather.byDayId, agencyName, selectedTrip?.clientName],
   );
   const itineraryPdf = useItineraryPdf(pdfInput);
   // Spinner only while a build is under way: no itinerary means no build (the hook
@@ -496,6 +520,68 @@ export default function ClientItineraryPage({
     setReopenConfirmOpen(false);
     return { ok: true };
   }, [agencyId, onTripStatusChange, selectedItineraryId, selectedTrip]);
+
+  // "Remove option" takes back an option that was not picked. It needs a second trip to stay beside
+  // (a lone trip is not an option; Delete client covers that), never an approved trip, and never the
+  // tutorial's sample. The server deletes the trip with its itinerary, share links and comments.
+  const canRemoveOption = Boolean(
+    onDeleteTrip &&
+      agencyId &&
+      selectedClient &&
+      selectedClient.trips.length > 1 &&
+      selectedTrip?.id &&
+      selectedTrip.approvalStatus !== "Approved" &&
+      !itineraryApprovedElsewhere &&
+      !isTutorialItinerary,
+  );
+  const removeOptionName = selectedTrip ? tripTabLabels.get(selectedTrip.id) ?? (selectedTrip.destination || "Unnamed Trip") : "";
+  const requestRemoveOption = canRemoveOption
+    ? () => setRemoveTarget({ tripId: selectedTrip.id, name: removeOptionName, clientName: selectedClient.name })
+    : null;
+  const closeRemoveConfirm = useCallback(() => setRemoveTarget(null), []);
+  // Not optimistic: the dialog stays open, with the error, until the server has removed the trip.
+  const handleRemoveOption = useCallback(async () => {
+    if (!removeTarget || !agencyId) return { ok: false, message: "" };
+    const { tripId } = removeTarget;
+    try {
+      await onDeleteTrip(agencyId, tripId);
+    } catch (err) {
+      // A trip the server no longer has is as good as removed (another tab did it): carry on.
+      if (err?.code !== "TRIP_NOT_FOUND") {
+        console.error(err);
+        return { ok: false, message: "Couldn't remove this option. Try again." };
+      }
+    }
+    // Land on the client's newest remaining trip, the one a click on the client opens.
+    if (selectedTripId === tripId) {
+      setSelectedTripId(selectedClient?.trips.find((trip) => trip.id !== tripId)?.id ?? null);
+    }
+    setRemoveTarget(null);
+    setNameFocusRequest((count) => count + 1);
+    return { ok: true };
+  }, [agencyId, onDeleteTrip, removeTarget, selectedClient, selectedTripId]);
+  // The Remove button may be gone by now (a lone trip is no option), and the dialog hands focus back
+  // to it as it closes. This runs after that, so focus ends on the name, the nearest stable place.
+  useEffect(() => {
+    if (nameFocusRequest > 0) phoneNameRef.current?.focus();
+  }, [nameFocusRequest]);
+  const removeOptionDialog = (
+    <ConfirmActionDialog
+      open={Boolean(removeTarget)}
+      title="Remove this option?"
+      body={
+        removeTarget
+          ? `Remove ${removeTarget.name} for ${removeTarget.clientName}? Its itinerary, Planner chat, share links, comments and any client rating will be deleted. This can't be undone.`
+          : ""
+      }
+      confirmLabel="Remove option"
+      busyLabel="Removing…"
+      tone="danger"
+      onConfirm={handleRemoveOption}
+      onClose={closeRemoveConfirm}
+    />
+  );
+
   const handleDownloadPdf = itineraryPdf.download;
   const handlePrintPdf = itineraryPdf.print;
 
@@ -669,23 +755,53 @@ export default function ClientItineraryPage({
               {selectedClient ? (
                 <div className="flex flex-col flex-1 overflow-hidden pt-2">
                   {/* Client name */}
-                  <div className="px-4 py-2 border-b border-border/5">
-                    <h2 className="font-serif text-[1.2rem] m-0 leading-tight truncate">{selectedClient.name}</h2>
+                  <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border/5">
+                    {/* flex-1 keeps the name on the left and the option buttons together on the right. */}
+                    <h2
+                      ref={phoneNameRef}
+                      tabIndex={-1}
+                      className="font-serif text-[1.2rem] m-0 min-w-0 flex-1 leading-tight truncate rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                    >
+                      {selectedClient.name}
+                    </h2>
+                    {makeOption ? (
+                      // Stays enabled while copying so focus isn't lost; a second tap does nothing.
+                      <button
+                        type="button"
+                        onClick={() => { if (!isDuplicatingTrip) makeOption(); }}
+                        aria-disabled={isDuplicatingTrip ? "true" : undefined}
+                        aria-label={`${isDuplicatingTrip ? "Copying trip for" : "Make another option for"} ${selectedClient.name}`}
+                        className="inline-flex min-h-[40px] flex-shrink-0 cursor-pointer items-center rounded-md bg-transparent px-1 text-[0.8rem] font-semibold text-secondary-strong underline-offset-2 hover:underline aria-disabled:cursor-wait aria-disabled:opacity-60"
+                      >
+                        {isDuplicatingTrip ? "Copying…" : "Another option"}
+                      </button>
+                    ) : null}
+                    {requestRemoveOption ? (
+                      <button
+                        type="button"
+                        onClick={requestRemoveOption}
+                        aria-label={`Remove ${removeOptionName}`}
+                        className="inline-flex min-h-[40px] flex-shrink-0 cursor-pointer items-center rounded-md bg-transparent px-1 text-[0.8rem] font-semibold text-text-muted underline-offset-2 hover:text-status-danger hover:underline focus-visible:text-status-danger"
+                      >
+                        Remove option
+                      </button>
+                    ) : null}
                   </div>
 
                   {/* Trip selector */}
                   {selectedClient.trips.length > 1 && (
                     <div className="flex gap-2 px-4 py-2 border-b border-border/5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-shrink-0" data-tour-target="cip-trip-selector">
-                      {selectedClient.trips.map((t) => (
+                      {tabTrips.map((t) => (
                         <button
                           key={t.id}
                           className={`px-3 py-1.5 rounded-md text-[0.75rem] font-bold whitespace-nowrap border transition-all duration-200 ${selectedTripId === t.id
                             ? "bg-secondary text-white border-secondary"
                             : "bg-surface border-border/30 text-text-soft"
                             }`}
+                          aria-pressed={selectedTripId === t.id}
                           onClick={() => setSelectedTripId(t.id)}
                         >
-                          {t.destination || "Unnamed Trip"}
+                          {tripTabLabels.get(t.id) ?? (t.destination || "Unnamed Trip")}
                         </button>
                       ))}
                     </div>
@@ -800,6 +916,7 @@ export default function ClientItineraryPage({
           tripTitle={tripTitle}
         />
         <ItineraryEditDialogs editor={editor} days={safeDays} />
+        {removeOptionDialog}
       </div>
     );
   }
@@ -844,6 +961,11 @@ export default function ClientItineraryPage({
               showCommentsPanel={showCommentsPanel}
               onBackToList={() => setMobilePane("list")}
               onAddTripForClient={onAddTripForClient}
+              onMakeOption={makeOption}
+              isMakingOption={isDuplicatingTrip}
+              onRemoveOption={requestRemoveOption}
+              removeOptionName={removeOptionName}
+              nameFocusRequest={nameFocusRequest}
               onToggleComments={() => setShowCommentsPanel((v) => !v)}
               onShare={() => setShowShareDialog(true)}
               onDownloadPdf={handleDownloadPdf}
@@ -874,16 +996,17 @@ export default function ClientItineraryPage({
                   data-tour-target="cip-trip-selector"
                   className="flex gap-2 px-6 py-3 border-b border-border/10 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-shrink-0"
                 >
-                  {selectedClient.trips.map(t => (
+                  {tabTrips.map(t => (
                     <button
                       key={t.id}
                       className={`px-3.5 py-1.5 rounded-md text-[0.8rem] font-bold whitespace-nowrap border transition-all duration-200 relative ${selectedTripId === t.id
                         ? "bg-secondary text-white border-secondary"
                         : "bg-surface border-border/30 text-text-soft hover:text-text-primary hover:border-secondary/40"
                         }`}
+                      aria-pressed={selectedTripId === t.id}
                       onClick={() => setSelectedTripId(t.id)}
                     >
-                      {t.destination || "Unnamed Trip"}
+                      {tripTabLabels.get(t.id) ?? (t.destination || "Unnamed Trip")}
                       {selectedTripId === t.id && unreadCommentCount > 0 && (
                         <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-pill bg-[#dc2626] text-white text-[0.6rem] font-extrabold flex items-center justify-center leading-none pointer-events-none">
                           {unreadCommentCount > 99 ? "99+" : unreadCommentCount}
@@ -956,7 +1079,7 @@ export default function ClientItineraryPage({
             <UsersIcon width={80} height={80} strokeWidth={1} className="text-secondary opacity-45" />
             <h3 className="font-serif text-[2.2rem] text-text-primary m-0 tracking-tight">No saved itineraries yet.</h3>
             <p className="max-w-[320px] mx-auto leading-relaxed text-[0.95rem] m-0">
-              Saved itineraries will appear here after approval from Command Center.
+              Saved itineraries will appear here after approval from the Planner.
             </p>
           </div>
         )}
@@ -980,6 +1103,7 @@ export default function ClientItineraryPage({
         onConfirm={handleReopenTrip}
         onClose={closeReopenConfirm}
       />
+      {removeOptionDialog}
 
       <style>{`
         @keyframes cip-slide-in {

@@ -28,7 +28,7 @@ export default function LandingHeader({ onLogin, onStartPlanning }) {
         >
           <VoyageLogo className="h-7 w-auto min-[380px]:h-8 sm:h-9" />
         </a>
-        {/* From lg: the four links need ~383px, and at md (768) logo + links + buttons overflow (links wrapped). */}
+        {/* From lg: the five links need ~470px (about 60px to spare at 1024px, scrollbar included), and at md (768) logo + links + buttons overflow (links wrapped). */}
         <nav aria-label="Landing" className="hidden lg:block">
           <ul className="m-0 flex list-none items-center gap-1 p-0">
             {LANDING_NAV.map((link) => (

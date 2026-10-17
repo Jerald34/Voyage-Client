@@ -277,7 +277,7 @@ describe("TripSlideOver focus fallback", () => {
 
 describe("TripSlideOver focus containment", () => {
   const closeButton = () => screen.getByRole("button", { name: "Close panel" });
-  const footerButton = () => screen.getByRole("button", { name: /Open in Command Center/ });
+  const footerButton = () => screen.getByRole("button", { name: /Open in Planner/ });
 
   async function openAndSettle(ui = <Harness />) {
     const view = render(ui);

@@ -10,6 +10,7 @@ import {
   deleteAgentThread,
   deleteAgencyTrip,
   listAgencyTrips,
+  duplicateClientTrip,
   fetchPendingCount,
   updateAgencySettings,
   updateCurrentUserProfile,
@@ -24,7 +25,10 @@ import {
 } from "../../lib/agency-dashboard/selectors.js";
 import { buildPlaceEntities, getItineraryPlaceEntityId } from "../../lib/trip-dashboard/placeEntities.js";
 import { getSavedItineraryTrips } from "../../lib/trip-dashboard/savedItineraries.js";
-import { buildPlanningOptions } from "../../lib/trip-dashboard/planningOptions.js";
+import { toPortfolioTrip } from "../../lib/trip-dashboard/portfolioTrips.js";
+import { buildPlanningOptions, buildTripPickerLabels } from "../../lib/trip-dashboard/planningOptions.js";
+import { resolveVisibleTab } from "../../lib/deepLinks.js";
+import { normalizeTravelerNeeds } from "../../lib/accessibility/travelerNeeds.js";
 
 import dynamic from "next/dynamic";
 import AgentCommandCenter from "./command-center/AgentCommandCenter.jsx";
@@ -44,6 +48,7 @@ import ChatComposer from "./command-center/ChatComposer.jsx";
 import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
 import { useTravelerNeeds } from "../../hooks/useTravelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
+import FlashNotice from "./layout/FlashNotice.jsx";
 import {
   TUTORIAL_MOCK_TRIPS,
   TUTORIAL_MOCK_PLANNING_OPTIONS,
@@ -73,6 +78,21 @@ export function getAgencyMapFallbackFromUser(user) {
     city,
     country,
   };
+}
+
+// What to tell the agent when the server refuses to copy a trip.
+function copyTripErrorNotice(code) {
+  switch (code) {
+    // Only saved trips can be copied; a draft or archived trip has no save step behind it.
+    case "TRIP_NOT_SAVED":
+      return "Save this trip before making another option.";
+    case "ITINERARY_REQUIRED":
+      return "This trip has no itinerary to copy yet.";
+    case "TRIP_NOT_FOUND":
+      return "This trip no longer exists. Refresh the page.";
+    default:
+      return "Couldn't copy this trip. Try again.";
+  }
 }
 
 export default function HomePage({
@@ -154,6 +174,11 @@ export default function HomePage({
   const [pendingCount, setPendingCount] = useState(0);
   const [mobileMapPadding, setMobileMapPadding] = useState(0);
   const [pendingClientName, setPendingClientName] = useState(null);
+  const [isMakingOption, setIsMakingOption] = useState(false);
+  const [flashNotice, setFlashNotice] = useState(null);
+  const flashNoticeCount = useRef(0);
+  const showFlashNotice = useCallback((text) => setFlashNotice({ text, id: ++flashNoticeCount.current }), []);
+  const clearFlashNotice = useCallback(() => setFlashNotice(null), []);
   const [cipTourState, setCipTourState] = useState({
     hasSelectedClient: false,
     hasMultipleTrips: false,
@@ -291,7 +316,7 @@ export default function HomePage({
     closeFirstUseTutorial,
     replayFirstUseTutorial,
     handleFirstUseTutorialStepChange,
-  } = useTourFlow({ user, cipTourState, setActiveTab, setIsSidebarOpen });
+  } = useTourFlow({ user, agencyId, cipTourState, setActiveTab, setIsSidebarOpen });
 
   const persistUser = useCallback((nextUserOrUpdater) => {
     setUser((currentUser) => {
@@ -337,21 +362,7 @@ export default function HomePage({
 
   useEffect(() => {
     if (!Array.isArray(bootstrapTrips)) return;
-    setFetchedTrips(
-      bootstrapTrips.map((t) => {
-        const firstItinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : null;
-        return {
-          id: t.id,
-          clientName: t.clientName ?? null,
-          destination: t.destinationSummary ?? t.title,
-          travelWindow: formatTripDates(t.startDate, t.endDate),
-          status: t.status?.toLowerCase() === "archived" ? "archived" : "active",
-          approvalStatus: mapTripStatus(t.status),
-          itineraryId: firstItinerary?.id ?? null,
-          itineraryVersion: firstItinerary?.version ?? null,
-        };
-      })
-    );
+    setFetchedTrips(bootstrapTrips.map(toPortfolioTrip));
   }, [bootstrapTrips]);
 
   // Context management — skip cleanup when a dashboard action explicitly set
@@ -420,9 +431,11 @@ export default function HomePage({
     saveNeeds(next);
   };
 
+  // The picker names a client's trips to one place like the Itineraries tabs do ("Option 2 · Baguio City").
+  const tripLabels = useMemo(() => buildTripPickerLabels(fetchedTrips), [fetchedTrips]);
   const planningOptions = useMemo(
-    () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext }),
-    [draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext],
+    () => buildPlanningOptions({ draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext, tripLabels }),
+    [draftThreadOrder, draftThreadStates, safeTrips, tripStates, activeContext, tripLabels],
   );
 
   const activeOption = useMemo(() => activeContext ? planningOptions.find(o => o.type === activeContext.type && o.id === activeContext.id) : planningOptions[0], [activeContext, planningOptions]);
@@ -453,10 +466,9 @@ export default function HomePage({
 
   // Deep links can open the Dashboard (e.g. `tab=team` after accepting an
   // invite). Users without an agency workspace have no dashboard, so fall back
-  // to the Command Center instead of leaving the main area empty.
-  const currentTab = activeTab === "dashboard" && user && (isPersonal || !agencyId)
-    ? "command-center"
-    : activeTab;
+  // to the Planner instead of leaving the main area empty. Only super
+  // admins see the Admin tab.
+  const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId });
 
   useEffect(() => {
     setSelectedPlaceId("");
@@ -532,6 +544,50 @@ export default function HomePage({
     }
   };
 
+  // Copy a saved trip as another option, then open the copy in the Planner to adjust it.
+  const handleMakeOption = useCallback(async (tripId) => {
+    if (!agencyId || !tripId || isMakingOption) return;
+    setIsMakingOption(true);
+    try {
+      const { trip, itinerary, thread } = await duplicateClientTrip(agencyId, tripId);
+      // Show the copy in the lists at once, then replace them with the server's list when it arrives
+      // (not awaited: the Planner opens without waiting). If that refresh fails, the copy stays listed.
+      setFetchedTrips((previous) => [
+        toPortfolioTrip({ ...trip, itineraries: [itinerary] }),
+        ...(previous ?? []).filter((row) => row.id !== trip.id),
+      ]);
+      listAgencyTrips(agencyId)
+        .then((result) => {
+          if (Array.isArray(result?.trips)) setFetchedTrips(result.trips.map(toPortfolioTrip));
+        })
+        .catch((err) => console.error("Failed to refresh agency trips:", err));
+      // Seed the copy's chat so the Planner hydrates it instead of creating another thread. The
+      // seeded title names the copy in the picker until the itinerary has loaded: the itinerary's
+      // own title, which the server numbers ("Baguio weekend (option 2)"), else the trip's.
+      setTripStates((previous) => ({
+        ...previous,
+        [trip.id]: {
+          threadId: thread.id,
+          title: String(itinerary?.title || trip?.title || "").trim(),
+          messages: [],
+          itinerary: { id: itinerary.id },
+          loaded: false,
+          createdAt: thread.createdAt ?? null,
+          travelerNeeds: normalizeTravelerNeeds(thread.travelerNeeds),
+        },
+      }));
+      explicitContextRef.current = true;
+      setActiveTab("command-center");
+      setActiveContext(createPlanningContext("trip", trip.id));
+      showFlashNotice("New option created. Adjust it here; it's waiting in review on the Itineraries page.");
+    } catch (error) {
+      console.error("Failed to copy the trip", error);
+      showFlashNotice(copyTripErrorNotice(error?.code));
+    } finally {
+      setIsMakingOption(false);
+    }
+  }, [agencyId, isMakingOption, setTripStates, setActiveContext, createPlanningContext, showFlashNotice]);
+
   const handleDeleteOption = async (option) => {
     const threadId = option?.threadId;
     if (!agencyId || !threadId || deletingThreadId) return;
@@ -585,21 +641,7 @@ export default function HomePage({
       listAgencyTrips(agencyId)
         .then((r) => {
           const trips = Array.isArray(r?.trips) ? r.trips : [];
-          setFetchedTrips(
-            trips.map((t) => {
-              const firstItinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : null;
-              return {
-                id: t.id,
-                clientName: t.clientName ?? null,
-                destination: t.destinationSummary ?? t.title,
-                travelWindow: formatTripDates(t.startDate, t.endDate),
-                status: t.status?.toLowerCase() === "archived" ? "archived" : "active",
-                approvalStatus: mapTripStatus(t.status),
-                itineraryId: firstItinerary?.id ?? null,
-                itineraryVersion: firstItinerary?.version ?? null,
-              };
-            })
-          );
+          setFetchedTrips(trips.map(toPortfolioTrip));
         })
         .catch((err) => console.error("Failed to refresh agency trips:", err));
 
@@ -643,6 +685,7 @@ export default function HomePage({
         onStepChange={handleFirstUseTutorialStepChange}
         steps={activeTourSteps}
       />
+      <FlashNotice notice={flashNotice} onDone={clearFlashNotice} />
 
       {isApprovalModalOpen && activeContext?.type === "draft" && (
         <SaveItineraryModal
@@ -856,7 +899,7 @@ export default function HomePage({
             </section>
           ) : currentTab === "dashboard" && agencyId ? (
             // Own scroll container: <main> is overflow-hidden at ≤900px (for the
-            // Command Center map), so the dashboard must scroll itself on phones.
+            // Planner map), so the dashboard must scroll itself on phones.
             <div
               data-testid="dashboard-scroll"
               className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-[900px]:pb-[env(safe-area-inset-bottom)]"
@@ -894,17 +937,37 @@ export default function HomePage({
             <ClientItineraryPage
               agencyTrips={tripsForCip}
               agencyId={agencyId}
+              agencyName={activeAgency?.name ?? null}
               onTourStateChange={setCipTourState}
               tourMobilePaneOverride={tourMobilePaneOverride}
               onAddTripForClient={(clientName) => {
                 setPendingClientName(clientName);
                 handleNewItinerary();
               }}
-              onDeleteTrip={async (aid, tripId) => {
-                await deleteAgencyTrip(aid, tripId);
+              onDuplicateTrip={agencyId && !isPersonal ? handleMakeOption : null}
+              isDuplicatingTrip={isMakingOption}
+              // alsoDeleting: the other trips being deleted in the same run (Delete client), which the
+              // Planner must not be moved on to.
+              onDeleteTrip={async (aid, tripId, { alsoDeleting = [] } = {}) => {
+                try {
+                  await deleteAgencyTrip(aid, tripId);
+                } catch (err) {
+                  // The server no longer has it (another tab removed it): tidy up here all the same.
+                  if (err?.code !== "TRIP_NOT_FOUND") throw err;
+                }
                 setFetchedTrips(prev => (prev || []).filter(t => t.id !== tripId));
                 if (tripStates[tripId]) {
                   setTripStates(prev => { const next = { ...prev }; delete next[tripId]; return next; });
+                }
+                // The Planner can have this trip open (a fresh "Another option" copy is): move it on to
+                // another chat, as deleting that chat from the Planner does, not leave it on a trip that is gone.
+                if (activeContext?.type === "trip" && activeContext.id === tripId) {
+                  if (runTargetRef.current === createRunTargetKey(activeContext)) runTargetRef.current = null;
+                  const going = new Set([tripId, ...alsoDeleting]);
+                  const staying = planningOptions.filter((option) => !(option.type === "trip" && going.has(option.id)));
+                  const next = getNextPlanningContextAfterDelete(staying, activeContext);
+                  if (selectedPlaceId) setSelectedPlaceId("");
+                  setActiveContext(next ? createPlanningContext(next.type, next.id) : null);
                 }
               }}
               onTripStatusChange={(tripId, label) => {

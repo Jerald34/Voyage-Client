@@ -11,7 +11,7 @@ export function headerVariantForTab(tab) {
 }
 
 /**
- * Top bar for the Command Center, Settings and Admin tabs: New Itinerary, the
+ * Top bar for the Planner, Settings and Admin tabs: New Itinerary, the
  * client/trip switcher, "Save to Client" and the agent's live status. The brand
  * and the account live in the rail.
  *

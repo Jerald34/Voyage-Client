@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider";
-import { voyageTourHelpBullets, voyageTourSteps } from "../tutorial/tutorialContent.js";
+import { buildTourSteps, voyageTourHelpBullets } from "../tutorial/tutorialContent.js";
 import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
+import PlanUsageCard from "../../settings/PlanUsageCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
+import SystemRequirementsTable from "../../settings/SystemRequirementsTable.jsx";
 import TeamPage from "../../team/TeamPage.jsx";
 import { createProblemReport } from "../../../lib/api/support.js";
 
@@ -53,9 +55,9 @@ function Panel({ eyebrow, title, description, children, className = "" }) {
   return (
     <section className={`rounded-[24px] border border-border bg-surface/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] ${className}`}>
       <div className="mb-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-soft">{eyebrow}</p>
-        <h2 className="mt-1 text-lg font-semibold text-text-primary">{title}</h2>
-        {description ? <p className="mt-1 text-sm leading-6 text-text-soft">{description}</p> : null}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrow}</p>
+        <h2 className="mt-1 font-sans text-lg font-semibold text-text-primary">{title}</h2>
+        {description ? <p className="mt-1 text-sm leading-6 text-text-muted">{description}</p> : null}
       </div>
       {children}
     </section>
@@ -105,6 +107,11 @@ export default function SettingsPage({
 }) {
   const { theme, setTheme } = useTheme();
   const isPersonal = user?.accountType === "PERSONAL";
+  // The quick reference lists this person's own tour, minus the welcome card.
+  const tourSteps = useMemo(
+    () => buildTourSteps({ user, agencyId: agency?.id ?? null }).filter((step) => step.target),
+    [user, agency?.id],
+  );
 
   const [displayName, setDisplayName] = useState("");
   const [savedDisplayName, setSavedDisplayName] = useState("");
@@ -452,15 +459,15 @@ export default function SettingsPage({
         <Panel
           eyebrow="Help"
           title="First-use tutorial"
-          description="Replay the homepage walkthrough anytime or use the quick reference below to remember where each action lives."
+          description="Replay the walkthrough any time, or use the quick reference below to find where each action lives."
           className="xl:col-span-2"
         >
           <div className="grid gap-4 rounded-[22px] border border-border bg-surface/80 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:grid-cols-[320px_minmax(0,1fr)]">
             <div className="flex flex-col gap-4 xl:border-r xl:border-border/70 xl:pr-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-soft">Tutorial replay</p>
-                <h3 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-text-primary">Walk through the live dashboard</h3>
-                <p className="mt-1 text-sm leading-6 text-text-soft">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Tutorial replay</p>
+                <h3 className="mt-2 font-sans text-lg font-semibold tracking-[-0.02em] text-text-primary">Walk through the live dashboard</h3>
+                <p className="mt-1 text-sm leading-6 text-text-muted">
                   A compact reference for the guided tour that highlights real controls in place.
                 </p>
               </div>
@@ -478,7 +485,7 @@ export default function SettingsPage({
                 {voyageTourHelpBullets.map((bullet) => (
                   <li
                     key={bullet}
-                    className="rounded-2xl border border-border bg-background px-3 py-2.5 text-sm leading-5 text-text-soft"
+                    className="rounded-2xl border border-border bg-background px-3 py-2.5 text-sm leading-5 text-text-muted"
                   >
                     {bullet}
                   </li>
@@ -488,21 +495,21 @@ export default function SettingsPage({
 
             <div className="min-w-0">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-soft">Quick steps</p>
-                <p className="hidden text-xs text-text-soft lg:block">{voyageTourSteps.length} guided stops</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Quick steps</p>
+                <p className="hidden text-xs text-text-muted lg:block">{tourSteps.length} guided stops</p>
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-                {voyageTourSteps.map((step, index) => (
+                {tourSteps.map((step, index) => (
                   <article
-                    key={step.title}
+                    key={step.id}
                     className="min-h-[148px] rounded-2xl border border-border bg-background px-3.5 py-3"
                     aria-label={`Step ${index + 1}: ${step.title}`}
                   >
                     <p className="inline-flex h-6 items-center rounded-pill bg-secondary/10 px-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary">
                       Step {index + 1}
                     </p>
-                    <h4 className="mt-2 text-sm font-semibold leading-5 text-text-primary">{step.title}</h4>
-                    <p className="mt-1 text-xs leading-5 text-text-soft">{step.description}</p>
+                    <h4 className="mt-2 font-sans text-sm font-semibold leading-5 text-text-primary">{step.title}</h4>
+                    <p className="mt-1 text-xs leading-5 text-text-muted">{step.description}</p>
                   </article>
                 ))}
               </div>
@@ -531,6 +538,14 @@ export default function SettingsPage({
           </div>
         </Panel>
 
+        <Panel
+          eyebrow="Help"
+          title="System requirements"
+          description="What you need to use Voyage on a phone or computer."
+        >
+          <SystemRequirementsTable />
+        </Panel>
+
         {!isPersonal && agency?.id ? (
           <section
             ref={teamRef}
@@ -541,6 +556,17 @@ export default function SettingsPage({
           >
             <TeamPage agencyId={agency.id} embedded />
           </section>
+        ) : null}
+
+        {!isPersonal && canEditWorkspace && agency?.id ? (
+          <Panel
+            eyebrow="Plan"
+            title="Plan and usage"
+            description="What Voyage would cost your agency, based on this month's real use."
+            className="xl:col-span-2"
+          >
+            <PlanUsageCard key={agency.id} agencyId={agency.id} />
+          </Panel>
         ) : null}
 
         {!isPersonal && membership?.role === "OWNER" && agency?.id ? (

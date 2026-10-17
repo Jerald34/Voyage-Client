@@ -9,7 +9,7 @@ import LandingHero from "../app/components/landing/LandingHero.jsx";
 import { SAMPLE_TRIP } from "../app/components/landing/sample/sampleTrip.js";
 
 describe("LandingHeader", () => {
-  it("links to every section and has no pricing", () => {
+  it("links to every section", () => {
     render(<LandingHeader onLogin={vi.fn()} onStartPlanning={vi.fn()} />);
 
     const nav = screen.getByRole("navigation", { name: "Landing" });
@@ -17,9 +17,9 @@ describe("LandingHeader", () => {
       "#what-it-does",
       "#how-it-works",
       "#for-agencies",
+      "#pricing",
       "#faq",
     ]);
-    expect(screen.queryByText(/pricing/i)).not.toBeInTheDocument();
   });
 
   it("sends Log in and Start planning to their handlers", () => {

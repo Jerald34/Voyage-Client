@@ -73,6 +73,7 @@ vi.mock("../app/lib/api/index.js", async (importOriginal) => ({
 }));
 
 import HomePage from "../app/components/trip-dashboard/HomePage.jsx";
+import { tourStorageKey } from "../app/components/trip-dashboard/tutorial/tutorialContent.js";
 
 const user = {
   id: "user-owner",
@@ -91,7 +92,7 @@ const user = {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  localStorage.setItem("voyage-tour-completed-v2", "true");
+  localStorage.setItem(tourStorageKey("user-owner"), "true");
   if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn();
   api.createAgentThread.mockResolvedValue({ thread: { id: "thread-1", title: "", events: [] } });
 });

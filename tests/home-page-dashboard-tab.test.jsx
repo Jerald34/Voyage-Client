@@ -72,6 +72,7 @@ vi.mock("../app/lib/api/client.js", () => ({
 }));
 
 import HomePage from "../app/components/trip-dashboard/HomePage.jsx";
+import { tourStorageKey } from "../app/components/trip-dashboard/tutorial/tutorialContent.js";
 
 const JOINED_NOTICE = "You joined this agency. Your workspace access is ready.";
 
@@ -93,7 +94,8 @@ function agencyUser(role) {
 
 beforeEach(() => {
   localStorage.clear();
-  localStorage.setItem("voyage-tour-completed-v2", "true");
+  // Every account these tests sign in with has already seen the tour.
+  for (const id of ["user-owner", "user-staff", "user-new"]) localStorage.setItem(tourStorageKey(id), "true");
 });
 
 describe("HomePage Dashboard tab", () => {
@@ -107,7 +109,7 @@ describe("HomePage Dashboard tab", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows no Command Center header content on the Dashboard", () => {
+  it("shows no Planner header content on the Dashboard", () => {
     render(<HomePage user={agencyUser("OWNER")} initialTab="dashboard" />);
 
     expect(screen.queryByRole("button", { name: "New Itinerary" })).not.toBeInTheDocument();
@@ -125,26 +127,26 @@ describe("HomePage Dashboard tab", () => {
     expect(menuButton.closest("header")).toHaveClass("min-[900px]:hidden");
   });
 
-  it("does not hide the full header on the Command Center", () => {
+  it("does not hide the full header on the Planner", () => {
     render(<HomePage user={agencyUser("OWNER")} initialTab="command-center" />);
 
     const menuButton = screen.getByRole("button", { name: "Toggle menu" });
     expect(menuButton.closest("header")).not.toHaveClass("min-[900px]:hidden");
   });
 
-  it("keeps the Command Center header on the Command Center tab", () => {
+  it("keeps the Planner header on the Planner tab", () => {
     render(<HomePage user={agencyUser("OWNER")} initialTab="command-center" />);
 
     expect(screen.getByRole("button", { name: "New Itinerary" })).toBeInTheDocument();
   });
 
-  it("falls back to the Command Center when the user has no agency workspace", () => {
+  it("falls back to the Planner when the user has no agency workspace", () => {
     const { container } = render(
       <HomePage user={{ id: "user-new", displayName: "New", memberships: [] }} initialTab="dashboard" />,
     );
 
     expect(container.querySelector('[data-tour-target="workspace"]')).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Command Center" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Planner" })).toHaveAttribute("aria-current", "page");
   });
 
   it.each(["OWNER", "STAFF"])("greets a newly joined %s member at the top of the dashboard", (role) => {
@@ -160,5 +162,22 @@ describe("HomePage Dashboard tab", () => {
     render(<HomePage user={agencyUser("STAFF")} initialTab="dashboard" />);
 
     expect(screen.queryByText(JOINED_NOTICE)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["OWNER", "dashboard-side", "Insights"],
+    ["STAFF", "dashboard-side", "Your work"],
+  ])("marks the %s dashboard's sections for the tour", (role, target, heading) => {
+    const { container } = render(<HomePage user={agencyUser(role)} initialTab="dashboard" />);
+
+    const needsYou = container.querySelector('[data-tour-target="dashboard-needs-you"]');
+    expect(needsYou).toContainElement(screen.getByRole("heading", { name: "Needs you today" }));
+    expect(container.querySelector('[data-tour-target="dashboard-calendar"]')).toBeInTheDocument();
+    expect(container.querySelector(`[data-tour-target="${target}"]`)).toContainElement(
+      screen.getByRole("heading", { name: heading }),
+    );
+    for (const marker of ["dashboard-needs-you", "dashboard-calendar", "dashboard-side"]) {
+      expect(container.querySelectorAll(`[data-tour-target="${marker}"]`)).toHaveLength(1);
+    }
   });
 });

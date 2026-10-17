@@ -27,4 +27,45 @@ describe("ReportProblemModal", () => {
     expect(alert.className).toContain("text-status-danger");
     expect(alert.className).not.toContain("text-red-400");
   });
+
+  it("starts from the category and subject it is given", () => {
+    render(
+      <ReportProblemModal
+        open
+        onClose={() => {}}
+        onSubmit={vi.fn()}
+        initialCategory="OTHER"
+        initialSubject="Agency application: Hillside Travel"
+      />,
+    );
+    expect(screen.getByLabelText(/category/i)).toHaveValue("OTHER");
+    expect(screen.getByLabelText(/subject/i)).toHaveValue("Agency application: Hillside Travel");
+  });
+
+  it("ignores Cancel and backdrop clicks while a send is in flight, and keeps the failure visible", async () => {
+    let rejectSend;
+    const onSubmit = vi.fn(() => new Promise((_, reject) => { rejectSend = reject; }));
+    const onClose = vi.fn();
+    const { container } = render(<ReportProblemModal open onClose={onClose} onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByLabelText(/subject/i), { target: { value: "Crash" } });
+    fireEvent.change(screen.getByLabelText(/details/i), { target: { value: "It broke" } });
+    fireEvent.click(screen.getByRole("button", { name: /send report/i }));
+    await screen.findByRole("button", { name: /sending/i });
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    fireEvent.click(container.querySelector('[aria-hidden="true"]'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    rejectSend(new Error("Server said no"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Server said no");
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("limits the subject to the server's 150 characters", () => {
+    render(<ReportProblemModal open onClose={() => {}} onSubmit={vi.fn()} />);
+    expect(screen.getByLabelText(/subject/i)).toHaveAttribute("maxlength", "150");
+  });
 });

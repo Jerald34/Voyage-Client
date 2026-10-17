@@ -18,7 +18,7 @@ import { OWNER_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
  * left, Insights (KPIs, trip progress, recently viewed itineraries, reviews)
  * on the right.
  * Comment rows, calendar actions and Recently viewed rows open the trip
- * slide-over; other to-do rows open the trip in the Command Center.
+ * slide-over; other to-do rows open the trip in the Planner.
  * The calendar loads on its own, so it is always mounted: only the parts that
  * need the dashboard payload wait for it, or say it failed.
  */
@@ -92,21 +92,29 @@ export default function OwnerOverview({
 
       <div className={DASHBOARD_GRID_CLASS}>
         <div className="min-w-0 space-y-5">
-          {data ? <NeedsYouList ref={needsYouRef} items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
-          <AgencyCalendar agencyId={agencyId} onOpenTrip={openSlideOver} refreshKey={calendarRefreshKey} />
+          {/* Tour markers wrap whole sections so the spotlight has a box even while data loads. */}
+          <div data-tour-target="dashboard-needs-you" className="empty:hidden">
+            {data ? <NeedsYouList ref={needsYouRef} items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
+          </div>
+          <div data-tour-target="dashboard-calendar">
+            <AgencyCalendar agencyId={agencyId} onOpenTrip={openSlideOver} refreshKey={calendarRefreshKey} />
+          </div>
         </div>
-        {data ? (
-          <InsightsColumn
-            data={data}
-            period={period}
-            onPeriodChange={setPeriod}
-            isFetching={isFetching}
-            agencyId={agencyId}
-            onOpenViewedTrip={openSlideOver}
-          />
-        ) : isLoading ? (
-          <SideColumnSkeleton label="Loading insights" />
-        ) : null}
+        {/* self-start keeps the marker as tall as the column, not the whole grid row. */}
+        <div data-tour-target="dashboard-side" className="min-w-0 self-start empty:hidden">
+          {data ? (
+            <InsightsColumn
+              data={data}
+              period={period}
+              onPeriodChange={setPeriod}
+              isFetching={isFetching}
+              agencyId={agencyId}
+              onOpenViewedTrip={openSlideOver}
+            />
+          ) : isLoading ? (
+            <SideColumnSkeleton label="Loading insights" />
+          ) : null}
+        </div>
       </div>
 
       <TripSlideOver
