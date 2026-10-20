@@ -28,6 +28,14 @@ export async function revokeShare(agencyId, shareId) {
   });
 }
 
+/** Pushes a link's expiry out by 7 or 30 days, counted from now if it has already expired. */
+export async function extendShare(agencyId, shareId, extendDays) {
+  return fetchApi(`/agencies/${agencyId}/shares/${shareId}/expiry`, {
+    method: "PATCH",
+    body: JSON.stringify({ extendDays }),
+  });
+}
+
 export async function listShareComments(agencyId, shareId) {
   return fetchApi(`/agencies/${agencyId}/shares/${shareId}/comments`);
 }

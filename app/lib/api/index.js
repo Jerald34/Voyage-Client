@@ -67,6 +67,7 @@ export {
   createItineraryShare,
   listTripShares,
   revokeShare,
+  extendShare,
   listShareComments,
   replyToShareComment,
   getUnreadCommentCount,
@@ -75,6 +76,9 @@ export {
   postPublicComment,
   listPublicComments,
 } from "./shares.js";
+
+// Dashboard
+export { fetchTripPreview } from "./dashboard.js";
 
 // Admin
 export {
