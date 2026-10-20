@@ -127,10 +127,10 @@ describe("ClientItineraryPage comment badge", () => {
     viewport.isMobile = false;
     render(<ClientItineraryPage agencyTrips={[trip]} agencyId="agency-1" />);
     await waitFor(() => {
-      const buttons = screen.getAllByRole("button", { name: "Comments" });
+      const buttons = screen.getAllByRole("button", { name: /^Comments(, \d+ unread)?$/ });
       expect(buttons.some((button) => within(button).queryByText("2"))).toBe(true);
     });
-    for (const button of screen.getAllByRole("button", { name: "Comments" })) {
+    for (const button of screen.getAllByRole("button", { name: /^Comments(, \d+ unread)?$/ })) {
       expect(within(button).queryByText("9")).toBeNull();
     }
   });
