@@ -205,3 +205,14 @@ export function describeDayItems(cell) {
   // Array.prototype.sort is stable: equal ranks keep the server's time order.
   return items.sort((a, b) => itemRank(a) - itemRank(b));
 }
+
+/**
+ * Where the trip panel should open for a day-details item: at the comment
+ * for a client comment (event ids are "{kind}:{source row id}"), at the share
+ * link for a link expiry, at the top for anything else.
+ */
+export function dayItemFocus(item) {
+  if (item.kind === "client_commented") return { type: "comment", id: item.key.slice("client_commented:".length) };
+  if (item.kind === "share_expires") return { type: "share" };
+  return null;
+}
