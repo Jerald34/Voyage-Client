@@ -22,6 +22,7 @@ const SCOPED_FILES = [
   "app/agency/[agencyId]/components/dashboard/TripSlideOver.jsx",
   "app/agency/[agencyId]/components/dashboard/tripPanel/CommentsSection.jsx",
   "app/agency/[agencyId]/components/dashboard/tripPanel/SharedLinkSection.jsx",
+  "app/agency/[agencyId]/components/dashboard/widgets/ClientCommentsCard.jsx",
   "app/agency/[agencyId]/components/dashboard/widgets/FunnelStageDetailPanel.jsx",
   "app/components/landing/LandingHero.jsx",
   "app/components/landing/SampleTripSection.jsx",
