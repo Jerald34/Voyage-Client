@@ -23,6 +23,13 @@ export function getPendingInviteToken() {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
+// The server parks ?remember=0 in a short cookie and reads it back on the
+// provider callback, so OAuth sign-ins honour "Keep me signed in" too.
+export function oauthStartUrl(provider, { rememberMe = true } = {}) {
+  const url = `${API_URL}/auth/${provider}/start`;
+  return rememberMe ? url : `${url}?remember=0`;
+}
+
 export function useAuth() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -105,13 +112,14 @@ export function useAuth() {
     }
   };
 
-  const login = async ({ email, password }) => {
+  const login = async ({ email, password, rememberMe = true }) => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchApi("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        // Only send the opt-out: older servers reject unknown keys, and the server defaults to remembered.
+        body: JSON.stringify(rememberMe ? { email, password } : { email, password, rememberMe: false }),
       });
       localStorage.setItem("voyage-user", JSON.stringify(data.user));
       const inviteResult = await replayPendingInvite();
@@ -145,8 +153,8 @@ export function useAuth() {
     }
   };
 
-  const startOAuth = (provider) => {
-    window.location.href = `${API_URL}/auth/${provider}/start`;
+  const startOAuth = (provider, options) => {
+    window.location.href = oauthStartUrl(provider, options);
   };
 
   const setAccountType = async (accountType) => {
