@@ -191,6 +191,33 @@ describe("DashboardSidebar rail", () => {
     expect(setActiveTab).toHaveBeenCalledWith("settings");
   });
 
+  it("shows Agency to an active owner and opens the agency tab", () => {
+    const { setActiveTab } = renderRail();
+    fireEvent.click(screen.getByRole("button", { name: "Agency" }));
+    expect(setActiveTab).toHaveBeenCalledWith("agency");
+  });
+
+  it("shows Agency to an active admin", () => {
+    renderRail({
+      user: { ...agencyOwner, memberships: [{ ...agencyOwner.memberships[0], role: "ADMIN" }] },
+    });
+    expect(screen.getByRole("button", { name: "Agency" })).toBeInTheDocument();
+  });
+
+  it("keeps Agency from staff and personal accounts", () => {
+    renderRail({
+      user: { ...agencyOwner, memberships: [{ ...agencyOwner.memberships[0], role: "STAFF" }] },
+    });
+    expect(screen.queryByRole("button", { name: "Agency" })).not.toBeInTheDocument();
+  });
+
+  it("places Agency between Itineraries and Settings", () => {
+    renderRail();
+    const names = screen.getAllByRole("button").map((button) => button.getAttribute("aria-label") || button.textContent.trim());
+    expect(names.indexOf("Agency")).toBeGreaterThan(names.indexOf("Itineraries"));
+    expect(names.indexOf("Agency")).toBeLessThan(names.indexOf("Settings"));
+  });
+
   it("keeps the first-use tour targets", () => {
     const { container } = renderRail();
     expect(container.querySelector('[data-tour-target="settings-replay"]')).toHaveAccessibleName("Settings");
@@ -205,6 +232,7 @@ describe("DashboardSidebar rail", () => {
   it("calls a personal account's settings My account and has no Dashboard", () => {
     renderRail({ user: { id: "u2", displayName: "Pat", accountType: "PERSONAL", memberships: [] }, agencyId: null });
     expect(screen.queryByRole("button", { name: "Dashboard" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Agency" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "My account" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Voyage workspace" })).toBeInTheDocument();
   });
@@ -265,6 +293,7 @@ describe("DashboardHeader", () => {
     ["command-center", "full"],
     ["settings", "full"],
     ["admin", "full"],
+    ["agency", "full"],
   ])("gives the %s tab the %s bar", (tab, variant) => {
     expect(headerVariantForTab(tab)).toBe(variant);
   });
