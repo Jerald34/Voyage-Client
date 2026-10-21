@@ -424,3 +424,14 @@ describe("share page update banner", () => {
     });
   });
 });
+
+describe("share page layout", () => {
+  it("makes the timeline scroller the containing block, so screen-reader-only labels inside it cannot stretch the page", async () => {
+    // An absolutely positioned `sr-only` span escapes an overflow box that is not positioned,
+    // grows the document, and lets scrollIntoView scroll the whole window into blank space.
+    await renderLoaded();
+
+    const scroller = screen.getByRole("heading", { level: 1, name: "Kyoto Autumn Escape" }).closest(".overflow-y-auto");
+    expect(scroller.className.split(/\s+/)).toContain("relative");
+  });
+});

@@ -652,7 +652,7 @@ export default function PublicItineraryPage() {
         <div
           ref={scrollerRef}
           tabIndex={-1}
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-7 py-8 pb-12 scrollbar-thin scrollbar-color-border scrollbar-track-transparent focus:outline-none max-sm:flex max-sm:flex-col max-sm:px-4 max-sm:py-5 max-sm:pb-10 max-[400px]:px-3 max-[400px]:py-4 max-[400px]:pb-8"
+          className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-7 py-8 pb-12 scrollbar-thin scrollbar-color-border scrollbar-track-transparent focus:outline-none max-sm:flex max-sm:flex-col max-sm:px-4 max-sm:py-5 max-sm:pb-10 max-[400px]:px-3 max-[400px]:py-4 max-[400px]:pb-8"
         >
           {/* name prompt banner */}
           {showNamePrompt && (
