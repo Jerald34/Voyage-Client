@@ -29,8 +29,12 @@ describe("resolveInitialView", () => {
     expect(view("authenticated=1&invited=1")).toEqual({ initialTab: "command-center", showJoinedNotice: false, settingsSection: null });
   });
 
-  it("opens Settings at the Team panel for a plain team link", () => {
-    expect(view("authenticated=1&tab=team")).toEqual({ initialTab: "settings", showJoinedNotice: false, settingsSection: "team" });
+  it("opens the Agency tab at Team for a plain team link (managers; others fall back to Settings)", () => {
+    expect(view("authenticated=1&tab=team")).toEqual({ initialTab: "agency", showJoinedNotice: false, settingsSection: "team" });
+  });
+
+  it("opens the Agency tab for tab=agency", () => {
+    expect(view("authenticated=1&tab=agency")).toEqual({ initialTab: "agency", showJoinedNotice: false, settingsSection: null });
   });
 });
 
@@ -59,5 +63,16 @@ describe("resolveVisibleTab", () => {
 
   it("keeps the requested tab until the user has loaded", () => {
     expect(resolveVisibleTab({ activeTab: "admin", user: null, isPersonal: false, agencyId: null })).toBe("admin");
+  });
+
+  it("shows the Agency tab to active owners and admins only, else Settings", () => {
+    const owner = { role: "OWNER", status: "ACTIVE" };
+    const args = { activeTab: "agency", user: member, isPersonal: false, agencyId: "a1" };
+    expect(resolveVisibleTab({ ...args, membership: owner })).toBe("agency");
+    expect(resolveVisibleTab({ ...args, membership: { role: "ADMIN", status: "ACTIVE" } })).toBe("agency");
+    expect(resolveVisibleTab({ ...args, membership: { role: "STAFF", status: "ACTIVE" } })).toBe("settings");
+    expect(resolveVisibleTab({ ...args, membership: { role: "OWNER", status: "PENDING" } })).toBe("settings");
+    expect(resolveVisibleTab({ ...args, membership: null })).toBe("settings");
+    expect(resolveVisibleTab({ ...args, isPersonal: true, agencyId: null, membership: owner })).toBe("settings");
   });
 });
