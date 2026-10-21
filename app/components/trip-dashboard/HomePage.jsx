@@ -42,6 +42,7 @@ import SaveItineraryModal from "./modals/SaveItineraryModal.jsx";
 import DashboardHeader, { headerVariantForTab } from "./layout/DashboardHeader.jsx";
 import DashboardSidebar from "./layout/DashboardSidebar.jsx";
 import AdminPage from "../admin/AdminPage.jsx";
+import AgencyAdminPage from "../agency-admin/AgencyAdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatComposer from "./command-center/ChatComposer.jsx";
@@ -467,8 +468,9 @@ export default function HomePage({
   // Deep links can open the Dashboard (e.g. `tab=team` after accepting an
   // invite). Users without an agency workspace have no dashboard, so fall back
   // to the Planner instead of leaving the main area empty. Only super
-  // admins see the Admin tab.
-  const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId });
+  // admins see the Admin tab, and only active owners and admins see the
+  // Agency tab (others fall back to Settings).
+  const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId, membership: activeMembership });
 
   useEffect(() => {
     setSelectedPlaceId("");
@@ -983,9 +985,18 @@ export default function HomePage({
               logout={logout}
               onUpdateProfile={handleUserProfileUpdate}
               onUpdateAgency={handleAgencySettingsUpdate}
+              onOpenAgency={() => setActiveTab("agency")}
               onReplayTutorial={replayFirstUseTutorial}
               focusSection={settingsFocus}
               onFocusSectionHandled={clearSettingsFocus}
+            />
+          ) : currentTab === "agency" && activeAgency ? (
+            <AgencyAdminPage
+              agency={activeAgency}
+              membership={activeMembership}
+              onUpdateAgency={handleAgencySettingsUpdate}
+              initialSection={settingsFocus === "team" ? "team" : "overview"}
+              onInitialSectionHandled={clearSettingsFocus}
             />
           ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
             <AdminPage onPendingCountChange={refreshPendingCount} />

@@ -28,30 +28,13 @@ function renderSettings(role, user = { id: "u1", displayName: "Maria", accountTy
 }
 
 describe("Settings plan card", () => {
-  it("shows Plan and usage to the owner", () => {
-    renderSettings("OWNER");
-    expect(screen.getByRole("heading", { name: "Plan and usage" })).toBeInTheDocument();
-    expect(screen.getByTestId("plan-usage")).toHaveAttribute("data-agency", "agency-1");
-  });
-
-  it("sits below the Team section, so the card growing after its fetch can't push Team down", () => {
-    renderSettings("OWNER");
-    const team = screen.getByRole("region", { name: "Team" });
-    const plan = screen.getByRole("heading", { name: "Plan and usage" });
-    expect(team.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("hides it from an owner whose membership isn't active", () => {
-    renderSettings("OWNER", undefined, "PENDING");
-    expect(screen.queryByRole("heading", { name: "Plan and usage" })).not.toBeInTheDocument();
-  });
-
-  it.each(["ADMIN", "STAFF"])("hides it from %s members", (role) => {
+  it.each(["OWNER", "ADMIN", "STAFF"])("is no longer in Settings for %s members (it lives in the Agency tab)", (role) => {
     renderSettings(role);
     expect(screen.queryByRole("heading", { name: "Plan and usage" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("plan-usage")).not.toBeInTheDocument();
   });
 
-  it("hides it from personal accounts", () => {
+  it("is not shown to personal accounts", () => {
     renderSettings(null, { id: "p1", displayName: "Lee", accountType: "PERSONAL" });
     expect(screen.queryByRole("heading", { name: "Plan and usage" })).not.toBeInTheDocument();
   });

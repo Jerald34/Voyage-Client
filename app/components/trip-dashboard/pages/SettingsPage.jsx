@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../../theme/ThemeProvider";
 import { buildTourSteps, voyageTourHelpBullets } from "../tutorial/tutorialContent.js";
-import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
-import PlanUsageCard from "../../settings/PlanUsageCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
 import SystemRequirementsTable from "../../settings/SystemRequirementsTable.jsx";
 import AgencyDetailsForm from "../../settings/AgencyDetailsForm.jsx";
 import { Field, Panel, TextInputField, formatReadOnlyValue, getStatusClass } from "../../settings/settingsFields.jsx";
 import TeamPage from "../../team/TeamPage.jsx";
 import { createProblemReport } from "../../../lib/api/support.js";
+import { canManageAgency } from "../../../lib/agency-admin/roles.js";
 
 function formatVerifiedValue(emailVerifiedAt) {
   if (!emailVerifiedAt) return "Not verified";
@@ -28,6 +27,7 @@ export default function SettingsPage({
   logout,
   onUpdateProfile,
   onUpdateAgency,
+  onOpenAgency,
   onReplayTutorial,
   focusSection = null,
   onFocusSectionHandled,
@@ -70,7 +70,8 @@ export default function SettingsPage({
     setIsSavingProfile(false);
   }, [user?.displayName]);
 
-  const canEditWorkspace = membership?.role === "OWNER" && membership?.status === "ACTIVE";
+  // Owners and admins run the agency from the Agency tab; Settings keeps their own things.
+  const managesAgency = !isPersonal && canManageAgency(membership);
   const accountChanged = displayName.trim() !== savedDisplayName.trim();
 
   const accountStatus = formatReadOnlyValue(user?.status);
@@ -157,13 +158,34 @@ export default function SettingsPage({
           </form>
         </Panel>
 
-        {!isPersonal && <Panel
-          eyebrow="Workspace"
-          title="Agency details"
-          description="Manage the shared agency profile that powers the dashboard and itinerary flows."
-        >
-          <AgencyDetailsForm agency={agency} membership={membership} onUpdateAgency={onUpdateAgency} />
-        </Panel>}
+        {!isPersonal && (managesAgency ? (
+          <Panel
+            eyebrow="Workspace"
+            title="Agency"
+            description="Team, agency details, plan and usage, and ownership are in the Agency tab."
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="m-0 text-sm text-text-muted">
+                {agency?.name || "Your agency"} · {membership?.role === "OWNER" ? "Owner" : "Admin"}
+              </p>
+              <button
+                type="button"
+                className="rounded-pill border border-border bg-background px-5 py-3 text-sm font-semibold text-text-primary transition hover:border-secondary hover:text-secondary"
+                onClick={() => onOpenAgency?.()}
+              >
+                Open Agency
+              </button>
+            </div>
+          </Panel>
+        ) : (
+          <Panel
+            eyebrow="Workspace"
+            title="Agency details"
+            description="Manage the shared agency profile that powers the dashboard and itinerary flows."
+          >
+            <AgencyDetailsForm agency={agency} membership={membership} onUpdateAgency={onUpdateAgency} />
+          </Panel>
+        ))}
 
         <Panel
           eyebrow="Appearance"
@@ -297,7 +319,7 @@ export default function SettingsPage({
           <SystemRequirementsTable />
         </Panel>
 
-        {!isPersonal && agency?.id ? (
+        {!isPersonal && !managesAgency && agency?.id ? (
           <section
             ref={teamRef}
             id="settings-team"
@@ -307,24 +329,6 @@ export default function SettingsPage({
           >
             <TeamPage agencyId={agency.id} embedded />
           </section>
-        ) : null}
-
-        {!isPersonal && canEditWorkspace && agency?.id ? (
-          <Panel
-            eyebrow="Plan"
-            title="Plan and usage"
-            description="What Voyage would cost your agency, based on this month's real use."
-            className="xl:col-span-2"
-          >
-            <PlanUsageCard key={agency.id} agencyId={agency.id} />
-          </Panel>
-        ) : null}
-
-        {!isPersonal && membership?.role === "OWNER" && agency?.id ? (
-          <DangerZoneCard
-            agencyId={agency.id}
-            agencyName={agency.name ?? ""}
-          />
         ) : null}
       </div>
 
