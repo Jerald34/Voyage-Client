@@ -7,6 +7,7 @@ export default function MemberRow({ member, viewerRole, onChangeRole, onRemove }
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
   const menuId = useId();
+  const joined = new Date(member.createdAt).toLocaleDateString();
 
   // Menu button pattern: the first item takes focus, a press outside or Escape closes it.
   useEffect(() => {
@@ -50,12 +51,12 @@ export default function MemberRow({ member, viewerRole, onChangeRole, onRemove }
         <div className="min-w-0">
           <div className="truncate text-sm text-text-primary">{member.user.displayName}</div>
           <div className="truncate text-xs text-text-muted">{member.user.email}</div>
+          {/* Phones have no room for the date column, so it moves under the email. */}
+          <div className="text-xs text-text-soft sm:hidden">Joined {joined}</div>
         </div>
       </div>
       <RolePill role={member.role} />
-      <div className="text-xs text-text-soft w-28 text-right shrink-0">
-        {new Date(member.createdAt).toLocaleDateString()}
-      </div>
+      <div className="hidden w-28 shrink-0 text-right text-xs text-text-soft sm:block">{joined}</div>
       {canManage ? (
         <div className="relative shrink-0">
           <button

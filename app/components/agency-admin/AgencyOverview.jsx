@@ -18,9 +18,10 @@ const UNKNOWN = "—";
 
 function Tile({ label, value }) {
   return (
-    <li className="rounded-2xl border border-border bg-background px-4 py-3">
+    <li className="flex flex-col rounded-2xl border border-border bg-background px-4 py-3">
       <p className="m-0 text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">{label}</p>
-      <p className="m-0 mt-1 text-2xl font-semibold text-text-primary">{value}</p>
+      {/* mt-auto keeps the numbers on one line when a label wraps to two */}
+      <p className="m-0 mt-auto pt-1 text-2xl font-semibold text-text-primary">{value}</p>
     </li>
   );
 }
