@@ -915,7 +915,6 @@ export default function HomePage({
                     setActiveContext(createPlanningContext("trip", tripId));
                   }}
                   onNewTrip={handleNewItinerary}
-                  onOpenItineraries={() => setActiveTab("itineraries")}
                   showJoinedNotice={showJoinedNotice}
                 />
               ) : (

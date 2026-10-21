@@ -16,10 +16,10 @@ import { STAFF_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
 /**
  * Staff dashboard: greeting, "Needs you today" and the calendar (scoped by
  * the server to trips this person created or organizes) on the left, their
- * own work on the right (continue, trips by status, recently viewed
- * itineraries, recent trips). Comment rows, calendar actions and Recently
- * viewed rows open the trip slide-over; other to-do rows open the trip in the
- * Planner. Nothing here depends on a period, so there is no period
+ * own work on the right (continue, trips by status (each lists its trips),
+ * recently viewed itineraries, recent trips). Comment rows, calendar actions
+ * and Recently viewed rows open the trip slide-over; other to-do rows open the
+ * trip in the Planner. Nothing here depends on a period, so there is no period
  * switcher.
  * The calendar loads on its own, so it is always mounted: only the parts that
  * need the dashboard payload wait for it, or say it failed.
@@ -30,7 +30,6 @@ export default function StaffMyWork({
   viewerName,
   onOpenTrip,
   onNewTrip,
-  onOpenItineraries,
   showJoinedNotice = false,
 }) {
   const router = useRouter();
@@ -109,9 +108,8 @@ export default function StaffMyWork({
               hero={data.hero ?? null}
               recent={data.secondaryRecent ?? []}
               pipeline={data.pipeline ?? null}
-              agencyId={agencyId}
+              pipelineTrips={data.pipelineTrips ?? null}
               onOpenTrip={openTrip}
-              onOpenItineraries={onOpenItineraries}
               recentViews={data.recentViews}
               onOpenViewedTrip={openTripSlide}
             />
