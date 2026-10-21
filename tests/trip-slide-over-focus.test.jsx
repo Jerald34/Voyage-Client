@@ -251,6 +251,31 @@ describe("TripSlideOver focus fallback", () => {
     await waitFor(() => expect(screen.queryByText("Loading tripâ€¦")).not.toBeInTheDocument());
   });
 
+  it("lands on the fallback when nothing had focus at open (Safari does not focus a clicked button)", async () => {
+    render(<Harness fallback="present" />);
+    // No opener.focus(): body is active when the click opens the panel.
+    fireEvent.click(screen.getByRole("button", { name: "Open comments" }));
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
+
+    expect(screen.getByRole("region", { name: "Needs you today" })).toHaveFocus();
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
+  });
+
+  it("does not pull focus to the fallback when the person moved it elsewhere on the page", async () => {
+    render(<Harness fallback="present" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open comments" }));
+    await screen.findByRole("dialog");
+    const elsewhere = screen.getByRole("button", { name: "Open comments" });
+    elsewhere.focus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(elsewhere).toHaveFocus();
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
+  });
+
   it("leaves focus alone when no fallback was given", async () => {
     const { rerender } = render(<Harness fallback="unwired" />);
     await openFromButton();

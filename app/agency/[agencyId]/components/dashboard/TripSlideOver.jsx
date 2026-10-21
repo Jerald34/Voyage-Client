@@ -90,7 +90,8 @@ function LoadAlert({ message, onRetry }) {
 /**
  * `returnFocusRef` (optional) names where focus goes on close when the element
  * that opened the panel has left the page, e.g. a poll dropped its row while
- * the panel was open. Without it, focus is only returned to a surviving opener.
+ * the panel was open, or when nothing had focus at open (Safari does not focus
+ * a clicked button). Without it, focus is only returned to a surviving opener.
  * `onChanged()` (optional) runs after a reply or an extension is saved, so the
  * dashboard can reload what still needs the agent.
  */
@@ -143,10 +144,17 @@ export default function TripSlideOver({
     const active = document.activeElement;
     const opener = active instanceof HTMLElement && active !== document.body ? active : null;
     return () => {
-      if (!opener) return;
-      if (opener.isConnected) {
+      if (opener?.isConnected) {
         opener.focus();
         return;
+      }
+      // No opener happens in Safari, which does not focus a clicked button. Only
+      // step in while focus is still in the panel (or lost), never when the
+      // person has already moved it somewhere else on the page.
+      if (!opener) {
+        const now = document.activeElement;
+        const lost = !now || now === document.body || panelRef.current?.contains(now);
+        if (!lost) return;
       }
       const fallback = returnFocusRefLatest.current?.current;
       if (fallback?.isConnected) fallback.focus();
