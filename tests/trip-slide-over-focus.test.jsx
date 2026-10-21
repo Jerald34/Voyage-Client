@@ -403,7 +403,7 @@ describe("Dashboards give the slide-over a stable place to return focus", () => 
 
   it.each([
     ["owner", fixtures.ownerBusy, (props) => <OwnerOverview {...props} />],
-    ["staff", fixtures.staff, (props) => <StaffMyWork {...props} onOpenItineraries={vi.fn()} />],
+    ["staff", fixtures.staff, (props) => <StaffMyWork {...props} />],
   ])("%s: returns to Needs you today when a poll removed the row that opened it", async (_, payload, ui) => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 9, 3, 10));

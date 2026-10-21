@@ -86,7 +86,6 @@ describe.each(DASHBOARDS)("$name dashboard after a reply from the trip panel", (
     const needsYou = screen.getByRole("region", { name: "Needs you today" });
     fireEvent.click(within(needsYou).getAllByRole("button", { name: "Reply" })[0]);
     const panel = await screen.findByRole("dialog", { name: /^Trip:/ });
-    fireEvent.click(await within(panel).findByRole("button", { name: "Reply" }));
     fireEvent.change(within(panel).getByPlaceholderText("Write a reply…"), { target: { value: "Yes, we can." } });
 
     const dashboardBefore = dashboardCalls().length;

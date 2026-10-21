@@ -92,8 +92,7 @@ function LoadAlert({ message, onRetry }) {
  * that opened the panel has left the page, e.g. a poll dropped its row while
  * the panel was open. Without it, focus is only returned to a surviving opener.
  * `onChanged()` (optional) runs after a reply or an extension is saved, so the
- * dashboard can reload what still needs the agent. `onReplied` is its old name,
- * still honoured until both dashboards pass `onChanged`.
+ * dashboard can reload what still needs the agent.
  */
 export default function TripSlideOver({
   isOpen,
@@ -106,7 +105,6 @@ export default function TripSlideOver({
   onOpenFull,
   returnFocusRef = undefined,
   onChanged = undefined,
-  onReplied = undefined,
 }) {
   const { data, error, loading, reload, update } = useTripPreview({ agencyId, tripId, enabled: isOpen });
   const closeButtonRef = useRef(null);
@@ -237,14 +235,13 @@ export default function TripSlideOver({
 
   // Saved changes are already on screen. A throwing dashboard handler must not
   // reach the reply's catch and report "Failed to send reply"; log it instead.
-  const notify = onChanged ?? onReplied;
   const notifyChanged = useCallback(() => {
     try {
-      notify?.();
+      onChanged?.();
     } catch (err) {
       console.error("TripSlideOver: onChanged threw after a saved change", err);
     }
-  }, [notify]);
+  }, [onChanged]);
 
   // "Reply sent" for screen readers. Sending removes the reply box (and may move
   // the card to the answered group), which drops focus to <body>; the effect

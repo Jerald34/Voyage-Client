@@ -54,7 +54,6 @@ function renderStaff() {
       initialData={fixtures.staff}
       onOpenTrip={vi.fn()}
       onNewTrip={vi.fn()}
-      onOpenItineraries={vi.fn()}
     />,
   );
 }

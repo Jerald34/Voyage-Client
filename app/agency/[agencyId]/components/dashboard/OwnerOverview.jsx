@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDashboardPoll } from "../../../../hooks/useDashboardPoll";
 import AgencyCalendar from "./widgets/AgencyCalendar";
+import ClientCommentsCard from "./widgets/ClientCommentsCard";
 import DashboardGreeting from "./widgets/DashboardGreeting";
 import DashboardStaleBanner from "./widgets/DashboardStaleBanner";
 import { DASHBOARD_GRID_CLASS, NeedsYouSkeleton, SideColumnSkeleton } from "./widgets/DashboardSkeleton";
@@ -11,14 +12,14 @@ import InsightsColumn from "./widgets/InsightsColumn";
 import JoinedNotice from "./widgets/JoinedNotice";
 import NeedsYouList from "./widgets/NeedsYouList";
 import TripSlideOver from "./TripSlideOver";
-import { OWNER_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
+import { OWNER_NEEDS_YOU_ORDER, buildNeedsYouItems, needsYouTarget } from "./needsYouItems";
 
 /**
- * Owner/admin dashboard: greeting, "Needs you today" and the calendar on the
- * left, Insights (KPIs, trip progress, recently viewed itineraries, reviews)
- * on the right.
- * Comment rows, calendar actions and Recently viewed rows open the trip
- * slide-over; other to-do rows open the trip in the Planner.
+ * Owner/admin dashboard: greeting, "Needs you today", "Client comments" and
+ * the calendar on the left, Insights on the right. Every trip row, comment,
+ * calendar action, trip-progress trip and Recently viewed row opens the trip
+ * panel (at the comment or share link it is about); only "Resume" on a stuck
+ * draft opens the Planner.
  * The calendar loads on its own, so it is always mounted: only the parts that
  * need the dashboard payload wait for it, or say it failed.
  */
@@ -32,8 +33,8 @@ export default function OwnerOverview({
 }) {
   const router = useRouter();
   const [period, setPeriod] = useState("30d");
-  const [slideTrip, setSlideTrip] = useState(null); // { tripId, tripTitle, subtitle }
-  // Bumped after a reply so the calendar reloads at once, not at its next poll.
+  const [slideTrip, setSlideTrip] = useState(null); // { tripId, tripTitle, subtitle, focus }
+  // Bumped after a reply or an extension so the calendar reloads at once, not at its next poll.
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   // Where the slide-over returns focus if the row that opened it was removed by
   // a poll. Also the fallback for slide-overs opened from the Recently viewed card.
@@ -51,8 +52,10 @@ export default function OwnerOverview({
 
   const needsYou = buildNeedsYouItems(data?.worklist, OWNER_NEEDS_YOU_ORDER);
 
-  function openSlideOver(tripId, tripTitle, subtitle) {
-    setSlideTrip({ tripId, tripTitle: tripTitle ?? "Trip", subtitle: subtitle ?? null });
+  // focus: null (top), { type: "comment", id } or { type: "share" } — see TripSlideOver.
+  // Kept in state with the trip, so reopening the same trip at a new spot works.
+  function openSlideOver(tripId, tripTitle, subtitle, focus = null) {
+    setSlideTrip({ tripId, tripTitle: tripTitle ?? "Trip", subtitle: subtitle ?? null, focus });
   }
 
   function openInCommandCenter(tripId) {
@@ -72,12 +75,17 @@ export default function OwnerOverview({
   }
 
   function handleNeedsYouAction(item) {
-    if (item.kind === "unreadComments") openSlideOver(item.tripId, item.tripTitle, item.clientName);
-    else openInCommandCenter(item.tripId);
+    const target = needsYouTarget(item);
+    if (target.to === "planner") openInCommandCenter(item.tripId);
+    else openSlideOver(item.tripId, item.tripTitle, item.clientName, target.focus);
   }
 
-  // A reply changes what needs the agent: reload the to-do list and the calendar now.
-  function handleReplied() {
+  function openComment(row) {
+    openSlideOver(row.tripId, row.tripTitle, row.clientName, { type: "comment", id: row.id });
+  }
+
+  // A reply or an extension changes what needs the agent: reload the to-do list and the calendar now.
+  function handleChanged() {
     refetch().catch(() => {}); // a failed refetch already shows the stale-data banner
     setCalendarRefreshKey((key) => key + 1);
   }
@@ -96,6 +104,7 @@ export default function OwnerOverview({
           <div data-tour-target="dashboard-needs-you" className="empty:hidden">
             {data ? <NeedsYouList ref={needsYouRef} items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
           </div>
+          {data?.clientComments ? <ClientCommentsCard comments={data.clientComments} onOpenComment={openComment} /> : null}
           <div data-tour-target="dashboard-calendar">
             <AgencyCalendar agencyId={agencyId} onOpenTrip={openSlideOver} refreshKey={calendarRefreshKey} />
           </div>
@@ -124,8 +133,9 @@ export default function OwnerOverview({
         tripId={slideTrip?.tripId}
         tripTitle={slideTrip?.tripTitle}
         subtitle={slideTrip?.subtitle}
+        focus={slideTrip?.focus ?? null}
         returnFocusRef={needsYouRef}
-        onReplied={handleReplied}
+        onChanged={handleChanged}
         onOpenFull={(tripId) => {
           setSlideTrip(null);
           openInCommandCenter(tripId);
