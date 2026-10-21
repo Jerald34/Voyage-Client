@@ -5,13 +5,10 @@ import DangerZoneCard from "../../settings/DangerZoneCard.jsx";
 import PlanUsageCard from "../../settings/PlanUsageCard.jsx";
 import ReportProblemModal from "../../settings/ReportProblemModal.jsx";
 import SystemRequirementsTable from "../../settings/SystemRequirementsTable.jsx";
+import AgencyDetailsForm from "../../settings/AgencyDetailsForm.jsx";
+import { Field, Panel, TextInputField, formatReadOnlyValue, getStatusClass } from "../../settings/settingsFields.jsx";
 import TeamPage from "../../team/TeamPage.jsx";
 import { createProblemReport } from "../../../lib/api/support.js";
-
-function formatReadOnlyValue(value) {
-  const text = String(value ?? "").trim();
-  return text || "Not set";
-}
 
 function formatVerifiedValue(emailVerifiedAt) {
   if (!emailVerifiedAt) return "Not verified";
@@ -22,76 +19,6 @@ function formatVerifiedValue(emailVerifiedAt) {
     day: "numeric",
     year: "numeric",
   })}`;
-}
-
-// Theme tokens, so the pills read in light and dark mode. An 8% tint keeps
-// every status colour at 4.5:1 (warning drops below it at 10%).
-function getStatusClass(status) {
-  const normalized = String(status ?? "").trim().toUpperCase();
-  if (normalized === "ACTIVE" || normalized === "VERIFIED") {
-    return "bg-status-success/8 text-status-success border-status-success/30";
-  }
-  if (normalized === "PENDING" || normalized === "INVITED") {
-    return "bg-status-warning/8 text-status-warning border-status-warning/30";
-  }
-  return "bg-text-primary/5 text-text-muted border-border/20";
-}
-
-function getFieldClass(readOnly = false) {
-  return [
-    "mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
-    "bg-background text-text-primary placeholder:text-text-soft/70",
-    "focus:border-secondary focus:ring-2 focus:ring-secondary/20",
-    readOnly ? "border-border/70 bg-surface-elevated/70" : "border-border",
-    readOnly ? "cursor-not-allowed opacity-90" : "",
-  ].join(" ");
-}
-
-function sanitizeBusinessPhoneInput(value) {
-  return String(value ?? "").replace(/\D/g, "");
-}
-
-function Panel({ eyebrow, title, description, children, className = "" }) {
-  return (
-    <section className={`rounded-[24px] border border-border bg-surface/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] ${className}`}>
-      <div className="mb-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrow}</p>
-        <h2 className="mt-1 font-sans text-lg font-semibold text-text-primary">{title}</h2>
-        {description ? <p className="mt-1 text-sm leading-6 text-text-muted">{description}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Field({ label, value, readOnly = false, id }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-semibold uppercase tracking-[0.08em] text-text-soft">{label}</span>
-      <input id={id} className={getFieldClass(readOnly)} value={value} readOnly={readOnly} />
-    </label>
-  );
-}
-
-function TextInputField({ label, id, value, onChange, placeholder, readOnly = false, autoComplete, type = "text", inputMode, pattern, maxLength }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-semibold uppercase tracking-[0.08em] text-text-soft">{label}</span>
-      <input
-        id={id}
-        className={getFieldClass(readOnly)}
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        pattern={pattern}
-        maxLength={maxLength}
-      />
-    </label>
-  );
 }
 
 export default function SettingsPage({
@@ -118,19 +45,6 @@ export default function SettingsPage({
   const [profileError, setProfileError] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  const [agencyName, setAgencyName] = useState("");
-  const [savedAgencyName, setSavedAgencyName] = useState("");
-  const [businessPhone, setBusinessPhone] = useState("");
-  const [savedBusinessPhone, setSavedBusinessPhone] = useState("");
-  const [businessEmail, setBusinessEmail] = useState("");
-  const [savedBusinessEmail, setSavedBusinessEmail] = useState("");
-  const [city, setCity] = useState("");
-  const [savedCity, setSavedCity] = useState("");
-  const [country, setCountry] = useState("");
-  const [savedCountry, setSavedCountry] = useState("");
-  const [workspaceError, setWorkspaceError] = useState("");
-  const [isSavingWorkspace, setIsSavingWorkspace] = useState(false);
-
   const [reportOpen, setReportOpen] = useState(false);
   const [reportSent, setReportSent] = useState(false);
 
@@ -156,42 +70,13 @@ export default function SettingsPage({
     setIsSavingProfile(false);
   }, [user?.displayName]);
 
-  useEffect(() => {
-    const nextAgencyName = String(agency?.name ?? "");
-    const nextBusinessPhone = sanitizeBusinessPhoneInput(agency?.businessPhone ?? "");
-    const nextBusinessEmail = String(agency?.businessEmail ?? "");
-    const nextCity = String(agency?.city ?? "");
-    const nextCountry = String(agency?.country ?? "");
-
-    setAgencyName(nextAgencyName);
-    setSavedAgencyName(nextAgencyName);
-    setBusinessPhone(nextBusinessPhone);
-    setSavedBusinessPhone(nextBusinessPhone);
-    setBusinessEmail(nextBusinessEmail);
-    setSavedBusinessEmail(nextBusinessEmail);
-    setCity(nextCity);
-    setSavedCity(nextCity);
-    setCountry(nextCountry);
-    setSavedCountry(nextCountry);
-    setWorkspaceError("");
-    setIsSavingWorkspace(false);
-  }, [agency?.businessEmail, agency?.businessPhone, agency?.city, agency?.country, agency?.name]);
-
   const canEditWorkspace = membership?.role === "OWNER" && membership?.status === "ACTIVE";
   const accountChanged = displayName.trim() !== savedDisplayName.trim();
-  const workspaceChanged =
-    agencyName.trim() !== savedAgencyName.trim() ||
-    businessPhone.trim() !== savedBusinessPhone.trim() ||
-    businessEmail.trim() !== savedBusinessEmail.trim() ||
-    city.trim() !== savedCity.trim() ||
-    country.trim() !== savedCountry.trim();
 
   const accountStatus = formatReadOnlyValue(user?.status);
-  const agencyStatus = formatReadOnlyValue(agency?.status);
   const themeLabel = theme === "dark" ? "Dark" : "Light";
   const verificationLabel = formatVerifiedValue(user?.emailVerifiedAt);
   const isProfileSavingDisabled = !accountChanged || isSavingProfile || !onUpdateProfile;
-  const isWorkspaceSavingDisabled = !canEditWorkspace || !workspaceChanged || isSavingWorkspace || !onUpdateAgency;
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
@@ -214,96 +99,6 @@ export default function SettingsPage({
       setIsSavingProfile(false);
     }
   };
-
-  const handleWorkspaceSubmit = async (event) => {
-    event.preventDefault();
-    if (!canEditWorkspace) return;
-
-    const normalizedAgencyValues = {
-      name: agencyName.trim(),
-      businessPhone: sanitizeBusinessPhoneInput(businessPhone),
-      businessEmail: businessEmail.trim(),
-      city: city.trim(),
-      country: country.trim(),
-    };
-
-    if (!normalizedAgencyValues.name) {
-      setWorkspaceError("Agency name is required.");
-      return;
-    }
-    if (!normalizedAgencyValues.businessPhone) {
-      setWorkspaceError("Business phone is required.");
-      return;
-    }
-    if (!normalizedAgencyValues.city) {
-      setWorkspaceError("City is required.");
-      return;
-    }
-    if (!normalizedAgencyValues.country) {
-      setWorkspaceError("Country is required.");
-      return;
-    }
-    if (!workspaceChanged) return;
-
-    setWorkspaceError("");
-    setIsSavingWorkspace(true);
-    try {
-      await onUpdateAgency?.(normalizedAgencyValues);
-      setAgencyName(normalizedAgencyValues.name);
-      setBusinessPhone(normalizedAgencyValues.businessPhone);
-      setBusinessEmail(normalizedAgencyValues.businessEmail);
-      setCity(normalizedAgencyValues.city);
-      setCountry(normalizedAgencyValues.country);
-      setSavedAgencyName(normalizedAgencyValues.name);
-      setSavedBusinessPhone(normalizedAgencyValues.businessPhone);
-      setSavedBusinessEmail(normalizedAgencyValues.businessEmail);
-      setSavedCity(normalizedAgencyValues.city);
-      setSavedCountry(normalizedAgencyValues.country);
-    } catch (error) {
-      setWorkspaceError(error?.message || "Unable to update workspace details.");
-    } finally {
-      setIsSavingWorkspace(false);
-    }
-  };
-
-  const workspaceFields = useMemo(() => ([
-    {
-      label: "Agency name",
-      value: agencyName,
-      onChange: (event) => setAgencyName(event.target.value),
-      placeholder: "Enter agency name",
-    },
-    {
-      label: "Business phone",
-      value: businessPhone,
-      onChange: (event) => setBusinessPhone(sanitizeBusinessPhoneInput(event.target.value)),
-      placeholder: "Digits only",
-      inputMode: "numeric",
-      pattern: "[0-9]*",
-      maxLength: 30,
-      autoComplete: "tel-national",
-    },
-    {
-      label: "Business email",
-      value: businessEmail,
-      onChange: (event) => setBusinessEmail(event.target.value),
-      placeholder: "Enter business email",
-      autoComplete: "email",
-    },
-    {
-      label: "City",
-      value: city,
-      onChange: (event) => setCity(event.target.value),
-      placeholder: "Enter city",
-    },
-    {
-      label: "Country",
-      value: country,
-      onChange: (event) => setCountry(event.target.value),
-      placeholder: "Enter country",
-    },
-    { label: "Membership role", value: formatReadOnlyValue(membership?.role) },
-  ]), [agencyName, businessEmail, businessPhone, city, country, membership?.role]);
 
   return (
     <div
@@ -367,51 +162,7 @@ export default function SettingsPage({
           title="Agency details"
           description="Manage the shared agency profile that powers the dashboard and itinerary flows."
         >
-          {!canEditWorkspace ? (
-            <p className="mb-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm text-text-soft">
-              Only the agency owner can edit workspace details.
-            </p>
-          ) : null}
-
-          <form className="grid gap-4" onSubmit={handleWorkspaceSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              {workspaceFields.map((field) => (
-                <TextInputField
-                  key={field.label}
-                  label={field.label}
-                  id={field.label.toLowerCase().replace(/\s+/g, "-")}
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  readOnly={field.label === "Membership role" || !canEditWorkspace}
-                  placeholder={field.placeholder || field.label}
-                  type={field.type}
-                  inputMode={field.inputMode}
-                  pattern={field.pattern}
-                  maxLength={field.maxLength}
-                  autoComplete={field.autoComplete}
-                />
-              ))}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <span className={`inline-flex items-center rounded-pill border px-3 py-1 text-xs font-semibold ${getStatusClass(agency?.status)}`}>
-                {agencyStatus}
-              </span>
-              <span className="text-sm text-text-soft">Agency status</span>
-            </div>
-
-            {workspaceError ? <p className="text-sm font-medium text-status-danger" role="alert">{workspaceError}</p> : null}
-
-            <div className="flex items-center justify-end">
-              <button
-                type="submit"
-                className="rounded-pill bg-secondary px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isWorkspaceSavingDisabled}
-              >
-                {isSavingWorkspace ? "Saving..." : "Save workspace changes"}
-              </button>
-            </div>
-          </form>
+          <AgencyDetailsForm agency={agency} membership={membership} onUpdateAgency={onUpdateAgency} />
         </Panel>}
 
         <Panel
@@ -572,7 +323,7 @@ export default function SettingsPage({
         {!isPersonal && membership?.role === "OWNER" && agency?.id ? (
           <DangerZoneCard
             agencyId={agency.id}
-            agencyName={agency.name ?? savedAgencyName ?? ""}
+            agencyName={agency.name ?? ""}
           />
         ) : null}
       </div>
