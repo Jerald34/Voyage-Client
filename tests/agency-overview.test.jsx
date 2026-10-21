@@ -76,6 +76,68 @@ describe("AgencyOverview for the owner", () => {
     renderOverview();
     expect(await screen.findByText("Couldn't load your agency overview. Try again later.")).toBeInTheDocument();
   });
+
+  it("still shows the status card, without an owner, when the team can't load", async () => {
+    mocks.fetchTeam.mockRejectedValue(new Error("offline"));
+    renderOverview();
+    expect(await screen.findByText("Couldn't load your agency overview. Try again later.")).toBeInTheDocument();
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.queryByText(/Owner:/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Agency numbers" })).not.toBeInTheDocument();
+  });
+
+  it("falls back to the owner's email when they have no display name", async () => {
+    mocks.fetchTeam.mockResolvedValue({
+      members: [{ id: "m1", role: "OWNER", user: { displayName: null, email: "jamie@example.test" } }],
+      viewerRole: "OWNER",
+    });
+    renderOverview();
+    expect(await screen.findByText("Owner: jamie@example.test")).toBeInTheDocument();
+  });
+
+  it("leaves out the owner line when the owner has neither a name nor an email", async () => {
+    mocks.fetchTeam.mockResolvedValue({ members: [{ id: "m1", role: "OWNER", user: {} }], viewerRole: "OWNER" });
+    renderOverview();
+    await screen.findByRole("list", { name: "Agency numbers" });
+    expect(screen.queryByText(/Owner:/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the owner's tiles, shows dashes, and says so when usage can't load", async () => {
+    mocks.fetchPlanUsage.mockRejectedValue(new Error("offline"));
+    renderOverview();
+    const tiles = await screen.findByRole("list", { name: "Agency numbers" });
+    expect(within(tiles).getByText("Team members").nextSibling).toHaveTextContent("2");
+    expect(within(tiles).getByText("Itineraries this month").nextSibling).toHaveTextContent("—");
+    expect(within(tiles).getByText("Messages to the agent").nextSibling).toHaveTextContent("—");
+    expect(within(tiles).getByText("Plan that fits").nextSibling).toHaveTextContent("—");
+    expect(within(tiles).queryByText("Pending invitations")).not.toBeInTheDocument();
+    expect(screen.getByText("Some numbers couldn't load. Try again later.")).toBeInTheDocument();
+  });
+
+  it("still lists the rows it can work out when usage can't load", async () => {
+    mocks.fetchPlanUsage.mockRejectedValue(new Error("offline"));
+    renderOverview();
+    const list = await screen.findByRole("list", { name: "Needs attention" });
+    expect(within(list).getAllByRole("listitem").map((row) => row.firstChild.textContent)).toEqual([
+      "2 invitations are still pending",
+      "Agency details are missing: business phone",
+    ]);
+  });
+
+  it("does not claim all clear when something couldn't be checked", async () => {
+    mocks.listAgencyInvitations.mockRejectedValue(new Error("offline"));
+    mocks.fetchPlanUsage.mockResolvedValue({ usage: { itinerariesCreated: 1, agentRequests: 3, activeMembers: 2 } });
+    renderOverview("OWNER", { agency: { ...agency, businessPhone: "639001112222" } });
+    expect(await screen.findByText("Couldn't check everything right now.")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing needs your attention right now.")).not.toBeInTheDocument();
+    expect(screen.getByText("Some numbers couldn't load. Try again later.")).toBeInTheDocument();
+  });
+
+  it("shows no failure line when every fetch succeeded", async () => {
+    renderOverview();
+    await screen.findByRole("list", { name: "Agency numbers" });
+    expect(screen.queryByText("Some numbers couldn't load. Try again later.")).not.toBeInTheDocument();
+  });
 });
 
 describe("AgencyOverview for an admin", () => {
@@ -87,5 +149,15 @@ describe("AgencyOverview for an admin", () => {
     expect(within(tiles).queryByText("Plan that fits")).not.toBeInTheDocument();
     const list = screen.getByRole("list", { name: "Needs attention" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("shows a dash, not 0, and says so when invitations can't load", async () => {
+    mocks.listAgencyInvitations.mockRejectedValue(new Error("offline"));
+    renderOverview("ADMIN");
+    const tiles = await screen.findByRole("list", { name: "Agency numbers" });
+    expect(within(tiles).getByText("Pending invitations").nextSibling).toHaveTextContent("—");
+    expect(screen.getByText("Some numbers couldn't load. Try again later.")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't check everything right now.")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing needs your attention right now.")).not.toBeInTheDocument();
   });
 });

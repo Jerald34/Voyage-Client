@@ -24,7 +24,7 @@ function HomePageInner() {
   const { logout } = useAuth();
   const authenticatedParam = searchParams.get("authenticated");
   // `tab=team` links: invite acceptance lands on the Dashboard with a welcome
-  // notice; other team links open Settings at the Team panel.
+  // notice; other team links open Agency -> Team for managers and Settings -> Team for everyone else.
   const { initialTab, showJoinedNotice, settingsSection } = resolveInitialView(searchParams);
   const [shouldBypassLanding, setShouldBypassLanding] = useState(false);
   const [user, setUser] = useState(null);

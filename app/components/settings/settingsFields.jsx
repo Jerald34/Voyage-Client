@@ -34,7 +34,7 @@ export function Panel({ eyebrow, title, description, children, className = "" })
     <section className={`rounded-[24px] border border-border bg-surface/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] ${className}`}>
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrow}</p>
-        <h2 className="mt-1 font-sans text-lg font-semibold text-text-primary">{title}</h2>
+        <h2 className="mt-1 font-sans text-lg font-semibold tracking-normal text-text-primary">{title}</h2>
         {description ? <p className="mt-1 text-sm leading-6 text-text-muted">{description}</p> : null}
       </div>
       {children}

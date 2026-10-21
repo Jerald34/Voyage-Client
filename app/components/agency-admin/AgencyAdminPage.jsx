@@ -1,7 +1,7 @@
 // app/components/agency-admin/AgencyAdminPage.jsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminTopBar from "../admin/AdminTopBar.jsx";
 import SegmentedControl from "../admin/SegmentedControl.jsx";
 import AgencyDetailsForm from "../settings/AgencyDetailsForm.jsx";
@@ -36,12 +36,34 @@ export default function AgencyAdminPage({ agency, membership, onUpdateAgency, in
 
   // A section the viewer can no longer see (e.g. after a role change) falls back to Overview.
   const active = sections.find((item) => item.id === section) ?? sections[0];
+
+  // Opening a section from an Overview link unmounts the Overview and the focused link with it,
+  // which drops focus to <body>. Hand it to the new section's panel instead. A tab click never
+  // sets this: focus stays on the tab, as the tablist pattern expects.
+  const panelRef = useRef(null);
+  const focusPanelAfterOpen = useRef(false);
+  useEffect(() => {
+    if (!focusPanelAfterOpen.current) return;
+    focusPanelAfterOpen.current = false;
+    panelRef.current?.focus();
+  }, [active.id]);
+
+  function openFromTab(id) {
+    focusPanelAfterOpen.current = false;
+    setSection(id);
+  }
+
+  function openFromOverview(id) {
+    focusPanelAfterOpen.current = id !== active.id && sections.some((item) => item.id === id);
+    setSection(id);
+  }
+
   const tabs = (
     <SegmentedControl
       as="tab"
       ariaLabel="Agency sections"
       value={active.id}
-      onChange={setSection}
+      onChange={openFromTab}
       options={sections.map((item) => ({ value: item.id, label: item.label }))}
     />
   );
@@ -52,9 +74,15 @@ export default function AgencyAdminPage({ agency, membership, onUpdateAgency, in
       className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 sm:px-5 lg:px-6"
     >
       <AdminTopBar title={agency.name} tabs={tabs} />
-      <div role="tabpanel" aria-label={active.label} className="flex flex-col gap-4 pb-8">
+      <div
+        ref={panelRef}
+        role="tabpanel"
+        tabIndex={-1}
+        aria-label={active.label}
+        className="flex flex-col gap-4 rounded-[24px] pb-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+      >
         {active.id === "overview" ? (
-          <AgencyOverview agency={agency} membership={membership} onOpenSection={setSection} />
+          <AgencyOverview agency={agency} membership={membership} onOpenSection={openFromOverview} />
         ) : null}
 
         {active.id === "team" ? (

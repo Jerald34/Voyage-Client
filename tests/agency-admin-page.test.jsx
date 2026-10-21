@@ -81,6 +81,38 @@ describe("AgencyAdminPage", () => {
     expect(screen.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("moves focus to the section panel when the overview opens a section", () => {
+    renderPage();
+    const link = screen.getByRole("button", { name: "overview-stub" });
+    link.focus();
+    fireEvent.click(link);
+    const panel = screen.getByRole("tabpanel", { name: "Profile" });
+    expect(panel).toHaveAttribute("tabindex", "-1");
+    expect(panel).toHaveFocus();
+  });
+
+  it("keeps focus on the tab when a tab is clicked", () => {
+    renderPage();
+    const tab = screen.getByRole("tab", { name: "Team" });
+    tab.focus();
+    fireEvent.click(tab);
+    expect(tab).toHaveFocus();
+  });
+
+  it("keeps focus on the tab for a tab click after the overview opened a section", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "overview-stub" }));
+    const tab = screen.getByRole("tab", { name: "Team" });
+    tab.focus();
+    fireEvent.click(tab);
+    expect(tab).toHaveFocus();
+  });
+
+  it("does not steal focus on first render", () => {
+    renderPage();
+    expect(screen.getByRole("tabpanel")).not.toHaveFocus();
+  });
+
   it("opens the initial section once and reports it handled", () => {
     const onInitialSectionHandled = vi.fn();
     renderPage("OWNER", { initialSection: "team", onInitialSectionHandled });
