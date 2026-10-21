@@ -87,7 +87,7 @@ export default function TeamPage({ agencyId, showJoinedNotice = false, embedded 
         )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="rounded-lg border border-border bg-surface">
         {loading ? (
           <div className="px-4 py-8 text-center text-text-muted">Loading&hellip;</div>
         ) : error ? (
