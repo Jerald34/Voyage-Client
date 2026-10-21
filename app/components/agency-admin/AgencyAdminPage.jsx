@@ -34,16 +34,17 @@ export default function AgencyAdminPage({ agency, membership, onUpdateAgency, in
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A section the viewer can no longer see (e.g. after a role change) falls back to Overview.
+  const active = sections.find((item) => item.id === section) ?? sections[0];
   const tabs = (
     <SegmentedControl
       as="tab"
       ariaLabel="Agency sections"
-      value={section}
+      value={active.id}
       onChange={setSection}
       options={sections.map((item) => ({ value: item.id, label: item.label }))}
     />
   );
-  const active = sections.find((item) => item.id === section) ?? sections[0];
 
   return (
     <div
@@ -52,17 +53,17 @@ export default function AgencyAdminPage({ agency, membership, onUpdateAgency, in
     >
       <AdminTopBar title={agency.name} tabs={tabs} />
       <div role="tabpanel" aria-label={active.label} className="flex flex-col gap-4 pb-8">
-        {section === "overview" ? (
+        {active.id === "overview" ? (
           <AgencyOverview agency={agency} membership={membership} onOpenSection={setSection} />
         ) : null}
 
-        {section === "team" ? (
+        {active.id === "team" ? (
           <section className="rounded-[24px] border border-border bg-surface/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
             <TeamPage agencyId={agency.id} embedded />
           </section>
         ) : null}
 
-        {section === "profile" ? (
+        {active.id === "profile" ? (
           <>
             <Panel
               eyebrow="Workspace"
@@ -75,7 +76,7 @@ export default function AgencyAdminPage({ agency, membership, onUpdateAgency, in
           </>
         ) : null}
 
-        {section === "plan" && isOwner ? (
+        {active.id === "plan" ? (
           <Panel
             eyebrow="Plan"
             title="Plan and usage"
