@@ -10,7 +10,7 @@ import TripDetailPage from "../app/agency/[agencyId]/trip/[tripId]/page.jsx";
 import AgencyTripAgentPage from "../app/agency/[agencyId]/trip/[tripId]/agent/page.jsx";
 import TeamRoutePage from "../app/agency/[agencyId]/team/page.jsx";
 import TripNotInListEmptyState from "../app/components/agency-status/TripNotInListEmptyState.jsx";
-import AgencySettingsPage from "../app/components/settings/AgencySettingsPage.jsx";
+import SettingsRoutePage from "../app/agency/[agencyId]/settings/page.jsx";
 
 const mocks = vi.hoisted(() => ({
   searchInvited: "1",
@@ -162,13 +162,11 @@ describe("accepted invite agency landing", () => {
     expect(screen.getByText("Owner Name").className).toContain("text-text-primary");
   });
 
-  it("keeps invited admin settings controls readable", () => {
-    mocks.role = "ADMIN";
+  it("forwards the legacy agency Settings URL into the Agency tab", async () => {
+    render(<SettingsRoutePage />);
 
-    render(<AgencySettingsPage agencyId="agency-1" />);
-
-    expect(screen.getByRole("heading", { name: "Agency settings" }).className).toContain("text-text-primary");
-    expect(screen.getByText("Workspace").className).toContain("text-text-muted");
-    expect(screen.getByPlaceholderText("Your agency name").className).toContain("text-text-primary");
+    await waitFor(() => {
+      expect(mocks.routerReplace).toHaveBeenCalledWith("/?authenticated=1&tab=agency");
+    });
   });
 });
