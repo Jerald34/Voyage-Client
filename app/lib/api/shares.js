@@ -75,6 +75,29 @@ export async function fetchPublicItinerary(token) {
   return data;
 }
 
+/**
+ * The share's current revision, a cheap check the public page polls to learn
+ * the agency has edited the itinerary. Does not count a view; never cached.
+ * Throws with `status` (404 not found, 410 revoked or expired) like its siblings.
+ */
+export async function fetchPublicShareRevision(token) {
+  const url = `${API_URL}/shared/${token}/revision`;
+  const response = await fetch(url, {
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(
+      data.error?.message || "Revision not available",
+    );
+    error.code = data.error?.code || "UNKNOWN_ERROR";
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
 export async function listPublicComments(token) {
   const url = `${API_URL}/shared/${token}/comments`;
   const response = await fetch(url, {

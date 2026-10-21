@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { fetchPublicItinerary, postPublicComment, listPublicComments } from "../../../lib/api/index.js";
@@ -16,6 +16,8 @@ import WeatherAttribution from "../../../components/weather/WeatherAttribution.j
 import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
 import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import ShareHeader, { PoweredByVoyage } from "./components/ShareHeader.jsx";
+import ShareUpdateBanner from "./components/ShareUpdateBanner.jsx";
+import { useShareRevisionWatch } from "../../../hooks/useShareRevisionWatch.js";
 import Spinner from "../../../components/ui/Spinner";
 import {
   MapPinIcon,
@@ -313,6 +315,15 @@ export default function PublicItineraryPage() {
   /* persisted comments (fetched from backend, includes agency replies) */
   const [comments, setComments] = useState([]);
 
+  /* "your agent updated this itinerary": idle | loading | error | done (a screen-reader confirmation, cleared after a few seconds) */
+  const [refreshState, setRefreshState] = useState("idle");
+  const bannerRef = useRef(null);
+  const scrollerRef = useRef(null);
+  const refreshingRef = useRef(false);
+  const refocusRef = useRef(false);
+  const bannerHeightRef = useRef(0);
+  const tokenRef = useRef(token);
+
   const refreshComments = useCallback(async () => {
     if (!token) return;
     try {
@@ -339,8 +350,10 @@ export default function PublicItineraryPage() {
     if (!token) return;
     let cancelled = false;
 
+    tokenRef.current = token;
     setLoading(true);
     setError(null);
+    setRefreshState("idle");
 
     fetchPublicItinerary(token)
       .then((res) => {
@@ -369,6 +382,60 @@ export default function PublicItineraryPage() {
       cancelled = true;
     };
   }, [token]);
+
+  /* ── the agency edited the itinerary while this page was open ── */
+  const { updateAvailable, acknowledge } = useShareRevisionWatch({ token, revision: data?.revision });
+
+  /* "Show latest": swap the new itinerary in place. Unlike the load above it never
+     sets `loading`, so the page, its scroll position, an open comment form and the
+     commenter's name all stay put. */
+  const handleShowLatest = useCallback(async () => {
+    if (!token || refreshingRef.current) return;
+    refreshingRef.current = true;
+    setRefreshState("loading");
+    try {
+      const res = await fetchPublicItinerary(token);
+      if (tokenRef.current !== token) return;
+      // The button is about to go. If it held focus, hand focus to the itinerary.
+      refocusRef.current = Boolean(bannerRef.current?.contains(document.activeElement));
+      setData(res);
+      // Map selection is by position, which an edit may have shuffled.
+      setActiveIndex(-1);
+      setSelectedPlaceId("");
+      setSelectedPlace(null);
+      setRefreshState("done");
+      acknowledge();
+    } catch {
+      if (tokenRef.current === token) setRefreshState("error");
+    } finally {
+      refreshingRef.current = false;
+    }
+  }, [token, acknowledge]);
+
+  /* The banner sits above the scroller, so it moving in or out shifts the scroller's top
+     edge and the text on screen with it. Scroll by the same amount to hold the text still
+     for a reader part-way down. At the very top there is nothing to hold, so the title
+     just moves down. (Before paint, so there is no frame at the wrong offset.) */
+  useLayoutEffect(() => {
+    // getBoundingClientRect, not offsetHeight: that rounds, and a fraction of a pixel adds up to a visible nudge.
+    const height = bannerRef.current?.getBoundingClientRect().height ?? 0;
+    const delta = height - bannerHeightRef.current;
+    bannerHeightRef.current = height;
+    const scroller = scrollerRef.current;
+    if (delta !== 0 && scroller && scroller.scrollTop > 0) scroller.scrollTop += delta;
+  }, [updateAvailable, refreshState]);
+
+  useEffect(() => {
+    if (!refocusRef.current) return;
+    refocusRef.current = false;
+    scrollerRef.current?.focus({ preventScroll: true });
+  }, [data]);
+
+  useEffect(() => {
+    if (refreshState !== "done") return undefined;
+    const timer = setTimeout(() => setRefreshState("idle"), 4000);
+    return () => clearTimeout(timer);
+  }, [refreshState]);
 
   /* ── fetch persisted comments + agency replies ── */
   useEffect(() => {
@@ -571,9 +638,21 @@ export default function PublicItineraryPage() {
 
       {/* ── main split layout ── */}
       <div className="grid grid-cols-[45fr_55fr] flex-1 min-h-0 overflow-hidden max-sm:flex max-sm:flex-col">
-        {/* ── left: timeline panel ── */}
+        {/* ── left: the update notice sits above the timeline's own scroller, so it never moves the text being read ── */}
+        <div className={`flex min-h-0 flex-col overflow-hidden ${mobileTab === "itinerary" ? "max-sm:flex-1" : "max-sm:hidden"}`}>
+        <ShareUpdateBanner
+          ref={bannerRef}
+          visible={updateAvailable}
+          busy={refreshState === "loading"}
+          failed={refreshState === "error"}
+          confirmed={refreshState === "done"}
+          onShowLatest={handleShowLatest}
+        />
+        {/* ── timeline panel ── */}
         <div
-          className={`overflow-y-auto overflow-x-hidden px-7 py-8 pb-12 scrollbar-thin scrollbar-color-border scrollbar-track-transparent max-sm:px-4 max-sm:py-5 max-sm:pb-10 max-[400px]:px-3 max-[400px]:py-4 max-[400px]:pb-8 ${mobileTab === "itinerary" ? "max-sm:flex max-sm:flex-col max-sm:flex-1 max-sm:min-h-0" : "max-sm:hidden"}`}
+          ref={scrollerRef}
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-7 py-8 pb-12 scrollbar-thin scrollbar-color-border scrollbar-track-transparent focus:outline-none max-sm:flex max-sm:flex-col max-sm:px-4 max-sm:py-5 max-sm:pb-10 max-[400px]:px-3 max-[400px]:py-4 max-[400px]:pb-8"
         >
           {/* name prompt banner */}
           {showNamePrompt && (
@@ -770,6 +849,7 @@ export default function PublicItineraryPage() {
           <footer className="pt-8">
             <PoweredByVoyage />
           </footer>
+        </div>
         </div>
 
         {/* ── right: map panel, inset like the in-app day view ── */}

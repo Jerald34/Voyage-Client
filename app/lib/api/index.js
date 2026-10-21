@@ -73,6 +73,7 @@ export {
   getUnreadCommentCount,
   getUnreadCommentCountsByTrip,
   fetchPublicItinerary,
+  fetchPublicShareRevision,
   postPublicComment,
   listPublicComments,
 } from "./shares.js";
