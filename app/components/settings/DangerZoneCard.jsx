@@ -24,7 +24,7 @@ export default function DangerZoneCard({ agencyId, agencyName, members: membersP
 
   return (
     <div className="mt-12 rounded-lg border border-status-danger/25 bg-status-danger/[0.04] p-6">
-      <h2 className="mb-2 font-sans text-sm font-semibold uppercase tracking-normal text-status-danger">Danger zone</h2>
+      <h2 className="mb-2 font-sans text-sm font-semibold uppercase tracking-wider text-status-danger">Danger zone</h2>
       <p className="mb-4 text-sm text-text-muted">
         These actions affect the entire agency and cannot be undone.
       </p>
