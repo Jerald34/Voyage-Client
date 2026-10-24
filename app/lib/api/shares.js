@@ -28,6 +28,17 @@ export async function revokeShare(agencyId, shareId) {
   });
 }
 
+/**
+ * Swaps a live link for a new one: same itinerary, client name, email and expiry,
+ * with the old link turned off. Resolves to `{ share }` (the new link).
+ */
+export async function regenerateShare(agencyId, shareId) {
+  return fetchApi(`/agencies/${agencyId}/shares/${shareId}/regenerate`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 /** Pushes a link's expiry out by 7 or 30 days, counted from now if it has already expired. */
 export async function extendShare(agencyId, shareId, extendDays) {
   return fetchApi(`/agencies/${agencyId}/shares/${shareId}/expiry`, {
@@ -96,6 +107,20 @@ export async function fetchPublicShareRevision(token) {
     throw error;
   }
   return data;
+}
+
+/**
+ * Counts one client visit to a share link. Loading the itinerary never counts,
+ * so the page calls this itself, once per visit.
+ */
+export async function recordPublicShareView(token) {
+  const url = `${API_URL}/shared/${token}/view`;
+  const response = await fetch(url, { method: "POST" });
+  if (!response.ok) {
+    const error = new Error("View not recorded");
+    error.status = response.status;
+    throw error;
+  }
 }
 
 export async function listPublicComments(token) {

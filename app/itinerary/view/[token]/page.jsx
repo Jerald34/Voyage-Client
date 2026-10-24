@@ -3,7 +3,7 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, useId } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { fetchPublicItinerary, postPublicComment, listPublicComments } from "../../../lib/api/index.js";
+import { fetchPublicItinerary, postPublicComment, listPublicComments, recordPublicShareView } from "../../../lib/api/index.js";
 import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import PdfDownloadButton from "./components/PdfDownloadButton.jsx";
@@ -52,6 +52,33 @@ function formatDate(dateStr) {
 }
 
 const welcomeSkippedKey = (token) => `voyage_share_welcome_skipped:${token}`;
+
+/* One view per visit: a reload, another tab or coming back within half an hour is
+   the same visit, so the agency's view count means "times the client came back". */
+const VISIT_WINDOW_MS = 30 * 60 * 1000;
+const viewedAtKey = (token) => `voyage_share_viewed:${token}`;
+
+function recordVisit(token) {
+  try {
+    const last = Number(localStorage.getItem(viewedAtKey(token)));
+    if (last && Date.now() - last < VISIT_WINDOW_MS) return;
+  } catch {
+    /* storage blocked: count it, the server cannot tell either way */
+  }
+  // Counting is bookkeeping: nothing here may stop the itinerary from showing.
+  Promise.resolve()
+    .then(() => recordPublicShareView(token))
+    .then(() => {
+      try {
+        localStorage.setItem(viewedAtKey(token), String(Date.now()));
+      } catch {
+        /* the next load counts again; better than never counting */
+      }
+    })
+    .catch(() => {
+      /* not saved, so the next load tries again */
+    });
+}
 
 function senderNameFor(brand) {
   if (brand?.type === "agency" && brand.name) return brand.name;
@@ -411,7 +438,11 @@ export default function PublicItineraryPage() {
 
     fetchPublicItinerary(token)
       .then((res) => {
-        if (!cancelled) setData(res);
+        if (!cancelled) {
+          setData(res);
+          // Only this first load is a visit; "Show latest" refetches without one.
+          recordVisit(token);
+        }
       })
       .catch((err) => {
         if (!cancelled) {

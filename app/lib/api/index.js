@@ -67,6 +67,7 @@ export {
   createItineraryShare,
   listTripShares,
   revokeShare,
+  regenerateShare,
   extendShare,
   listShareComments,
   replyToShareComment,
@@ -74,6 +75,7 @@ export {
   getUnreadCommentCountsByTrip,
   fetchPublicItinerary,
   fetchPublicShareRevision,
+  recordPublicShareView,
   postPublicComment,
   listPublicComments,
 } from "./shares.js";
