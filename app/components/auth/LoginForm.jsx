@@ -48,7 +48,13 @@ export default function LoginForm() {
     e.preventDefault();
     const errors = validateLoginFields(email, password);
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      // Drop an earlier server alert and move focus to the first field to fix,
+      // since the field messages themselves aren't announced.
+      auth.setError(null);
+      document.getElementById(errors.email ? "auth-email" : "auth-password")?.focus();
+      return;
+    }
     auth.login({ email: email.trim(), password, rememberMe });
   };
 
@@ -145,7 +151,7 @@ export default function LoginForm() {
             <p className="font-bold text-status-danger mb-1.5">Verify your email to sign in</p>
             <p className="text-text-muted mb-3">{auth.error.message}</p>
             {resendState.error && (
-              <p className="text-status-danger text-[0.9rem] font-semibold mb-3">{resendState.error.message}</p>
+              <p className="text-status-danger text-[0.9rem] font-semibold mb-3">{getLoginErrorMessage(resendState.error)}</p>
             )}
             {resendState.sent && (
               <p className="text-[rgba(32,178,170,0.9)] text-[0.9rem] font-semibold mb-3">Sent — check your inbox</p>

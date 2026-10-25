@@ -208,3 +208,48 @@ describe("login form — field messages", () => {
     expect(screen.queryByText("Request validation failed.")).not.toBeInTheDocument();
   });
 });
+
+describe("register wizard — signed-in users can sign out", () => {
+  it("offers Sign out on the account-type step", async () => {
+    window.localStorage.setItem(
+      "voyage-user",
+      JSON.stringify({ id: "user-new", accountType: "PENDING", memberships: [] }),
+    );
+    searchParamsMock.step = "type";
+
+    render(<LoginPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+
+    expect(useAuthState.logout).toHaveBeenCalled();
+  });
+
+  it("offers Sign out on the agency step", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1", accountType: "AGENCY_USER" }));
+    searchParamsMock.step = "agency";
+
+    render(<LoginPage />);
+
+    expect(await screen.findByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("does not offer Sign out on the plain sign-up form", async () => {
+    searchParamsMock.mode = "register";
+
+    render(<LoginPage />);
+
+    expect(await screen.findByText("Create your account")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
+  });
+});
+
+describe("login form — stale alert", () => {
+  it("clears an earlier server alert when the fields fail validation", async () => {
+    useAuthState.error = { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect." };
+
+    render(<LoginPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in to Voyage" }));
+
+    expect(useAuthState.setError).toHaveBeenCalledWith(null);
+    expect(document.activeElement?.id).toBe("auth-email");
+  });
+});

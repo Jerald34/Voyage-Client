@@ -196,6 +196,22 @@ export default function RegisterWizard({
   const termsError = step1Errors.terms || serverStep1Errors.terms;
   const countryCityOptions = agencyLocationOptions[country] ?? [];
 
+  // Signed-in users finishing signup (?step=type / ?step=agency) can't reach the
+  // sign-in form any more (it sends them back here), so this is their way out.
+  const signOutPrompt = isAuthenticated && (
+    <p className="text-center mt-6 text-text-muted text-[0.92rem]">
+      Wrong account?{" "}
+      <button
+        type="button"
+        onClick={auth.logout}
+        disabled={auth.loading}
+        className="bg-none border-none text-secondary font-extrabold text-[0.92rem] cursor-pointer hover:text-text-primary hover:underline transition-colors disabled:opacity-55"
+      >
+        Sign out
+      </button>
+    </p>
+  );
+
   return (
     <>
       {/* ─── REGISTER STEP 1: Account Details ─── */}
@@ -404,6 +420,8 @@ export default function RegisterWizard({
               {typeStepError}
             </div>
           )}
+
+          {signOutPrompt}
         </>
       )}
 
@@ -540,6 +558,8 @@ export default function RegisterWizard({
               </button>
             )}
           </form>
+
+          {signOutPrompt}
         </>
       )}
     </>

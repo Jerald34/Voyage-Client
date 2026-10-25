@@ -506,3 +506,54 @@ describe("plain `/` visit — signed-in users skip the landing page", () => {
     expect(screen.getByTestId("landing-page")).toBeInTheDocument();
   });
 });
+
+describe("landing page stays hidden while the session decides the route", () => {
+  beforeEach(() => {
+    mockState.prototypeState = landingPrototypeState();
+  });
+
+  it("hides the landing page during the ?authenticated=1 handoff", () => {
+    mockState.searchParamsAuthenticated = "1";
+
+    render(<Page />);
+
+    expect(screen.queryByTestId("landing-page")).not.toBeInTheDocument();
+  });
+
+  it("shows the landing page if the handoff fails transiently with no stored user", async () => {
+    mockState.searchParamsAuthenticated = "1";
+    const netError = new Error("Unable to connect. Please try again.");
+    netError.status = 0;
+    mockState.fetchApi.mockRejectedValueOnce(netError);
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("landing-page")).toBeInTheDocument();
+  });
+
+  it("keeps the landing page hidden while a PENDING user is sent to the type picker", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    mockState.fetchApi.mockResolvedValueOnce({
+      user: { id: "user-1", accountType: "PENDING", memberships: [] },
+    });
+
+    render(<Page />);
+
+    await waitFor(() => {
+      expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=type");
+    });
+    expect(screen.queryByTestId("landing-page")).not.toBeInTheDocument();
+  });
+
+  it("sends an agency user with no membership to the agency step", async () => {
+    mockState.fetchApi.mockResolvedValueOnce({
+      user: { id: "user-1", accountType: "AGENCY_USER", memberships: [] },
+    });
+
+    render(<Page />);
+
+    await waitFor(() => {
+      expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=agency");
+    });
+  });
+});

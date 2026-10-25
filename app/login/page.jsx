@@ -79,7 +79,11 @@ function AuthShell() {
     if (localStorage.getItem("voyage-user")) setCheckingSession(true);
     fetchApi("/auth/me")
       .then((data) => {
-        if (cancelled || !data?.user) return;
+        if (cancelled) return;
+        if (!data?.user) {
+          setCheckingSession(false);
+          return;
+        }
         localStorage.setItem("voyage-user", JSON.stringify(data.user));
         router.replace("/?authenticated=1");
       })

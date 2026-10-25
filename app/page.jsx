@@ -27,9 +27,10 @@ function HomePageInner() {
   // notice; other team links open Agency -> Team for managers and Settings -> Team for everyone else.
   const { initialTab, showJoinedNotice, settingsSection } = resolveInitialView(searchParams);
   const [shouldBypassLanding, setShouldBypassLanding] = useState(false);
-  // A plain visit to `/` from someone who looks signed in (a stored user) waits
-  // on /auth/me before showing the landing page, so it doesn't flash first.
-  const [checkingSession, setCheckingSession] = useState(false);
+  // Hides the landing page while /auth/me decides where this visitor goes: always
+  // for the `?authenticated=1` handoff, and for a plain `/` visit from someone who
+  // looks signed in (a stored user). It stays up when the answer navigates away.
+  const [checkingSession, setCheckingSession] = useState(authenticatedParam === "1");
   const [user, setUser] = useState(null);
   const [agencyStatus, setAgencyStatus] = useState(null); // null | { status, name, rejectionReason, suspensionReason }
   const {
@@ -63,6 +64,7 @@ function HomePageInner() {
 
   // Store a freshly read user and route it: used by the first /auth/me read and by
   // the pending-screen polling, so both react the same way to every account state.
+  // Returns true when it navigated away to finish signup.
   const applyAuthUser = useCallback((authUser) => {
     localStorage.setItem("voyage-user", JSON.stringify(authUser));
     setUser(authUser);
@@ -75,21 +77,21 @@ function HomePageInner() {
     // PENDING redirect from a stale localStorage entry.
     if (accountType === "PENDING") {
       router.push("/login?step=type");
-      return;
+      return true;
     }
 
     // PERSONAL — no agency expected. Stay on the personal dashboard.
     if (accountType === "PERSONAL") {
       setAgencyStatus(null);
       setShouldBypassLanding(true);
-      return;
+      return false;
     }
 
     const hasMembership = Array.isArray(authUser?.memberships) && authUser.memberships.length > 0;
     if (!hasMembership) {
       // Agency user without a membership — finish the agency wizard.
       router.push("/login?step=agency");
-      return;
+      return true;
     }
 
     const agency = authUser.memberships[0].agency;
@@ -98,12 +100,13 @@ function HomePageInner() {
       // Agency not yet verified — show status screen
       setAgencyStatus(agency);
       setShouldBypassLanding(true);
-      return;
+      return false;
     }
 
     // Agency is verified — proceed to dashboard
     setAgencyStatus(null);
     setShouldBypassLanding(true);
+    return false;
   }, [router]);
 
   useEffect(() => {
@@ -113,7 +116,7 @@ function HomePageInner() {
     fetchApi("/auth/me")
       .then((data) => {
         if (cancelled) return;
-        applyAuthUser(data.user);
+        if (!applyAuthUser(data.user)) setCheckingSession(false);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -139,14 +142,16 @@ function HomePageInner() {
             setShouldBypassLanding(true);
           } catch {}
         }
+        setCheckingSession(false);
       });
 
     return () => { cancelled = true; };
   }, [authenticatedParam, applyAuthUser, handleSessionEnded]);
 
   // Signed-in visitors on a plain `/` go into the app, not the landing page.
-  // Any failure leaves them on the landing page; a 401 also drops the stale
-  // stored user so the next visit doesn't wait on the check.
+  // Any failure leaves them on the landing page (unlike the handoff above, a
+  // stored user is not trusted here); a 401 also drops the stale stored user so
+  // the next visit doesn't wait on the check.
   useEffect(() => {
     if (authenticatedParam === "1") return;
 
@@ -154,15 +159,13 @@ function HomePageInner() {
     if (localStorage.getItem("voyage-user")) setCheckingSession(true);
     fetchApi("/auth/me")
       .then((data) => {
-        if (cancelled || !data?.user) return;
-        applyAuthUser(data.user);
+        if (cancelled) return;
+        if (!data?.user || !applyAuthUser(data.user)) setCheckingSession(false);
       })
       .catch((error) => {
         if (cancelled) return;
         if (error?.status === 401) localStorage.removeItem("voyage-user");
-      })
-      .finally(() => {
-        if (!cancelled) setCheckingSession(false);
+        setCheckingSession(false);
       });
 
     return () => { cancelled = true; };
