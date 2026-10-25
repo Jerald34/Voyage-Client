@@ -34,6 +34,10 @@ import {
   ShieldIcon,
 } from "../icons/index.js";
 
+// Personal accounts can't use the agent yet (no /me agent routes), so the
+// option is shown greyed out until that support lands.
+const PERSONAL_ACCOUNTS_ENABLED = false;
+
 export default function RegisterWizard({
   wizardStep,
   setWizardStep,
@@ -397,16 +401,23 @@ export default function RegisterWizard({
           <div className="flex flex-col gap-4">
             <button
               type="button"
-              disabled={auth.loading}
+              disabled={!PERSONAL_ACCOUNTS_ENABLED || auth.loading}
               onClick={handlePickPersonal}
-              className="w-full text-left p-6 rounded-2xl border border-border bg-surface hover:bg-surface-hover transition-all duration-200 disabled:opacity-55 disabled:cursor-not-allowed group"
+              className="w-full text-left p-6 rounded-2xl border border-border bg-surface enabled:hover:bg-surface-hover transition-all duration-200 disabled:opacity-55 disabled:cursor-not-allowed group"
             >
               <div className="flex flex-col gap-1.5">
-                <span className="text-[1.08rem] font-extrabold text-text-primary group-hover:text-secondary transition-colors duration-200">
+                <span className="flex items-center gap-2.5 text-[1.08rem] font-extrabold text-text-primary group-enabled:group-hover:text-secondary transition-colors duration-200">
                   Plan my own trips
+                  {!PERSONAL_ACCOUNTS_ENABLED && (
+                    <span className="px-2.5 py-0.5 rounded-pill border border-border text-[0.72rem] font-bold uppercase tracking-[0.08em] text-text-soft">
+                      Coming soon
+                    </span>
+                  )}
                 </span>
                 <span className="text-[0.92rem] text-text-muted leading-relaxed">
-                  Use the full AI planning agent for your personal travel. Your itineraries stay private to you.
+                  {PERSONAL_ACCOUNTS_ENABLED
+                    ? "Use the full AI planning agent for your personal travel. Your itineraries stay private to you."
+                    : "Personal trip planning isn't available yet. For now, Voyage is for travel agencies."}
                 </span>
               </div>
             </button>

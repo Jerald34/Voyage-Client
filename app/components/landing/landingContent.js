@@ -79,6 +79,35 @@ export const FEATURES = [
   { icon: "calendar", title: "Team calendar", body: "Every departure and its status in one view." },
 ];
 
+/**
+ * The services behind Voyage, by what each gives the agency or traveller. Deliberately not how they're wired together:
+ * no AI model (not even its name), prompts, tools, fallbacks or back-office services (images, email, web search), so the page shows
+ * what Voyage stands on without handing over the recipe. `icon` names a key in LandingSections' SERVICE_ICONS map.
+ */
+export const BUILT_ON = {
+  title: "Built on services you already trust",
+  body: "What powers each plan, and what it means for your clients.",
+  groups: [
+    {
+      label: "From Google",
+      services: [
+        { icon: "places", name: "Google Places", body: "Real places with photos and ratings. Closed ones get flagged." },
+        { icon: "routes", name: "Google Routes", body: "Travel times between stops." },
+        { icon: "maps", name: "Google Maps", body: "The live map in every trip." },
+        { icon: "signin", name: "Google Sign-In", body: "Log in with your Google account." },
+      ],
+    },
+    {
+      label: "Open data",
+      services: [
+        { icon: "weather", name: "Open-Meteo", body: "An hourly forecast for each stop." },
+        { icon: "globe", name: "OpenStreetMap", body: "The sample map on this page." },
+      ],
+    },
+  ],
+  trademarks: "Google, Google Maps and Google Sign-In are trademarks of Google LLC.",
+};
+
 export const STEPS = [
   { title: "Brief", body: "Paste the client's request or type it in your own words." },
   { title: "Draft", body: "Get a mapped, checked day-by-day plan in a few minutes." },

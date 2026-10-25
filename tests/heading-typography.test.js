@@ -57,6 +57,8 @@ const EXPECTED = [
   ["app/components/landing/SampleTripSection.jsx", "{callout.title}", "sans"],
   ["app/components/landing/LandingSections.jsx", "What Voyage does", "sans"],
   ["app/components/landing/LandingSections.jsx", "{feature.title}", "sans"],
+  ["app/components/landing/LandingSections.jsx", "{BUILT_ON.title}", "sans"],
+  ["app/components/landing/LandingSections.jsx", "{group.label}", "sans"],
   ["app/components/landing/LandingSections.jsx", "How it works", "sans"],
   ["app/components/landing/LandingSections.jsx", "{step.title}", "sans"],
   ["app/components/landing/LandingSections.jsx", "Built for agencies", "sans"],

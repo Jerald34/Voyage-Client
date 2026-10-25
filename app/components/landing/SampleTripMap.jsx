@@ -3,17 +3,15 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
-import { useTheme } from "../theme/ThemeProvider";
 import { getDayColor } from "../../lib/trip-dashboard/dayColors.js";
 import { getSampleMapStops } from "./sample/sampleTrip.js";
 
-// CARTO basemaps: free for non-commercial use with attribution. Revisit if Voyage goes commercial (Release checklist).
-const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-};
-const ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+// OpenStreetMap's own tiles: no key, attribution required, fine for one small map (tile usage policy). CARTO's keyless
+// basemaps now serve an "API key required" placeholder instead. OSM has no dark style, so dark mode darkens these tiles
+// with a CSS filter (.landing-map-tiles in globals.css); it sits on the tile pane only, so pins and routes keep their colours.
+const TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILES_CLASS = "landing-map-tiles";
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 // A picture, not a control. With drag and touch-zoom on, Leaflet sets touch-action:none and traps
 // a vertical swipe on a phone; its keyboard handler adds a tab stop with no name. Attribution stays.
@@ -64,7 +62,6 @@ const ROUTES = [...new Set(STOPS.map((stop) => stop.dayNumber))].map((dayNumber)
 
 /** The sample trip on a real map. Client-only: load it through LazySampleTripMap. */
 export default function SampleTripMap({ activeDay }) {
-  const { theme } = useTheme();
   // Leaflet stacks paths in the order they were added, so the active route goes last. The key holds the
   // route's state: the two routes that change are re-added in this order, which keeps the active one on top.
   const routes = [
@@ -80,7 +77,7 @@ export default function SampleTripMap({ activeDay }) {
       style={MAP_STYLE}
       className="h-full w-full"
     >
-      <TileLayer url={theme === "dark" ? TILES.dark : TILES.light} attribution={ATTRIBUTION} />
+      <TileLayer url={TILES} className={TILES_CLASS} attribution={ATTRIBUTION} />
       {routes.map((route) => {
         const isActive = route.dayNumber === activeDay;
         return (

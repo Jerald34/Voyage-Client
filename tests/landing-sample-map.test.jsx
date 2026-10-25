@@ -1,4 +1,6 @@
 // tests/landing-sample-map.test.jsx
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
@@ -21,7 +23,7 @@ vi.mock("react-leaflet", () => ({
       {children}
     </div>
   ),
-  TileLayer: ({ url }) => <div data-testid="tiles" data-url={url} />,
+  TileLayer: ({ url, className }) => <div data-testid="tiles" data-url={url} data-class={className} />,
   Polyline: ({ pathOptions, interactive }) => (
     <div data-testid="route" data-color={pathOptions.color} data-opacity={pathOptions.opacity} data-interactive={String(interactive)} />
   ),
@@ -36,7 +38,6 @@ vi.mock("next/dynamic", () => ({
     },
 }));
 
-import ThemeProvider from "../app/components/theme/ThemeProvider.jsx";
 import SampleTripMap from "../app/components/landing/SampleTripMap.jsx";
 import LazySampleTripMap from "../app/components/landing/LazySampleTripMap.jsx";
 
@@ -110,21 +111,18 @@ describe("SampleTripMap", () => {
     expect(map.dataset.background).toBe("var(--color-surface)");
   });
 
-  it("uses the light CARTO tiles by default", () => {
+  it("uses OpenStreetMap's keyless tiles in both themes", () => {
     render(<SampleTripMap activeDay={2} />);
 
-    expect(screen.getByTestId("tiles").dataset.url).toContain("rastertiles/voyager");
+    expect(screen.getByTestId("tiles").dataset.url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
   });
 
-  it("uses the dark CARTO tiles in dark mode", () => {
-    localStorage.setItem("voyage-theme", "dark");
-    render(
-      <ThemeProvider>
-        <SampleTripMap activeDay={2} />
-      </ThemeProvider>,
-    );
+  it("darkens only the tile layer in dark mode, through a CSS filter", () => {
+    render(<SampleTripMap activeDay={2} />);
 
-    expect(screen.getByTestId("tiles").dataset.url).toContain("dark_all");
+    expect(screen.getByTestId("tiles").dataset.class).toBe("landing-map-tiles");
+    const css = readFileSync(resolve(import.meta.dirname, "../app/globals.css"), "utf8");
+    expect(css).toMatch(/\.dark \.landing-map-tiles\s*\{[^}]*filter:\s*invert\(1\)/);
   });
 });
 
