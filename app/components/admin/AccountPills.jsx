@@ -18,6 +18,7 @@ const TYPE_TONES = {
 const STATUS_TONES = {
   ACTIVE: { pill: "bg-status-success/10 text-status-success", dot: "bg-status-success", label: "Active" },
   DISABLED: { pill: "bg-status-danger/10 text-status-danger", dot: "bg-status-danger", label: "Disabled" },
+  DELETED: { pill: "bg-surface text-text-muted", dot: "bg-text-soft", label: "Deleted" },
 };
 
 export function AccountTypePill({ type }) {
