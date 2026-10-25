@@ -14,8 +14,19 @@ vi.mock("../app/lib/api/index.js", () => ({
   fetchAllAccounts: vi.fn(),
 }));
 
+// The panel is tested on its own; here it is a stub that exposes the two callbacks the page wires up.
 vi.mock("../app/components/admin/AccountDetail.jsx", () => ({
-  default: ({ userId }) => <div data-testid="account-detail">detail for {userId}</div>,
+  default: ({ userId, onChanged, onDeleted }) => (
+    <div data-testid="account-detail">
+      detail for {userId}
+      <button type="button" onClick={onChanged}>
+        stub changed
+      </button>
+      <button type="button" onClick={onDeleted}>
+        stub deleted
+      </button>
+    </div>
+  ),
 }));
 
 import { fetchAllAccounts } from "../app/lib/api/index.js";
@@ -138,11 +149,11 @@ describe("AdminAccountsPage", () => {
   });
 
   describe("type filter", () => {
-    it("is a labelled radio group with the four options in order", async () => {
+    it("is a labelled radio group with the five options in order", async () => {
       await renderLoaded();
       const group = screen.getByRole("radiogroup", { name: "Filter by account type" });
       const names = within(group).getAllByRole("radio").map((r) => r.textContent.replace(/\s+/g, " ").trim());
-      expect(names).toEqual(["All 5", "Personal 2", "Agency 1", "Setup incomplete 2"]);
+      expect(names).toEqual(["All 5", "Personal 2", "Agency 1", "Setup incomplete 2", "Deleted 0"]);
     });
 
     it("counts each type, and the counts add up to All", async () => {
@@ -192,6 +203,94 @@ describe("AdminAccountsPage", () => {
       await renderLoaded();
       fireEvent.change(screen.getByPlaceholderText("Search accounts…"), { target: { value: "pia" } });
       expect(screen.getByRole("radio", { name: "Personal 2" })).toBeInTheDocument();
+    });
+  });
+
+  describe("deleted accounts", () => {
+    const deletedUser = () =>
+      account({ id: "u9", displayName: "Deleted user", email: "deleted+u9@deleted.invalid", status: "DELETED", createdAt: "2026-02-01T12:00:00.000Z" });
+
+    it("hides deleted accounts from All and lists them under Deleted", async () => {
+      await renderLoaded([account({ id: "u1", displayName: "Ana Reyes" }), deletedUser()]);
+
+      expect(screen.getAllByText("Ana Reyes").length).toBeGreaterThan(0);
+      expect(screen.queryAllByText("Deleted user")).toHaveLength(0);
+      expect(screen.getByRole("radio", { name: "All 1" })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("radio", { name: /deleted 1/i }));
+      expect(screen.getAllByText("Deleted user").length).toBeGreaterThan(0);
+      expect(screen.queryAllByText("Ana Reyes")).toHaveLength(0);
+      expect(statusRegion()).toHaveTextContent("Showing 1 of 1 accounts");
+    });
+
+    it("keeps deleted accounts out of the type filters and their counts", async () => {
+      await renderLoaded([account({ id: "u1" }), { ...deletedUser(), accountType: "PERSONAL" }]);
+      expect(screen.getByRole("radio", { name: "Personal 1" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("radio", { name: "Personal 1" }));
+      expect(rowIds()).toEqual(["u1"]);
+    });
+
+    it("marks a deleted account with its status pill, and a disabled one, but not an active one", async () => {
+      await renderLoaded([
+        account({ id: "u1" }),
+        account({ id: "u2", status: "DISABLED" }),
+        deletedUser(),
+      ]);
+      const row = (id) => within(screen.getByTestId(`account-row-${id}`));
+      const card = (id) => within(screen.getByTestId(`account-card-${id}`));
+
+      expect(row("u1").queryByText("Active")).not.toBeInTheDocument();
+      expect(card("u1").queryByText("Active")).not.toBeInTheDocument();
+      expect(row("u2").getByText("Disabled")).toBeInTheDocument();
+      expect(card("u2").getByText("Disabled")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("radio", { name: /deleted 1/i }));
+      expect(row("u9").getByText("Deleted")).toBeInTheDocument();
+      expect(card("u9").getByText("Deleted")).toBeInTheDocument();
+    });
+
+    it("says there is nothing here when no account has been deleted", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByRole("radio", { name: "Deleted 0" }));
+      expect(screen.getAllByText("No accounts found.").length).toBeGreaterThan(0);
+      expect(statusRegion()).toHaveTextContent("No accounts found.");
+    });
+
+    it("searches within the Deleted filter too", async () => {
+      await renderLoaded([deletedUser(), { ...deletedUser(), id: "u10", displayName: "Deleted user", email: "deleted+u10@deleted.invalid" }]);
+      fireEvent.click(screen.getByRole("radio", { name: /deleted 2/i }));
+      fireEvent.change(screen.getByPlaceholderText("Search accounts…"), { target: { value: "u10@" } });
+      expect(rowIds()).toEqual(["u10"]);
+    });
+  });
+
+  describe("refreshing after an account action", () => {
+    it("reloads the list when the panel reports a change, keeping the panel open", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByTestId("account-row-u2"));
+      fetchAllAccounts.mockResolvedValue({
+        users: ACCOUNTS.map((a) => (a.id === "u2" ? { ...a, status: "DISABLED" } : a)),
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "stub changed" }));
+      await waitFor(() => expect(fetchAllAccounts).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(within(screen.getByTestId("account-row-u2")).getByText("Disabled")).toBeInTheDocument());
+      expect(screen.getByTestId("account-detail")).toHaveTextContent("detail for u2");
+    });
+
+    it("reloads the list and closes the panel when the panel reports a delete", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByTestId("account-row-u2"));
+      fetchAllAccounts.mockResolvedValue({
+        users: ACCOUNTS.map((a) => (a.id === "u2" ? { ...a, displayName: "Deleted user", status: "DELETED" } : a)),
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "stub deleted" }));
+      await waitFor(() => expect(fetchAllAccounts).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.queryByTestId("account-detail")).not.toBeInTheDocument());
+      expect(screen.getByText("Select an account")).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole("radio", { name: /deleted 1/i })).toBeInTheDocument());
+      expect(screen.queryByTestId("account-row-u2")).not.toBeInTheDocument(); // moved out of All
     });
   });
 

@@ -25,7 +25,7 @@ function AccountCard({ a, selected, onRowClick }) {
       <div className="flex items-start justify-between gap-3">
         <span className="min-w-0 break-words font-semibold text-text-primary">{displayName(a)}</span>
         {/* Status is shown by exception: an active account says nothing. */}
-        {a.status === "DISABLED" && (
+        {a.status !== "ACTIVE" && (
           <span className="flex-none">
             <AccountStatusPill status={a.status} />
           </span>
@@ -164,7 +164,7 @@ export default function AccountTable({ accounts, sorted, sortField, sortDir, onS
                         <AccountTypePill type={a.accountType} />
                         {a.role === "SUPER_ADMIN" && <SuperAdminChip />}
                         {/* Status is shown by exception: an active account says nothing. */}
-                        {a.status === "DISABLED" && <AccountStatusPill status={a.status} />}
+                        {a.status !== "ACTIVE" && <AccountStatusPill status={a.status} />}
                       </div>
                     </td>
                     <td className="max-w-0 min-w-[7rem] px-3 py-2.5">

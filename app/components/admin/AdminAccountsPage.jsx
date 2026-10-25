@@ -15,6 +15,7 @@ const TYPE_OPTIONS = [
   { value: "PERSONAL", label: ACCOUNT_TYPE_LABELS.PERSONAL },
   { value: "AGENCY_USER", label: ACCOUNT_TYPE_LABELS.AGENCY_USER },
   { value: "PENDING", label: ACCOUNT_TYPE_LABELS.PENDING },
+  { value: "DELETED", label: "Deleted" },
 ];
 
 // "Personal 3": the count is a tint of whatever colour the label is using, so it stays
@@ -62,11 +63,15 @@ export default function AdminAccountsPage() {
     };
   }, [reloadKey]);
 
+  // Deleted (anonymized) accounts sit in their own filter so they never crowd the live list.
+  const live = useMemo(() => accounts.filter((a) => a.status !== "DELETED"), [accounts]);
+  const deleted = useMemo(() => accounts.filter((a) => a.status === "DELETED"), [accounts]);
+
   const counts = useMemo(() => {
-    const c = { ALL: accounts.length, PERSONAL: 0, AGENCY_USER: 0, PENDING: 0 };
-    for (const a of accounts) if (a.accountType in c) c[a.accountType] += 1;
+    const c = { ALL: live.length, PERSONAL: 0, AGENCY_USER: 0, PENDING: 0, DELETED: deleted.length };
+    for (const a of live) if (a.accountType in c) c[a.accountType] += 1;
     return c;
-  }, [accounts]);
+  }, [live, deleted]);
 
   const typeOptions = TYPE_OPTIONS.map((o) => ({
     ...o,
@@ -74,7 +79,8 @@ export default function AdminAccountsPage() {
   }));
 
   // Everything in the chosen type; the table's "Showing X of Y" counts against this, like the agency table does.
-  const ofType = typeFilter === "ALL" ? accounts : accounts.filter((a) => a.accountType === typeFilter);
+  const ofType =
+    typeFilter === "DELETED" ? deleted : typeFilter === "ALL" ? live : live.filter((a) => a.accountType === typeFilter);
 
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
@@ -197,7 +203,19 @@ export default function AdminAccountsPage() {
 
       <MasterDetailLayout
         list={list}
-        detail={selectedAccountId ? <AccountDetail key={selectedAccountId} userId={selectedAccountId} /> : null}
+        detail={
+          selectedAccountId ? (
+            <AccountDetail
+              key={selectedAccountId}
+              userId={selectedAccountId}
+              onChanged={() => setReloadKey((k) => k + 1)}
+              onDeleted={() => {
+                setSelectedAccountId(null);
+                setReloadKey((k) => k + 1);
+              }}
+            />
+          ) : null
+        }
         detailTitle={selected ? displayName(selected) : "Account"}
         ariaLabel="Account details"
         open={!!selectedAccountId}
