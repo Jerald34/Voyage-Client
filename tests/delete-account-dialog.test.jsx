@@ -69,6 +69,14 @@ describe("DeleteAccountDialog", () => {
     expect(props.onDisableInstead).toHaveBeenCalled();
   });
 
+  it("leaves out Disable instead (and its copy) when the parent does not offer it", () => {
+    renderDialog(soloOwner, { onDisableInstead: undefined });
+    expect(screen.getByText(/bayani tours has no other members/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Disable instead" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/disable this account/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Close" }).length).toBeGreaterThan(0);
+  });
+
   it("blocks an owner of several agencies and offers Disable instead", () => {
     const props = renderDialog(multiOwner);
     expect(screen.getByRole("dialog", { name: "Jose Rizal owns more than one agency" })).toBeInTheDocument();

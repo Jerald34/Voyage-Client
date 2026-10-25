@@ -1,8 +1,54 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../app/lib/api/index.js", () => ({
   fetchAccountDetail: vi.fn(),
+  adminDisableUser: vi.fn(),
+  adminEnableUser: vi.fn(),
+  adminSignOutUser: vi.fn(),
+  adminDeleteUser: vi.fn(),
+}));
+// The dialogs have their own tests; here they are stubs that expose the callbacks the panel wires up.
+vi.mock("../app/components/admin/AccountActionDialog.jsx", () => ({
+  default: ({ open, action, onDone }) =>
+    open ? (
+      <div role="dialog" aria-label={`action ${action}`}>
+        <button
+          type="button"
+          onClick={() =>
+            onDone(action === "sign-out" ? null : {
+              id: "u2",
+              email: "ana@alpha.com",
+              displayName: "Ana Reyes",
+              role: "USER",
+              status: "DISABLED",
+              accountType: "AGENCY_USER",
+              memberships: [],
+              signInMethods: [],
+              activity: {},
+              auditEvents: [{ id: "e9", action: "USER_DISABLED", reason: null, createdAt: "2026-10-20T00:00:00.000Z", adminName: "Jerald" }],
+            })
+          }
+        >
+          stub finish action
+        </button>
+      </div>
+    ) : null,
+}));
+vi.mock("../app/components/admin/DeleteAccountDialog.jsx", () => ({
+  default: ({ open, onDeleted, onDisableInstead }) =>
+    open ? (
+      <div role="dialog" aria-label="delete">
+        <button type="button" onClick={onDeleted}>
+          stub finish delete
+        </button>
+        {onDisableInstead && (
+          <button type="button" onClick={onDisableInstead}>
+            stub disable instead
+          </button>
+        )}
+      </div>
+    ) : null,
 }));
 
 import { fetchAccountDetail } from "../app/lib/api/index.js";
@@ -31,12 +77,14 @@ const detail = (over = {}) => ({
   signInMethods: ["PASSWORD", "GOOGLE"],
   memberships: [membership(), membership({ agencyId: "ag2", agencyName: "Beta Tours", agencyStatus: "PENDING_REVIEW", role: "STAFF" })],
   activity: { itineraries: 12, clientTrips: 3, agentThreads: 41 },
+  auditEvents: [],
+  ownedAgencies: [],
   ...over,
 });
 
-async function renderDetail(account = detail(), userId = "u2") {
+async function renderDetail(account = detail(), props = {}, userId = "u2") {
   fetchAccountDetail.mockResolvedValue({ user: account });
-  render(<AccountDetail userId={userId} />);
+  render(<AccountDetail userId={userId} {...props} />);
   await screen.findByText("Email");
 }
 
@@ -193,19 +241,138 @@ describe("AccountDetail", () => {
     });
   });
 
-  describe("read-only", () => {
-    it("offers no actions: not one button, link or form control", async () => {
+  describe("read-only parts", () => {
+    it("has no links or text fields", async () => {
       await renderDetail();
-      expect(screen.queryAllByRole("button")).toHaveLength(0);
       expect(screen.queryAllByRole("link")).toHaveLength(0);
       expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    });
+
+    it("has no buttons at all for a super admin account", async () => {
+      await renderDetail(detail({ role: "SUPER_ADMIN" }));
+      expect(screen.queryAllByRole("button")).toHaveLength(0);
+    });
+  });
+
+  describe("account actions", () => {
+    it("opens a dialog for Sign out everywhere, Disable and Delete on an active user", async () => {
+      await renderDetail();
+      fireEvent.click(screen.getByRole("button", { name: "Sign out everywhere" }));
+      expect(screen.getByRole("dialog", { name: "action sign-out" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+      expect(screen.getByRole("dialog", { name: "action disable" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      expect(screen.getByRole("dialog", { name: "delete" })).toBeInTheDocument();
+    });
+
+    it("offers Enable instead of Disable for a disabled user", async () => {
+      await renderDetail(detail({ status: "DISABLED" }));
+      expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Enable" }));
+      expect(screen.getByRole("dialog", { name: "action enable" })).toBeInTheDocument();
+    });
+
+    it("has no actions for a super admin", async () => {
+      await renderDetail(detail({ role: "SUPER_ADMIN" }));
+      expect(screen.queryByRole("button", { name: "Delete account" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Sign out everywhere" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
+    });
+
+    it("has no actions for a deleted account", async () => {
+      await renderDetail(detail({ status: "DELETED" }));
+      expect(screen.getByText("Deleted")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Delete account" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Sign out everywhere" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
+    });
+
+    it("applies the refreshed account after an action, closes the dialog and tells the list", async () => {
+      const onChanged = vi.fn();
+      await renderDetail(detail(), { onChanged });
+      fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+      fireEvent.click(screen.getByRole("button", { name: "stub finish action" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onChanged).toHaveBeenCalledTimes(1);
+      // The status pill, the swapped button and the new audit line all come from the refreshed account.
+      expect(screen.getAllByText("Disabled")).toHaveLength(2); // the pill and the audit entry
+      expect(screen.getByRole("button", { name: "Enable" })).toBeInTheDocument();
+      expect(screen.getByText(/by Jerald on Oct 20, 2026/)).toBeInTheDocument();
+    });
+
+    it("keeps showing the current account when an action returns no account", async () => {
+      // The stub resolves the sign-out action with null (no refreshed account in the response).
+      const onChanged = vi.fn();
+      await renderDetail(detail(), { onChanged });
+      fireEvent.click(screen.getByRole("button", { name: "Sign out everywhere" }));
+      fireEvent.click(screen.getByRole("button", { name: "stub finish action" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(valueOf("Email")).toHaveTextContent("ana@alpha.com");
+      expect(screen.getByRole("button", { name: "Disable" })).toBeInTheDocument();
+      expect(onChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it("closes the dialog and tells the list when the account is deleted", async () => {
+      const onDeleted = vi.fn();
+      await renderDetail(detail(), { onDeleted });
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      fireEvent.click(screen.getByRole("button", { name: "stub finish delete" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onDeleted).toHaveBeenCalledTimes(1);
+    });
+
+    it("moves from the delete dialog to the disable dialog on Disable instead", async () => {
+      await renderDetail();
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      fireEvent.click(screen.getByRole("button", { name: "stub disable instead" }));
+
+      expect(screen.queryByRole("dialog", { name: "delete" })).not.toBeInTheDocument();
+      expect(screen.getByRole("dialog", { name: "action disable" })).toBeInTheDocument();
+    });
+
+    it("does not offer Disable instead when the account is already disabled", async () => {
+      await renderDetail(detail({ status: "DISABLED" }));
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      expect(screen.getByRole("dialog", { name: "delete" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "stub disable instead" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("audit trail", () => {
+    const event = { id: "e1", action: "USER_DISABLED", reason: "left the agency", createdAt: "2026-10-18T00:00:00.000Z", adminName: "Jerald" };
+
+    it("lists each event with the admin, the date and the reason", async () => {
+      await renderDetail(detail({ auditEvents: [event] }));
+      expect(screen.getByRole("heading", { name: "Audit trail" })).toBeInTheDocument();
+      expect(screen.getByText("Disabled")).toBeInTheDocument();
+      expect(screen.getByText(/by Jerald on Oct 18, 2026/)).toBeInTheDocument();
+      expect(screen.getByText("left the agency")).toBeInTheDocument();
+    });
+
+    it("leaves out the reason line when there is none, and shows an unknown action as-is", async () => {
+      await renderDetail(detail({ auditEvents: [{ ...event, id: "e2", action: "USER_TELEPORTED", reason: null }] }));
+      expect(screen.getByText("USER_TELEPORTED")).toBeInTheDocument();
+      expect(screen.queryByText("left the agency")).not.toBeInTheDocument();
+    });
+
+    it("is not shown at all when the account has no events", async () => {
+      await renderDetail();
+      expect(screen.queryByText("Audit trail")).not.toBeInTheDocument();
+    });
+
+    it("is still shown for a deleted account", async () => {
+      await renderDetail(detail({ status: "DELETED", auditEvents: [{ ...event, id: "e3", action: "USER_DELETED", reason: null }] }));
+      expect(screen.getByRole("heading", { name: "Audit trail" })).toBeInTheDocument();
     });
   });
 
   describe("typography", () => {
     it("sets section headings in the sans label style, not the default serif h3", async () => {
-      await renderDetail();
-      for (const name of ["Agencies", "Activity"]) {
+      await renderDetail(detail({ auditEvents: [{ id: "e1", action: "USER_ENABLED", reason: null, createdAt: "2026-10-18T00:00:00.000Z", adminName: "Jerald" }] }));
+      for (const name of ["Agencies", "Activity", "Audit trail"]) {
         const h = screen.getByRole("heading", { name });
         expect(h.tagName).toBe("H3");
         expect(h.className).toContain("font-sans");

@@ -3,12 +3,18 @@
 import { useEffect, useState } from "react";
 import { fetchAccountDetail } from "../../lib/api/index.js";
 import AgencyStatusPill from "./AgencyStatusPill.jsx";
+import AccountActionDialog from "./AccountActionDialog.jsx";
+import DeleteAccountDialog from "./DeleteAccountDialog.jsx";
 import { AccountTypePill, AccountStatusPill, SuperAdminChip } from "./AccountPills.jsx";
-import { MEMBERSHIP_ROLE_LABELS, SIGN_IN_LABELS, formatDate } from "./accountLabels.js";
+import { AUDIT_ACTION_LABELS, MEMBERSHIP_ROLE_LABELS, SIGN_IN_LABELS, formatDate } from "./accountLabels.js";
 
 // The same small uppercase label AgencyDetail uses. Headings default to the serif face
 // (400 only), so section headings opt back into the sans (`font-sans`) rather than faking a bold serif.
 const LABEL = "text-xs font-semibold uppercase tracking-wider text-text-muted";
+
+const ACTION_FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
+const SECONDARY_ACTION = `rounded-sm border border-border/20 bg-surface px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface/80 active:scale-[0.98] ${ACTION_FOCUS}`;
+const DANGER_ACTION = `ml-auto rounded-sm border border-status-danger/30 px-4 py-2 text-sm font-semibold text-status-danger transition-colors hover:bg-status-danger/8 active:scale-[0.98] ${ACTION_FOCUS}`;
 
 function Field({ label, children }) {
   return (
@@ -28,16 +34,18 @@ function Section({ title, children }) {
   );
 }
 
-export default function AccountDetail({ userId }) {
+export default function AccountDetail({ userId, onChanged, onDeleted }) {
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dialog, setDialog] = useState(null); // "disable" | "enable" | "sign-out" | "delete" | null
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setAccount(null);
+    setDialog(null);
     (async () => {
       try {
         const data = await fetchAccountDetail(userId);
@@ -73,6 +81,18 @@ export default function AccountDetail({ userId }) {
   const signIn = (account.signInMethods || []).map((m) => SIGN_IN_LABELS[m] || m).join(", ");
   const verified = account.emailVerified ? (account.emailVerifiedAt ? formatDate(account.emailVerifiedAt) : "Verified") : "Not verified";
   const activity = account.activity || {};
+  const auditEvents = account.auditEvents || [];
+
+  // The server refuses all three for a super admin (this includes the signed-in admin's own account,
+  // since only super admins reach this page) and for an account that is already deleted.
+  const canAct = account.role !== "SUPER_ADMIN" && account.status !== "DELETED";
+
+  // Neither dialog resets itself after a success, so closing it here is what unmounts it.
+  const handleDone = (updated) => {
+    setDialog(null);
+    if (updated) setAccount(updated);
+    onChanged?.();
+  };
 
   return (
     <>
@@ -130,6 +150,61 @@ export default function AccountDetail({ userId }) {
           ))}
         </dl>
       </Section>
+
+      {auditEvents.length > 0 && (
+        <Section title="Audit trail">
+          <ul className="divide-y divide-border/10">
+            {auditEvents.map((event) => (
+              <li key={event.id} className="py-3 first:pt-0 last:pb-0">
+                <span className="block text-sm font-semibold text-text-primary">{AUDIT_ACTION_LABELS[event.action] || event.action}</span>
+                <span className="mt-0.5 block text-xs text-text-muted">
+                  by {event.adminName} on {formatDate(event.createdAt)}
+                </span>
+                {event.reason && <span className="mt-1 block break-words text-sm text-text-muted">{event.reason}</span>}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {canAct && (
+        <div className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap gap-2 border-t border-border/10 bg-surface-elevated px-5 pb-2 pt-4">
+          <button type="button" className={SECONDARY_ACTION} onClick={() => setDialog("sign-out")}>
+            Sign out everywhere
+          </button>
+          {account.status === "DISABLED" ? (
+            <button type="button" className={SECONDARY_ACTION} onClick={() => setDialog("enable")}>
+              Enable
+            </button>
+          ) : (
+            <button type="button" className={SECONDARY_ACTION} onClick={() => setDialog("disable")}>
+              Disable
+            </button>
+          )}
+          <button type="button" className={DANGER_ACTION} onClick={() => setDialog("delete")}>
+            Delete account
+          </button>
+        </div>
+      )}
+
+      <AccountActionDialog
+        open={dialog === "disable" || dialog === "enable" || dialog === "sign-out"}
+        action={dialog}
+        account={account}
+        onClose={() => setDialog(null)}
+        onDone={handleDone}
+      />
+      <DeleteAccountDialog
+        open={dialog === "delete"}
+        account={account}
+        onClose={() => setDialog(null)}
+        onDeleted={() => {
+          setDialog(null);
+          onDeleted?.();
+        }}
+        // "Disable instead" means nothing for an account that is already disabled.
+        onDisableInstead={account.status === "DISABLED" ? undefined : () => setDialog("disable")}
+      />
     </>
   );
 }

@@ -81,16 +81,21 @@ export default function DeleteAccountDialog({ open, account, onClose, onDeleted,
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
-            <Button variant="primary" onClick={onDisableInstead}>
-              Disable instead
-            </Button>
+            {/* Not offered when the account is already disabled (the parent leaves onDisableInstead out). */}
+            {onDisableInstead && (
+              <Button variant="primary" onClick={onDisableInstead}>
+                Disable instead
+              </Button>
+            )}
           </>
         }
       >
         <p className="text-sm leading-relaxed text-text-muted">
           {solo
-            ? `${solo.agencyName} has no other members, so ownership can't move to anyone. The owner must delete the agency in Settings first, or you can disable this account now.`
-            : "Ownership has to be handed over in each agency before this account can be deleted. You can disable it now."}
+            ? `${solo.agencyName} has no other members, so ownership can't move to anyone. The owner must delete the agency in Settings first${
+                onDisableInstead ? ", or you can disable this account now." : "."
+              }`
+            : `Ownership has to be handed over in each agency before this account can be deleted.${onDisableInstead ? " You can disable it now." : ""}`}
         </p>
       </Modal>
     );
