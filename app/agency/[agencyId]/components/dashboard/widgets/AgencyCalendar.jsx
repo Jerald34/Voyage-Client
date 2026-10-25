@@ -10,6 +10,7 @@ import {
   addDays,
   addMonths,
   buildCalendarDays,
+  dayItemFocus,
   fromDateKey,
   fullDayLabel,
   startOfMonth,
@@ -130,7 +131,7 @@ function CalendarShell() {
 /**
  * Month calendar of trips (bars) and client activity. Each tile shows what
  * needs the agent as coloured icons (DayMarks) and the rest as ·N. Clicking a day
- * opens its details; their actions call `onOpenTrip(tripId, tripTitle, clientName)`.
+ * opens its details; their actions call `onOpenTrip(tripId, tripTitle, clientName, focus)`.
  * Changing `refreshKey` (optional) reloads the shown month at once.
  * Keyboard: arrows move by day/week, Home/End jump to the week's edges,
  * PageUp/PageDown change month, Enter/Space opens a day, Escape closes it.
@@ -240,7 +241,7 @@ function CalendarBody({ agencyId, onOpenTrip, todayKey, refreshKey }) {
     // the day as where to return focus to, rather than finding <body>.
     if (openKey) buttonRefs.current.get(openKey)?.focus();
     setOpenKey(null);
-    onOpenTrip?.(item.tripId, item.tripTitle, item.clientName);
+    onOpenTrip?.(item.tripId, item.tripTitle, item.clientName, dayItemFocus(item));
   }
 
   const undated = data?.tripsWithoutDates ?? 0;

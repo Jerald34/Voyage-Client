@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../theme/ThemeProvider";
-import { useAuth } from "../../hooks/useAuth.js";
+import { useAuth, LOGOUT_FAILED_MESSAGE } from "../../hooks/useAuth.js";
 import { useAgentRunStream } from "../../hooks/useAgentRunStream.js";
 import { useAgentStreamOrchestration } from "../../hooks/useAgentStreamOrchestration.js";
 import { useTourFlow } from "../../hooks/useTourFlow.js";
@@ -42,6 +42,7 @@ import SaveItineraryModal from "./modals/SaveItineraryModal.jsx";
 import DashboardHeader, { headerVariantForTab } from "./layout/DashboardHeader.jsx";
 import DashboardSidebar from "./layout/DashboardSidebar.jsx";
 import AdminPage from "../admin/AdminPage.jsx";
+import AgencyAdminPage from "../agency-admin/AgencyAdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatComposer from "./command-center/ChatComposer.jsx";
@@ -179,6 +180,9 @@ export default function HomePage({
   const flashNoticeCount = useRef(0);
   const showFlashNotice = useCallback((text) => setFlashNotice({ text, id: ++flashNoticeCount.current }), []);
   const clearFlashNotice = useCallback(() => setFlashNotice(null), []);
+  const handleLogout = useCallback(async () => {
+    if (!(await logout())) showFlashNotice(LOGOUT_FAILED_MESSAGE);
+  }, [logout, showFlashNotice]);
   const [cipTourState, setCipTourState] = useState({
     hasSelectedClient: false,
     hasMultipleTrips: false,
@@ -467,8 +471,9 @@ export default function HomePage({
   // Deep links can open the Dashboard (e.g. `tab=team` after accepting an
   // invite). Users without an agency workspace have no dashboard, so fall back
   // to the Planner instead of leaving the main area empty. Only super
-  // admins see the Admin tab.
-  const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId });
+  // admins see the Admin tab, and only active owners and admins see the
+  // Agency tab (others fall back to Settings).
+  const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId, membership: activeMembership });
 
   useEffect(() => {
     setSelectedPlaceId("");
@@ -720,7 +725,7 @@ export default function HomePage({
             menuButtonRef={menuButtonRef}
             activeTab={currentTab}
             setActiveTab={setActiveTab}
-            logout={logout}
+            logout={handleLogout}
             user={user}
             pendingCount={pendingCount}
             agencyId={agencyId}
@@ -915,7 +920,6 @@ export default function HomePage({
                     setActiveContext(createPlanningContext("trip", tripId));
                   }}
                   onNewTrip={handleNewItinerary}
-                  onOpenItineraries={() => setActiveTab("itineraries")}
                   showJoinedNotice={showJoinedNotice}
                 />
               ) : (
@@ -981,12 +985,21 @@ export default function HomePage({
               user={user}
               agency={activeAgency}
               membership={activeMembership}
-              logout={logout}
+              logout={handleLogout}
               onUpdateProfile={handleUserProfileUpdate}
               onUpdateAgency={handleAgencySettingsUpdate}
+              onOpenAgency={() => setActiveTab("agency")}
               onReplayTutorial={replayFirstUseTutorial}
               focusSection={settingsFocus}
               onFocusSectionHandled={clearSettingsFocus}
+            />
+          ) : currentTab === "agency" && activeAgency ? (
+            <AgencyAdminPage
+              agency={activeAgency}
+              membership={activeMembership}
+              onUpdateAgency={handleAgencySettingsUpdate}
+              initialSection={settingsFocus === "team" ? "team" : "overview"}
+              onInitialSectionHandled={clearSettingsFocus}
             />
           ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
             <AdminPage onPendingCountChange={refreshPendingCount} />

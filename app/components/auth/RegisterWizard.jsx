@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth, LOGOUT_FAILED_MESSAGE } from "../../hooks/useAuth";
 import { requestEmailVerification } from "../../lib/api/index.js";
 import {
   agencyLocationOptions,
@@ -54,6 +54,7 @@ export default function RegisterWizard({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [step1Errors, setStep1Errors] = useState({});
   const [serverStep1Errors, setServerStep1Errors] = useState({});
@@ -61,6 +62,7 @@ export default function RegisterWizard({
 
   // Step "type" error
   const [typeStepError, setTypeStepError] = useState(null);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   // Step 2 fields
   const [agencyName, setAgencyName] = useState("");
@@ -195,6 +197,34 @@ export default function RegisterWizard({
   const termsError = step1Errors.terms || serverStep1Errors.terms;
   const countryCityOptions = agencyLocationOptions[country] ?? [];
 
+  // Signed-in users finishing signup (?step=type / ?step=agency) can't reach the
+  // sign-in form any more (it sends them back here), so this is their way out.
+  const handleSignOut = async () => {
+    setSignOutFailed(false);
+    if (await auth.logout()) return;
+    // Shown here only, not in the agency form's error box.
+    auth.setError(null);
+    setSignOutFailed(true);
+  };
+  const signOutPrompt = isAuthenticated && (
+    <p className="text-center mt-6 text-text-muted text-[0.92rem]">
+      {signOutFailed && (
+        <span role="alert" className="block mb-2 text-status-danger font-semibold">
+          {LOGOUT_FAILED_MESSAGE}
+        </span>
+      )}
+      Wrong account?{" "}
+      <button
+        type="button"
+        onClick={handleSignOut}
+        disabled={auth.loading}
+        className="bg-none border-none text-secondary font-extrabold text-[0.92rem] cursor-pointer hover:text-text-primary hover:underline transition-colors disabled:opacity-55"
+      >
+        Sign out
+      </button>
+    </p>
+  );
+
   return (
     <>
       {/* ─── REGISTER STEP 1: Account Details ─── */}
@@ -265,8 +295,13 @@ export default function RegisterWizard({
               label="Confirm password"
               icon={<ShieldIcon width={18} height={18} />}
               error={confirmPasswordError}
+              trailing={
+                <button type="button" className="absolute right-3.5 flex items-center justify-center w-8.5 h-8.5 bg-none border-none text-text-soft cursor-pointer rounded-sm transition-all duration-160 hover:text-secondary hover:bg-[rgba(215,122,97,0.06)]" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}>
+                  {showConfirmPassword ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
+                </button>
+              }
             >
-              <input id="auth-confirm-password" type="password" placeholder="Repeat your password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setStep1Errors({}); setServerStep1Errors({}); }} autoComplete="new-password" className={`!pl-[46px] pr-[18px] py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
+              <input id="auth-confirm-password" type={showConfirmPassword ? "text" : "password"} placeholder="Repeat your password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setStep1Errors({}); setServerStep1Errors({}); }} autoComplete="new-password" className={`!pl-[46px] !pr-14 py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
             </FormField>
 
             <label className="flex items-center gap-3 cursor-pointer py-0.5" htmlFor="auth-terms">
@@ -398,6 +433,8 @@ export default function RegisterWizard({
               {typeStepError}
             </div>
           )}
+
+          {signOutPrompt}
         </>
       )}
 
@@ -534,6 +571,8 @@ export default function RegisterWizard({
               </button>
             )}
           </form>
+
+          {signOutPrompt}
         </>
       )}
     </>

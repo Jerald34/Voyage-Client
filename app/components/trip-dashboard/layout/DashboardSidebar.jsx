@@ -6,6 +6,7 @@ import { getInitials } from "../../../lib/formatters.js";
 import useMobileViewport from "../mobile/useMobileViewport.js";
 import AccountMenu from "./AccountMenu.jsx";
 import RailButton from "./RailButton.jsx";
+import { canManageAgency } from "../../../lib/agency-admin/roles.js";
 
 function Icon({ children }) {
   return (
@@ -52,6 +53,15 @@ const ICONS = {
   admin: (
     <Icon>
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </Icon>
+  ),
+  agency: (
+    <Icon>
+      <path d="M3 21h18" />
+      <path d="M5 21V7l7-4 7 4v14" />
+      <path d="M9 21v-5h6v5" />
+      <path d="M9 10h.01" />
+      <path d="M15 10h.01" />
     </Icon>
   ),
   settings: (
@@ -118,6 +128,9 @@ export default function DashboardSidebar({
       : null,
     { tab: "command-center", label: "Planner", icon: ICONS.commandCenter },
     { tab: "itineraries", label: "Itineraries", icon: ICONS.itineraries },
+    !isPersonal && canManageAgency(membership)
+      ? { tab: "agency", label: "Agency", icon: ICONS.agency }
+      : null,
     isAdmin
       ? {
           tab: "admin",

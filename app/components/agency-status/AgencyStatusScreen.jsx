@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import ThemeToggle from "../theme/ThemeToggle";
 import ReportProblemModal from "../settings/ReportProblemModal.jsx";
 import { createProblemReport } from "../../lib/api/support.js";
+import { LOGOUT_FAILED_MESSAGE } from "../../hooks/useAuth.js";
 
 function DetailRow({ label, value }) {
   if (!value) return null;
@@ -30,6 +31,7 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
 
   const [supportOpen, setSupportOpen] = useState(false);
   const [reportSent, setReportSent] = useState(false);
+  const [logoutFailed, setLogoutFailed] = useState(false);
   const supportButtonRef = useRef(null);
   // The server caps a report subject at 150 chars; the longest prefix is 20, so 125 leaves room.
   const agencyLabel = (agency.name || "my agency").slice(0, 125);
@@ -189,10 +191,18 @@ export default function AgencyStatusScreen({ agency, user, onLogout }) {
         <button
           type="button"
           className="text-text-muted hover:text-text-primary text-sm underline transition-colors"
-          onClick={onLogout}
+          onClick={async () => {
+            setLogoutFailed(false);
+            if ((await onLogout?.()) === false) setLogoutFailed(true);
+          }}
         >
           Sign out
         </button>
+        {logoutFailed && (
+          <p role="alert" className="mt-2 text-sm font-semibold text-status-danger">
+            {LOGOUT_FAILED_MESSAGE}
+          </p>
+        )}
 
         {/* Mounted only while open so each report starts fresh with the right subject */}
         {supportOpen && (

@@ -274,6 +274,15 @@ describe("ItineraryHeader", () => {
     expect(comments.className).not.toMatch(/(^|\s)text-white(\s|$)/);
   });
 
+  it("announces the unread count on Comments and hides the visual badge", () => {
+    renderHeader({ unreadCommentCount: 3 });
+    const comments = screen.getByRole("button", { name: "Comments, 3 unread" });
+    const badge = comments.querySelector("[aria-hidden='true'].rounded-pill");
+
+    expect(badge).toHaveTextContent("3");
+    expect(badge.className).toContain("bg-status-danger");
+  });
+
   it("drops action labels when the header itself is narrow (container query)", () => {
     const { container } = renderHeader({ onPrintPdf: vi.fn() });
 

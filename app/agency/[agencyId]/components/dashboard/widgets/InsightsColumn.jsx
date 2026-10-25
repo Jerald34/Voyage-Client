@@ -19,7 +19,7 @@ function formatRatedCount(kpi) {
 
 /**
  * The owner dashboard's right column: period switcher, four KPI tiles, trip
- * progress, the recently viewed itineraries and the latest reviews. The period
+ * progress (each stage lists its trips), the recently viewed itineraries and the latest reviews. The period
  * label follows the payload (not the switcher), which runs ahead of the data
  * while a refetch is in flight. Recently viewed ignores the period, and is
  * left out when the payload has no `recentViews` (an older server).
@@ -83,7 +83,7 @@ export default function InsightsColumn({ data, period, onPeriodChange, isFetchin
       </div>
 
       {data?.funnel?.stages?.length > 0 ? (
-        <FunnelChart stages={data.funnel.stages} agencyId={agencyId} periodLabel={periodLabel} />
+        <FunnelChart stages={data.funnel.stages} agencyId={agencyId} periodLabel={periodLabel} onOpenTrip={onOpenViewedTrip} />
       ) : null}
 
       {Array.isArray(data?.recentViews) ? (

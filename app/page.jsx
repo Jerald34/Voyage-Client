@@ -9,6 +9,7 @@ import { useAuth } from "./hooks/useAuth.js";
 import { fetchApi } from "./lib/api/index.js";
 import { resolveInitialView } from "./lib/deepLinks.js";
 import useAgencyStatusPolling from "./hooks/useAgencyStatusPolling.js";
+import { endSessionCheck, hasStoredUser } from "./lib/sessionCheck.js";
 
 import LandingPage from "./components/landing/LandingPage.jsx";
 import HomePage from "./components/trip-dashboard/HomePage.jsx";
@@ -24,9 +25,19 @@ function HomePageInner() {
   const { logout } = useAuth();
   const authenticatedParam = searchParams.get("authenticated");
   // `tab=team` links: invite acceptance lands on the Dashboard with a welcome
-  // notice; other team links open Settings at the Team panel.
+  // notice; other team links open Agency -> Team for managers and Settings -> Team for everyone else.
   const { initialTab, showJoinedNotice, settingsSection } = resolveInitialView(searchParams);
   const [shouldBypassLanding, setShouldBypassLanding] = useState(false);
+  // Hides the landing page while /auth/me decides where this visitor goes: always
+  // for the `?authenticated=1` handoff, and for a plain `/` visit from someone who
+  // looks signed in (a stored user). It stays up when the answer navigates away.
+  const [checkingSession, setCheckingSession] = useState(authenticatedParam === "1");
+  // Done checking and staying on this page: show it, including anything the
+  // pre-paint script hid.
+  const finishSessionCheck = useCallback(() => {
+    setCheckingSession(false);
+    endSessionCheck();
+  }, []);
   const [user, setUser] = useState(null);
   const [agencyStatus, setAgencyStatus] = useState(null); // null | { status, name, rejectionReason, suspensionReason }
   const {
@@ -60,6 +71,7 @@ function HomePageInner() {
 
   // Store a freshly read user and route it: used by the first /auth/me read and by
   // the pending-screen polling, so both react the same way to every account state.
+  // Returns true when it navigated away to finish signup.
   const applyAuthUser = useCallback((authUser) => {
     localStorage.setItem("voyage-user", JSON.stringify(authUser));
     setUser(authUser);
@@ -72,21 +84,21 @@ function HomePageInner() {
     // PENDING redirect from a stale localStorage entry.
     if (accountType === "PENDING") {
       router.push("/login?step=type");
-      return;
+      return true;
     }
 
     // PERSONAL — no agency expected. Stay on the personal dashboard.
     if (accountType === "PERSONAL") {
       setAgencyStatus(null);
       setShouldBypassLanding(true);
-      return;
+      return false;
     }
 
     const hasMembership = Array.isArray(authUser?.memberships) && authUser.memberships.length > 0;
     if (!hasMembership) {
       // Agency user without a membership — finish the agency wizard.
       router.push("/login?step=agency");
-      return;
+      return true;
     }
 
     const agency = authUser.memberships[0].agency;
@@ -95,12 +107,13 @@ function HomePageInner() {
       // Agency not yet verified — show status screen
       setAgencyStatus(agency);
       setShouldBypassLanding(true);
-      return;
+      return false;
     }
 
     // Agency is verified — proceed to dashboard
     setAgencyStatus(null);
     setShouldBypassLanding(true);
+    return false;
   }, [router]);
 
   useEffect(() => {
@@ -110,7 +123,7 @@ function HomePageInner() {
     fetchApi("/auth/me")
       .then((data) => {
         if (cancelled) return;
-        applyAuthUser(data.user);
+        if (!applyAuthUser(data.user)) finishSessionCheck();
       })
       .catch((error) => {
         if (cancelled) return;
@@ -136,10 +149,35 @@ function HomePageInner() {
             setShouldBypassLanding(true);
           } catch {}
         }
+        finishSessionCheck();
       });
 
     return () => { cancelled = true; };
-  }, [authenticatedParam, applyAuthUser, handleSessionEnded]);
+  }, [authenticatedParam, applyAuthUser, handleSessionEnded, finishSessionCheck]);
+
+  // Signed-in visitors on a plain `/` go into the app, not the landing page.
+  // Only someone with a stored user is checked (every sign-in stores one), so
+  // anonymous visitors don't send a request that just 401s. Any failure leaves
+  // them on the landing page (unlike the handoff above, a stored user is not
+  // trusted here); a 401 also drops the stale stored user.
+  useEffect(() => {
+    if (authenticatedParam === "1" || !hasStoredUser()) return;
+
+    let cancelled = false;
+    setCheckingSession(true);
+    fetchApi("/auth/me")
+      .then((data) => {
+        if (cancelled) return;
+        if (!data?.user || !applyAuthUser(data.user)) finishSessionCheck();
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (error?.status === 401) localStorage.removeItem("voyage-user");
+        finishSessionCheck();
+      });
+
+    return () => { cancelled = true; };
+  }, [authenticatedParam, applyAuthUser, finishSessionCheck]);
 
   useEffect(() => {
     if (shouldBypassLanding && activeScreen === "landing") {
@@ -187,6 +225,7 @@ function HomePageInner() {
   }
 
   if (currentScreen === "welcome") {
+    if (checkingSession || shouldBypassLanding) return <main className="min-h-screen" aria-busy="true" />;
     return <LandingPage onLogin={() => router.push("/login")} onStartPlanning={() => router.push("/login?mode=register")} />;
   }
 

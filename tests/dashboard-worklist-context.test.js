@@ -17,6 +17,11 @@ describe("describeWorklistItem", () => {
     });
   });
 
+  it("names who commented when the server says", () => {
+    const item = { authorName: "Maria Santos", commentExcerpt: "Hi", createdAt: iso(-6 * HOUR) };
+    expect(describeWorklistItem("unreadComments", item, NOW).subtitle).toBe("Comment from Maria Santos");
+  });
+
   it("counts short waits in minutes and long ones in days", () => {
     const at = (offsetMs) => describeWorklistItem("unreadComments", { commentExcerpt: "Hi", createdAt: iso(offsetMs) }, NOW).hint;
 

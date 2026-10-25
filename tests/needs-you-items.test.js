@@ -4,6 +4,7 @@ import {
   OWNER_NEEDS_YOU_ORDER,
   STAFF_NEEDS_YOU_ORDER,
   buildNeedsYouItems,
+  needsYouTarget,
 } from "../app/agency/[agencyId]/components/dashboard/needsYouItems.js";
 
 const NOW = Date.parse(fixtures.ownerBusy.generatedAt);
@@ -54,5 +55,26 @@ describe("buildNeedsYouItems", () => {
 
   it("returns nothing for a missing worklist", () => {
     expect(buildNeedsYouItems(undefined, OWNER_NEEDS_YOU_ORDER, NOW)).toEqual([]);
+  });
+});
+
+describe("needsYouTarget", () => {
+  it("opens the trip panel at the comment, at the link, or at the top; drafts resume in the Planner", () => {
+    const items = buildNeedsYouItems(fixtures.ownerBusy.worklist, OWNER_NEEDS_YOU_ORDER, NOW);
+    const of = (kind) => items.find((item) => item.kind === kind);
+    expect(needsYouTarget(of("unreadComments"))).toEqual({ to: "panel", focus: { type: "comment", id: of("unreadComments").rowId } });
+    expect(needsYouTarget(of("sharesExpiring"))).toEqual({ to: "panel", focus: { type: "share" } });
+    expect(needsYouTarget(of("lowRated"))).toEqual({ to: "panel", focus: null });
+    expect(needsYouTarget(of("draftsStuck"))).toEqual({ to: "planner" });
+  });
+
+  it("calls the staff link action Extend, like the owner's", () => {
+    const staffItems = buildNeedsYouItems(fixtures.staff.worklist, STAFF_NEEDS_YOU_ORDER, NOW);
+    expect(staffItems.find((item) => item.kind === "mySharesExpiring").actionLabel).toBe("Extend");
+  });
+
+  it("keeps each row's own id for the panel to find", () => {
+    const comment = ownerItems().find((item) => item.kind === "unreadComments");
+    expect(comment.rowId).toBe(fixtures.ownerBusy.worklist.unreadComments.find((row) => comment.key.endsWith(row.id)).id);
   });
 });

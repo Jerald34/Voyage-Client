@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import useDashboardPoll from "@/app/hooks/useDashboardPoll";
 import AgencyCalendar from "./widgets/AgencyCalendar";
+import ClientCommentsCard from "./widgets/ClientCommentsCard";
 import DashboardGreeting from "./widgets/DashboardGreeting";
 import DashboardStaleBanner from "./widgets/DashboardStaleBanner";
 import { DASHBOARD_GRID_CLASS, NeedsYouSkeleton, SideColumnSkeleton } from "./widgets/DashboardSkeleton";
@@ -11,16 +12,17 @@ import JoinedNotice from "./widgets/JoinedNotice";
 import MyWorkColumn from "./widgets/MyWorkColumn";
 import NeedsYouList from "./widgets/NeedsYouList";
 import TripSlideOver from "./TripSlideOver";
-import { STAFF_NEEDS_YOU_ORDER, buildNeedsYouItems } from "./needsYouItems";
+import { STAFF_NEEDS_YOU_ORDER, buildNeedsYouItems, needsYouTarget } from "./needsYouItems";
 
 /**
- * Staff dashboard: greeting, "Needs you today" and the calendar (scoped by
- * the server to trips this person created or organizes) on the left, their
- * own work on the right (continue, trips by status, recently viewed
- * itineraries, recent trips). Comment rows, calendar actions and Recently
- * viewed rows open the trip slide-over; other to-do rows open the trip in the
- * Planner. Nothing here depends on a period, so there is no period
- * switcher.
+ * Staff dashboard: greeting, "Needs you today", "Client comments" and the
+ * calendar (all scoped by the server to trips this person created or
+ * organizes) on the left, their own work on the right (continue, trips by
+ * status (each lists its trips), recently viewed itineraries, recent trips).
+ * Every to-do trip row, comment, calendar action, status-list trip and
+ * Recently viewed row opens the trip panel (at the comment or share link it is
+ * about); only "Resume" on a stuck draft, "Continue" and Recent trips open the
+ * Planner. Nothing here depends on a period, so there is no period switcher.
  * The calendar loads on its own, so it is always mounted: only the parts that
  * need the dashboard payload wait for it, or say it failed.
  */
@@ -30,7 +32,6 @@ export default function StaffMyWork({
   viewerName,
   onOpenTrip,
   onNewTrip,
-  onOpenItineraries,
   showJoinedNotice = false,
 }) {
   const router = useRouter();
@@ -45,16 +46,18 @@ export default function StaffMyWork({
   // The poll only flips isFetching on after mount, so waiting on it would paint
   // one frame of "All caught up" first. No data and no failure yet means loading.
   const isLoading = !data && !error;
-  const [slideTrip, setSlideTrip] = useState(null); // { tripId, tripTitle, subtitle }
-  // Bumped after a reply so the calendar reloads at once, not at its next poll.
+  const [slideTrip, setSlideTrip] = useState(null); // { tripId, tripTitle, subtitle, focus }
+  // Bumped after a reply or an extension so the calendar reloads at once, not at its next poll.
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   // Where the slide-over returns focus if the row that opened it was removed by
   // a poll. Also the fallback for slide-overs opened from the Recently viewed card.
   const needsYouRef = useRef(null);
   const needsYou = buildNeedsYouItems(data?.worklist, STAFF_NEEDS_YOU_ORDER);
 
-  const openTripSlide = (tripId, tripTitle, subtitle) => {
-    setSlideTrip({ tripId, tripTitle: tripTitle ?? "Trip", subtitle: subtitle ?? null });
+  // focus: null (top), { type: "comment", id } or { type: "share" } — see TripSlideOver.
+  // Kept in state with the trip, so reopening the same trip at a new spot works.
+  const openTripSlide = (tripId, tripTitle, subtitle, focus = null) => {
+    setSlideTrip({ tripId, tripTitle: tripTitle ?? "Trip", subtitle: subtitle ?? null, focus });
   };
 
   const openTrip = (tripId) => {
@@ -74,12 +77,17 @@ export default function StaffMyWork({
   };
 
   function handleNeedsYouAction(item) {
-    if (item.kind === "unreadComments") openTripSlide(item.tripId, item.tripTitle, item.clientName);
-    else openTrip(item.tripId);
+    const target = needsYouTarget(item);
+    if (target.to === "planner") openTrip(item.tripId);
+    else openTripSlide(item.tripId, item.tripTitle, item.clientName, target.focus);
   }
 
-  // A reply changes what needs the agent: reload the to-do list and the calendar now.
-  function handleReplied() {
+  function openComment(row) {
+    openTripSlide(row.tripId, row.tripTitle, row.clientName, { type: "comment", id: row.id });
+  }
+
+  // A reply or an extension changes what needs the agent: reload the to-do list and the calendar now.
+  function handleChanged() {
     refetch().catch(() => {}); // a failed refetch already shows the stale-data banner
     setCalendarRefreshKey((key) => key + 1);
   }
@@ -98,6 +106,7 @@ export default function StaffMyWork({
           <div data-tour-target="dashboard-needs-you" className="empty:hidden">
             {data ? <NeedsYouList ref={needsYouRef} items={needsYou} onAction={handleNeedsYouAction} /> : isLoading ? <NeedsYouSkeleton /> : null}
           </div>
+          {data?.clientComments ? <ClientCommentsCard comments={data.clientComments} onOpenComment={openComment} /> : null}
           <div data-tour-target="dashboard-calendar">
             <AgencyCalendar agencyId={agencyId} onOpenTrip={openTripSlide} refreshKey={calendarRefreshKey} />
           </div>
@@ -109,9 +118,8 @@ export default function StaffMyWork({
               hero={data.hero ?? null}
               recent={data.secondaryRecent ?? []}
               pipeline={data.pipeline ?? null}
-              agencyId={agencyId}
+              pipelineTrips={data.pipelineTrips ?? null}
               onOpenTrip={openTrip}
-              onOpenItineraries={onOpenItineraries}
               recentViews={data.recentViews}
               onOpenViewedTrip={openTripSlide}
             />
@@ -128,8 +136,9 @@ export default function StaffMyWork({
         tripId={slideTrip?.tripId}
         tripTitle={slideTrip?.tripTitle}
         subtitle={slideTrip?.subtitle}
+        focus={slideTrip?.focus ?? null}
         returnFocusRef={needsYouRef}
-        onReplied={handleReplied}
+        onChanged={handleChanged}
         onOpenFull={(tripId) => {
           setSlideTrip(null);
           openTrip(tripId);

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, useId } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { fetchPublicItinerary, postPublicComment, listPublicComments } from "../../../lib/api/index.js";
+import { fetchPublicItinerary, postPublicComment, listPublicComments, recordPublicShareView } from "../../../lib/api/index.js";
 import ProposalRating from "./components/ProposalRating.jsx";
 import { formatCommentTime } from "../../../lib/formatters.js";
 import PdfDownloadButton from "./components/PdfDownloadButton.jsx";
@@ -16,6 +16,9 @@ import WeatherAttribution from "../../../components/weather/WeatherAttribution.j
 import { useItineraryWeather } from "../../../hooks/useItineraryWeather.js";
 import { attachWeatherToDays, describeDayWeather } from "../../../lib/weather/weatherDisplay.js";
 import ShareHeader, { PoweredByVoyage } from "./components/ShareHeader.jsx";
+import ShareUpdateBanner from "./components/ShareUpdateBanner.jsx";
+import ShareWelcomeDialog from "./components/ShareWelcomeDialog.jsx";
+import { useShareRevisionWatch } from "../../../hooks/useShareRevisionWatch.js";
 import Spinner from "../../../components/ui/Spinner";
 import {
   MapPinIcon,
@@ -46,6 +49,41 @@ function formatDate(dateStr) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+const welcomeSkippedKey = (token) => `voyage_share_welcome_skipped:${token}`;
+
+/* One view per visit: a reload, another tab or coming back within half an hour is
+   the same visit, so the agency's view count means "times the client came back". */
+const VISIT_WINDOW_MS = 30 * 60 * 1000;
+const viewedAtKey = (token) => `voyage_share_viewed:${token}`;
+
+function recordVisit(token) {
+  try {
+    const last = Number(localStorage.getItem(viewedAtKey(token)));
+    if (last && Date.now() - last < VISIT_WINDOW_MS) return;
+  } catch {
+    /* storage blocked: count it, the server cannot tell either way */
+  }
+  // Counting is bookkeeping: nothing here may stop the itinerary from showing.
+  Promise.resolve()
+    .then(() => recordPublicShareView(token))
+    .then(() => {
+      try {
+        localStorage.setItem(viewedAtKey(token), String(Date.now()));
+      } catch {
+        /* the next load counts again; better than never counting */
+      }
+    })
+    .catch(() => {
+      /* not saved, so the next load tries again */
+    });
+}
+
+function senderNameFor(brand) {
+  if (brand?.type === "agency" && brand.name) return brand.name;
+  if (brand?.type === "personal" && brand.displayName) return brand.displayName;
+  return "Your travel agent";
 }
 
 const MOBILE_VIEWS = [
@@ -91,127 +129,153 @@ function ChatBubbleIcon({ size = 14 }) {
   return <ChatIcon width={size} height={size} />;
 }
 
-/* ── name prompt banner ──────────────────────────────────────── */
-
-function NamePromptBanner({ onComplete }) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [nameError, setNameError] = useState(false);
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setNameError(true);
-      inputRef.current?.focus();
-      return;
-    }
-    onComplete(trimmed, email.trim() || null);
-  }
-
-  return (
-    <div className="flex items-start gap-3 px-[18px] py-4 mb-6 bg-primary/[0.04] border border-border/15 border-l-[3px] border-l-secondary rounded-sm">
-      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full bg-secondary/[0.12] text-secondary-strong mt-px hidden sm:flex">
-        <UserIcon width={18} height={18} />
-      </div>
-      <div className="flex-1 min-w-0 grid gap-[10px]">
-        <p className="m-0 text-[13px] leading-[1.5] text-text-soft">
-          Want to leave comments on this itinerary? Let us know your name first.
-        </p>
-        <form className="flex items-start gap-2 flex-wrap max-sm:flex-col" onSubmit={handleSubmit}>
-          <div className="flex gap-2 flex-1 min-w-0 flex-wrap max-sm:flex-col">
-            <div className="flex flex-col gap-1 flex-1 min-w-[130px] max-sm:min-w-0">
-              <input
-                ref={inputRef}
-                type="text"
-                className={`px-[11px] py-[7px] border rounded-sm bg-background text-[13px] text-text-primary outline-none w-full box-border transition-all duration-150 focus:border-secondary focus:ring-[3px] focus:ring-secondary/15 ${nameError ? "border-status-danger ring-[3px] ring-status-danger/10" : "border-border/40"}`}
-                placeholder="Your name *"
-                value={name}
-                onChange={(e) => { setName(e.target.value); setNameError(false); }}
-                maxLength={80}
-              />
-              {nameError && <span className="text-[11px] text-status-danger font-medium">Please enter your name</span>}
-            </div>
-            <input
-              type="email"
-              className="px-[11px] py-[7px] border border-border/40 rounded-sm bg-background text-[13px] text-text-primary outline-none flex-1 min-w-[130px] max-sm:min-w-0 box-border transition-all duration-150 focus:border-secondary focus:ring-[3px] focus:ring-secondary/15"
-              placeholder="Email (optional)"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-[7px] bg-secondary-strong text-on-secondary-strong border-none rounded-sm text-[13px] font-semibold cursor-pointer whitespace-nowrap flex-shrink-0 transition-all duration-150 hover:opacity-90 active:scale-97 max-sm:self-start"
-          >
-            Continue
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 /* ── inline comment form ─────────────────────────────────────── */
 
-function CommentForm({ token, dayNumber, itemId, commenterName, commenterEmail, onCancel, onPosted, onRefresh }) {
+const FIELD_CLASS =
+  "w-full box-border px-[11px] py-[7px] border rounded-sm bg-background text-[13px] text-text-primary outline-none transition-all duration-150 focus:border-secondary focus:ring-[3px] focus:ring-secondary/15 disabled:opacity-60 disabled:cursor-not-allowed";
+
+function commentErrorMessage(err) {
+  if (err?.status === 410) return "This link has expired, so comments are closed. Please contact your travel agent.";
+  if (err?.status === 429) return "You've sent a lot of comments in a short time. Please wait a minute and try again.";
+  return "Something went wrong. Please try again.";
+}
+
+/* A first-time visitor gives their name (and, if they like, an email) right in the
+   form they opened; a returning one sees who they are commenting as and can change it. */
+function CommentForm({ token, label, dayNumber, itemId, commenterName, commenterEmail, onIdentity, onCancel, onPosted, onRefresh }) {
+  const fieldId = useId();
   const [text, setText] = useState("");
   const [status, setStatus] = useState("idle"); // idle | submitting | success | error
+  const [errorMessage, setErrorMessage] = useState("");
+  const [editingIdentity, setEditingIdentity] = useState(!commenterName);
+  const [name, setName] = useState(commenterName ?? "");
+  const [email, setEmail] = useState(commenterEmail ?? "");
+  const [nameError, setNameError] = useState(false);
   const textareaRef = useRef(null);
+  const nameRef = useRef(null);
 
   useEffect(() => {
-    textareaRef.current?.focus();
+    (commenterName ? textareaRef : nameRef).current?.focus();
+    // Only on open: a name saved mid-draft must not pull focus.
   }, []);
+
+  function handleChangeIdentity() {
+    setEditingIdentity(true);
+    // The fields mount on this render; focus them once they are there.
+    setTimeout(() => nameRef.current?.focus(), 0);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    setStatus("submitting");
+    const authorName = editingIdentity ? name.trim() : commenterName;
+    const authorEmail = editingIdentity ? email.trim() || null : commenterEmail;
+    if (!authorName) {
+      setNameError(true);
+      nameRef.current?.focus();
+      return;
+    }
+    if (editingIdentity) onIdentity(authorName, authorEmail);
 
-    const payload = { authorName: commenterName, content: trimmed };
-    if (commenterEmail) payload.authorEmail = commenterEmail;
+    setStatus("submitting");
+    setErrorMessage("");
+
+    const payload = { authorName, content: trimmed };
+    if (authorEmail) payload.authorEmail = authorEmail;
     if (dayNumber != null) payload.dayNumber = dayNumber;
     if (itemId != null) payload.itemId = itemId;
 
     try {
       const res = await postPublicComment(token, payload);
       setStatus("success");
-      onPosted(res?.comment ?? { content: trimmed, dayNumber, itemId, authorName: commenterName, status: "PENDING", createdAt: new Date().toISOString() });
+      onPosted(res?.comment ?? { content: trimmed, dayNumber, itemId, authorName, status: "PENDING", createdAt: new Date().toISOString() });
       onRefresh?.();
       setTimeout(() => onCancel(), 2000);
-    } catch {
+    } catch (err) {
+      setErrorMessage(commentErrorMessage(err));
       setStatus("error");
     }
   }
 
+  const busy = status === "submitting";
+
   return (
-    <form className="grid gap-2 p-3 bg-primary/[0.03] border border-border/15 rounded-sm mt-1" onSubmit={handleSubmit}>
+    <form aria-label={label} className="grid gap-2 p-3 bg-primary/[0.03] border border-border/15 rounded-sm mt-1" onSubmit={handleSubmit} noValidate>
       {status === "success" ? (
-        <div className="inline-flex items-center gap-[7px] py-[10px] text-[13px] font-semibold text-status-success">
+        <div role="status" className="inline-flex items-center gap-[7px] py-[10px] text-[13px] font-semibold text-status-success">
           <CheckIcon width={14} height={14} strokeWidth={2.5} className="text-status-success flex-shrink-0" />
           Comment sent!
         </div>
       ) : (
         <>
+          {editingIdentity ? (
+            <div className="grid grid-cols-2 gap-2 max-sm:grid-cols-1">
+              <div className="flex flex-col gap-1 min-w-0">
+                <label htmlFor={`${fieldId}-name`} className="text-[11px] font-semibold text-text-muted">Your name</label>
+                <input
+                  ref={nameRef}
+                  id={`${fieldId}-name`}
+                  type="text"
+                  autoComplete="name"
+                  className={`${FIELD_CLASS} ${nameError ? "border-status-danger ring-[3px] ring-status-danger/10" : "border-border/40"}`}
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setNameError(false); }}
+                  maxLength={80}
+                  aria-invalid={nameError || undefined}
+                  aria-describedby={nameError ? `${fieldId}-name-error` : undefined}
+                  disabled={busy}
+                />
+                {nameError && (
+                  <span id={`${fieldId}-name-error`} className="text-[11px] text-status-danger font-medium">Please enter your name</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1 min-w-0">
+                <label htmlFor={`${fieldId}-email`} className="text-[11px] font-semibold text-text-muted">
+                  Email (optional)
+                </label>
+                <input
+                  id={`${fieldId}-email`}
+                  type="email"
+                  autoComplete="email"
+                  className={`${FIELD_CLASS} border-border/40`}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="m-0 flex items-center gap-1.5 text-[12px] text-text-soft">
+              <UserIcon width={12} height={12} className="flex-shrink-0" />
+              <span>
+                Commenting as <span className="font-semibold text-text-primary">{commenterName}</span>
+              </span>
+              <button
+                type="button"
+                className="ml-0.5 border-none bg-transparent p-0 text-[12px] font-semibold text-secondary-strong underline-offset-2 cursor-pointer hover:underline disabled:opacity-50"
+                onClick={handleChangeIdentity}
+                disabled={busy}
+              >
+                Change
+              </button>
+            </p>
+          )}
+          <label htmlFor={`${fieldId}-text`} className="sr-only">Your comment</label>
           <textarea
             ref={textareaRef}
+            id={`${fieldId}-text`}
             className="w-full box-border px-3 py-[9px] border border-border/40 rounded-sm bg-background text-[13px] leading-[1.55] text-text-primary resize-y outline-none font-[inherit] transition-all duration-150 min-h-[72px] focus:border-secondary focus:ring-[3px] focus:ring-secondary/10 disabled:opacity-60 disabled:cursor-not-allowed max-sm:p-[10px]"
             placeholder="Write a comment…"
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={3}
             maxLength={1000}
-            disabled={status === "submitting"}
+            disabled={busy}
           />
           {status === "error" && (
-            <p className="m-0 text-[12px] text-status-danger font-medium">Something went wrong. Please try again.</p>
+            <p role="alert" className="m-0 text-[12px] text-status-danger font-medium">{errorMessage}</p>
           )}
           <div className="flex items-center justify-end gap-2 max-[400px]:flex-col-reverse max-[400px]:items-stretch">
             <button
@@ -238,7 +302,7 @@ function CommentForm({ token, dayNumber, itemId, commenterName, commenterEmail, 
 
 /* ── submitted comment chip ──────────────────────────────────── */
 
-function CommentChip({ comment }) {
+function CommentChip({ comment, note }) {
   const isAddressed = comment.status === "ADDRESSED" && comment.agencyReply;
   const wrapperCls = isAddressed
     ? "grid gap-1 px-[14px] py-[10px] mt-[6px] bg-surface-elevated border border-border/15 border-l-[3px] border-l-status-success rounded-sm"
@@ -252,6 +316,7 @@ function CommentChip({ comment }) {
         <span className="text-[12px] font-semibold text-text-primary">{comment.authorName}</span>
         <span className={badgeCls}>{isAddressed ? "Replied" : "Pending"}</span>
       </div>
+      {note ? <span className="text-[11px] italic text-text-soft">{note}</span> : null}
       <p className="m-0 text-[13px] leading-[1.5] text-text-primary whitespace-pre-wrap">{comment.content}</p>
       {isAddressed && (
         <div className="mt-2 bg-background border-l-[3px] border-status-success rounded-sm px-3 py-2 flex flex-col gap-1">
@@ -305,13 +370,24 @@ export default function PublicItineraryPage() {
   /* commenter identity */
   const [commenterName, setCommenterName] = useState(null);
   const [commenterEmail, setCommenterEmail] = useState(null);
-  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  /* the first-visit welcome waits until the saved identity has been read, so it never flashes for a returning visitor */
+  const [identityLoaded, setIdentityLoaded] = useState(false);
+  const [welcomeSkipped, setWelcomeSkipped] = useState(false);
 
   /* active comment form: null | { type, dayNumber?, itemId? } */
   const [activeForm, setActiveForm] = useState(null);
 
   /* persisted comments (fetched from backend, includes agency replies) */
   const [comments, setComments] = useState([]);
+
+  /* "your agent updated this itinerary": idle | loading | error | done (a screen-reader confirmation, cleared after a few seconds) */
+  const [refreshState, setRefreshState] = useState("idle");
+  const bannerRef = useRef(null);
+  const scrollerRef = useRef(null);
+  const refreshingRef = useRef(false);
+  const refocusRef = useRef(false);
+  const bannerHeightRef = useRef(0);
+  const tokenRef = useRef(token);
 
   const refreshComments = useCallback(async () => {
     if (!token) return;
@@ -324,30 +400,48 @@ export default function PublicItineraryPage() {
     }
   }, [token]);
 
-  /* ── load commenter identity from localStorage ── */
+  /* ── load commenter identity (and whether this link's welcome was skipped) from localStorage ── */
   useEffect(() => {
-    const storedName = localStorage.getItem("voyage_commenter_name");
-    const storedEmail = localStorage.getItem("voyage_commenter_email");
-    if (storedName) {
-      setCommenterName(storedName);
-      setCommenterEmail(storedEmail || null);
+    try {
+      const storedName = localStorage.getItem("voyage_commenter_name");
+      const storedEmail = localStorage.getItem("voyage_commenter_email");
+      if (storedName) {
+        setCommenterName(storedName);
+        setCommenterEmail(storedEmail || null);
+      }
+      setWelcomeSkipped(Boolean(token && localStorage.getItem(welcomeSkippedKey(token))));
+    } catch {
+      /* storage blocked: the welcome shows, and the name lasts for this visit */
     }
-  }, []);
+    setIdentityLoaded(true);
+  }, [token]);
+
+  /* "Just view the trip": remembered for this link, so the welcome does not come back on reload. */
+  const handleWelcomeSkip = useCallback(() => {
+    try {
+      if (token) localStorage.setItem(welcomeSkippedKey(token), "1");
+    } catch {
+      /* the welcome stays closed for this visit */
+    }
+    setWelcomeSkipped(true);
+  }, [token]);
 
   /* ── fetch ── */
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
 
+    tokenRef.current = token;
     setLoading(true);
     setError(null);
+    setRefreshState("idle");
 
     fetchPublicItinerary(token)
       .then((res) => {
         if (!cancelled) {
           setData(res);
-          const storedName = localStorage.getItem("voyage_commenter_name");
-          if (!storedName) setShowNamePrompt(true);
+          // Only this first load is a visit; "Show latest" refetches without one.
+          recordVisit(token);
         }
       })
       .catch((err) => {
@@ -369,6 +463,60 @@ export default function PublicItineraryPage() {
       cancelled = true;
     };
   }, [token]);
+
+  /* ── the agency edited the itinerary while this page was open ── */
+  const { updateAvailable, acknowledge } = useShareRevisionWatch({ token, revision: data?.revision });
+
+  /* "Show latest": swap the new itinerary in place. Unlike the load above it never
+     sets `loading`, so the page, its scroll position, an open comment form and the
+     commenter's name all stay put. */
+  const handleShowLatest = useCallback(async () => {
+    if (!token || refreshingRef.current) return;
+    refreshingRef.current = true;
+    setRefreshState("loading");
+    try {
+      const res = await fetchPublicItinerary(token);
+      if (tokenRef.current !== token) return;
+      // The button is about to go. If it held focus, hand focus to the itinerary.
+      refocusRef.current = Boolean(bannerRef.current?.contains(document.activeElement));
+      setData(res);
+      // Map selection is by position, which an edit may have shuffled.
+      setActiveIndex(-1);
+      setSelectedPlaceId("");
+      setSelectedPlace(null);
+      setRefreshState("done");
+      acknowledge();
+    } catch {
+      if (tokenRef.current === token) setRefreshState("error");
+    } finally {
+      refreshingRef.current = false;
+    }
+  }, [token, acknowledge]);
+
+  /* The banner sits above the scroller, so it moving in or out shifts the scroller's top
+     edge and the text on screen with it. Scroll by the same amount to hold the text still
+     for a reader part-way down. At the very top there is nothing to hold, so the title
+     just moves down. (Before paint, so there is no frame at the wrong offset.) */
+  useLayoutEffect(() => {
+    // getBoundingClientRect, not offsetHeight: that rounds, and a fraction of a pixel adds up to a visible nudge.
+    const height = bannerRef.current?.getBoundingClientRect().height ?? 0;
+    const delta = height - bannerHeightRef.current;
+    bannerHeightRef.current = height;
+    const scroller = scrollerRef.current;
+    if (delta !== 0 && scroller && scroller.scrollTop > 0) scroller.scrollTop += delta;
+  }, [updateAvailable, refreshState]);
+
+  useEffect(() => {
+    if (!refocusRef.current) return;
+    refocusRef.current = false;
+    scrollerRef.current?.focus({ preventScroll: true });
+  }, [data]);
+
+  useEffect(() => {
+    if (refreshState !== "done") return undefined;
+    const timer = setTimeout(() => setRefreshState("idle"), 4000);
+    return () => clearTimeout(timer);
+  }, [refreshState]);
 
   /* ── fetch persisted comments + agency replies ── */
   useEffect(() => {
@@ -452,21 +600,29 @@ export default function PublicItineraryPage() {
     [mapItems]
   );
 
-  /* ── name prompt handler ── */
-  function handleNameComplete(name, email) {
-    localStorage.setItem("voyage_commenter_name", name);
-    if (email) localStorage.setItem("voyage_commenter_email", email);
+  /* ── the browser tab names the trip and who sent it ── */
+  useEffect(() => {
+    if (!data?.itinerary) return;
+    const tripTitle = data.trip?.title || data.itinerary.title;
+    const sender = data.brand?.type === "agency" ? data.brand.name : "Voyage";
+    document.title = tripTitle ? `${tripTitle} · ${sender}` : sender;
+  }, [data]);
+
+  /* ── commenter identity, given in the first comment form ── */
+  function handleIdentity(name, email) {
+    try {
+      localStorage.setItem("voyage_commenter_name", name);
+      if (email) localStorage.setItem("voyage_commenter_email", email);
+      else localStorage.removeItem("voyage_commenter_email");
+    } catch {
+      /* private mode: the name lasts for this visit only */
+    }
     setCommenterName(name);
     setCommenterEmail(email);
-    setShowNamePrompt(false);
   }
 
   /* ── comment form helpers ── */
   function openForm(descriptor) {
-    if (!commenterName) {
-      setShowNamePrompt(true);
-      return;
-    }
     setActiveForm(descriptor);
   }
 
@@ -481,10 +637,9 @@ export default function PublicItineraryPage() {
     });
   }
 
-  function getItemComments(dayNumber, itemId) {
-    return comments.filter(
-      (c) => c.dayNumber === dayNumber && c.itemId === itemId
-    );
+  // By stop alone: a stop moved to another day keeps its comments.
+  function getItemComments(itemId) {
+    return comments.filter((c) => c.itemId === itemId);
   }
 
   function getDayComments(dayNumber) {
@@ -496,6 +651,17 @@ export default function PublicItineraryPage() {
   function getGeneralComments() {
     return comments.filter(
       (c) => c.dayNumber == null && c.itemId == null
+    );
+  }
+
+  /* Comments on a stop or day the agency has since removed have nowhere to sit in
+     the timeline. They (and any reply) stay readable under General Feedback. */
+  function getOrphanedComments() {
+    const days = data?.itinerary?.days ?? [];
+    const dayNumbers = new Set(days.map((d) => d.dayNumber));
+    const itemIds = new Set(days.flatMap((d) => d.items.map((i) => i.id)));
+    return comments.filter((c) =>
+      c.itemId != null ? !itemIds.has(c.itemId) : c.dayNumber != null && !dayNumbers.has(c.dayNumber)
     );
   }
 
@@ -552,9 +718,16 @@ export default function PublicItineraryPage() {
   // Personal shares have no bound trip; fall back to an empty object so the
   // template can dereference fields safely without `trip?.` everywhere.
   const trip = rawTrip ?? {};
+  const welcomeOpen = identityLoaded && !commenterName && !welcomeSkipped;
 
   return (
     <div className="flex flex-col h-dvh bg-background text-text-primary overflow-hidden">
+      <ShareWelcomeDialog
+        open={welcomeOpen}
+        senderName={senderNameFor(brand)}
+        onContinue={handleIdentity}
+        onSkip={handleWelcomeSkip}
+      />
       {/* ── top branding bar ── */}
       <ShareHeader brand={brand} />
 
@@ -571,15 +744,22 @@ export default function PublicItineraryPage() {
 
       {/* ── main split layout ── */}
       <div className="grid grid-cols-[45fr_55fr] flex-1 min-h-0 overflow-hidden max-sm:flex max-sm:flex-col">
-        {/* ── left: timeline panel ── */}
+        {/* ── left: the update notice sits above the timeline's own scroller, so it never moves the text being read ── */}
+        <div className={`flex min-h-0 flex-col overflow-hidden ${mobileTab === "itinerary" ? "max-sm:flex-1" : "max-sm:hidden"}`}>
+        <ShareUpdateBanner
+          ref={bannerRef}
+          visible={updateAvailable}
+          busy={refreshState === "loading"}
+          failed={refreshState === "error"}
+          confirmed={refreshState === "done"}
+          onShowLatest={handleShowLatest}
+        />
+        {/* ── timeline panel ── */}
         <div
-          className={`overflow-y-auto overflow-x-hidden px-7 py-8 pb-12 scrollbar-thin scrollbar-color-border scrollbar-track-transparent max-sm:px-4 max-sm:py-5 max-sm:pb-10 max-[400px]:px-3 max-[400px]:py-4 max-[400px]:pb-8 ${mobileTab === "itinerary" ? "max-sm:flex max-sm:flex-col max-sm:flex-1 max-sm:min-h-0" : "max-sm:hidden"}`}
+          ref={scrollerRef}
+          tabIndex={-1}
+          className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-7 py-8 pb-12 scrollbar-thin scrollbar-color-border scrollbar-track-transparent focus:outline-none max-sm:flex max-sm:flex-col max-sm:px-4 max-sm:py-5 max-sm:pb-10 max-[400px]:px-3 max-[400px]:py-4 max-[400px]:pb-8"
         >
-          {/* name prompt banner */}
-          {showNamePrompt && (
-            <NamePromptBanner onComplete={handleNameComplete} />
-          )}
-
           {/* trip header */}
           <div className="mb-8 pb-6 border-b border-border/10 max-sm:mb-6 max-sm:pb-5">
             {/* max-w-none: globals.css caps every h1 at 12ch for the landing hero. */}
@@ -644,10 +824,12 @@ export default function PublicItineraryPage() {
                   <div>
                     <CommentForm
                       token={token}
+                      label={`Comment on Day ${day.dayNumber}`}
                       dayNumber={day.dayNumber}
                       itemId={undefined}
                       commenterName={commenterName}
                       commenterEmail={commenterEmail}
+                      onIdentity={handleIdentity}
                       onCancel={closeForm}
                       onPosted={handlePosted}
                       onRefresh={refreshComments}
@@ -698,16 +880,18 @@ export default function PublicItineraryPage() {
                         {isFormActive(itemFormDescriptor) && (
                           <CommentForm
                             token={token}
+                            label={`Comment on ${item.title}`}
                             dayNumber={day.dayNumber}
                             itemId={item.id}
                             commenterName={commenterName}
                             commenterEmail={commenterEmail}
+                            onIdentity={handleIdentity}
                             onCancel={closeForm}
                             onPosted={handlePosted}
                             onRefresh={refreshComments}
                           />
                         )}
-                        {getItemComments(day.dayNumber, item.id).map((c, i) => (
+                        {getItemComments(item.id).map((c, i) => (
                           <CommentChip key={i} comment={c} />
                         ))}
                       </ShareStopCard>
@@ -734,25 +918,30 @@ export default function PublicItineraryPage() {
           </div>
 
           {/* ── general feedback section ── */}
-          <div className="grid gap-3 mt-6 px-5 py-[22px] bg-primary/[0.03] border border-border/15 rounded-md max-sm:mt-5 max-sm:p-4">
+          <section
+            aria-labelledby="share-general-feedback"
+            className="grid gap-3 mt-6 px-5 py-[22px] bg-primary/[0.03] border border-border/15 rounded-md max-sm:mt-5 max-sm:p-4"
+          >
             <div className="flex items-center gap-2 text-primary">
               <ChatBubbleIcon size={16} />
-              <h3 className="m-0 font-sans text-[15px] font-semibold tracking-normal text-primary">General Feedback</h3>
+              <h3 id="share-general-feedback" className="m-0 font-sans text-[15px] font-semibold tracking-normal text-primary">General Feedback</h3>
             </div>
             <p className="m-0 text-[13px] leading-[1.5] text-text-soft">
-              Have overall thoughts about this itinerary? Share them here.
+              Have overall thoughts about this itinerary? Share them here. You can also comment on any day or stop above.
             </p>
 
             {isFormActive({ type: "general", dayNumber: undefined, itemId: undefined }) ? (
               <CommentForm
                 token={token}
+                label="Add general feedback"
                 dayNumber={undefined}
                 itemId={undefined}
                 commenterName={commenterName}
                 commenterEmail={commenterEmail}
+                onIdentity={handleIdentity}
                 onCancel={closeForm}
                 onPosted={handlePosted}
-                      onRefresh={refreshComments}
+                onRefresh={refreshComments}
               />
             ) : (
               <CommentTriggerBtn
@@ -762,14 +951,18 @@ export default function PublicItineraryPage() {
             )}
 
             {getGeneralComments().map((c, i) => (
-              <CommentChip key={i} comment={c} />
+              <CommentChip key={c.id ?? i} comment={c} />
             ))}
-          </div>
+            {getOrphanedComments().map((c, i) => (
+              <CommentChip key={c.id ?? `orphan-${i}`} comment={c} note="About a part of the trip that has since changed" />
+            ))}
+          </section>
 
           {/* bottom branding */}
           <footer className="pt-8">
             <PoweredByVoyage />
           </footer>
+        </div>
         </div>
 
         {/* ── right: map panel, inset like the in-app day view ── */}

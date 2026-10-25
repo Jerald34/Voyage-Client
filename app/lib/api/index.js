@@ -67,14 +67,21 @@ export {
   createItineraryShare,
   listTripShares,
   revokeShare,
+  regenerateShare,
+  extendShare,
   listShareComments,
   replyToShareComment,
   getUnreadCommentCount,
   getUnreadCommentCountsByTrip,
   fetchPublicItinerary,
+  fetchPublicShareRevision,
+  recordPublicShareView,
   postPublicComment,
   listPublicComments,
 } from "./shares.js";
+
+// Dashboard
+export { fetchTripPreview } from "./dashboard.js";
 
 // Admin
 export {

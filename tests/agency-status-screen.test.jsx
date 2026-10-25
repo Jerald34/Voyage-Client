@@ -108,3 +108,13 @@ describe("AgencyStatusScreen", () => {
     expect(screen.queryByText(/report sent/i)).not.toBeInTheDocument();
   });
 });
+
+describe("AgencyStatusScreen — sign out", () => {
+  it("says so when signing out fails", async () => {
+    render(<AgencyStatusScreen agency={agency()} user={user} onLogout={vi.fn().mockResolvedValue(false)} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't sign out");
+  });
+});

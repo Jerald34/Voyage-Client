@@ -2,6 +2,7 @@ import { Plus_Jakarta_Sans, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "./components/theme/ThemeProvider";
 import UnsupportedBrowserBanner from "./components/system/UnsupportedBrowserBanner.jsx";
+import { SESSION_CHECK_SCRIPT } from "./lib/sessionCheck.js";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -78,6 +79,8 @@ export default function RootLayout({ children }) {
             __html: `(function(){var t=localStorage.getItem('voyage-theme');if(t==='dark')document.documentElement.classList.add('dark')})()`,
           }}
         />
+        {/* Hides `/` and `/login` before paint while a stored user's session is checked (lib/sessionCheck.js) */}
+        <script dangerouslySetInnerHTML={{ __html: SESSION_CHECK_SCRIPT }} />
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider>

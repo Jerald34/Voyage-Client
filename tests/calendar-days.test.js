@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCalendarDays,
+  dayItemFocus,
   describeDayItems,
   fullDayLabel,
   gridRange,
@@ -223,5 +224,13 @@ describe("day labels", () => {
     expect(relativeDayLabel("2026-10-02", "2026-10-03")).toBe("Yesterday");
     expect(relativeDayLabel("2026-10-08", "2026-10-03")).toBe("In 5 days");
     expect(relativeDayLabel("2026-09-30", "2026-10-03")).toBe("3 days ago");
+  });
+});
+
+describe("dayItemFocus", () => {
+  it("opens the trip panel at a comment, at the link, or at the top", () => {
+    expect(dayItemFocus({ key: "client_commented:c-42", kind: "client_commented" })).toEqual({ type: "comment", id: "c-42" });
+    expect(dayItemFocus({ key: "share_expires:s-1", kind: "share_expires" })).toEqual({ type: "share" });
+    expect(dayItemFocus({ key: "trip:t-1", kind: "trip" })).toBeNull();
   });
 });

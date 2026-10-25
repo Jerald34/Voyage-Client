@@ -20,20 +20,6 @@ export default function TeamPage({ agencyId, showJoinedNotice = false, embedded 
   const [removing, setRemoving] = useState(null);
   const [revokingId, setRevokingId] = useState(null);
 
-  // One-time toast for STAFF redirected from Settings
-  const [settingsDeniedNotice, setSettingsDeniedNotice] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const flag = sessionStorage.getItem("voyage:settingsDeniedToast");
-      if (flag) {
-        sessionStorage.removeItem("voyage:settingsDeniedToast");
-        setSettingsDeniedNotice(true);
-      }
-    } catch {}
-  }, []);
-
   async function refresh() {
     setLoading(true);
     setError(null);
@@ -84,12 +70,6 @@ export default function TeamPage({ agencyId, showJoinedNotice = false, embedded 
         </div>
       )}
 
-      {settingsDeniedNotice && (
-        <div className="mb-4 rounded-lg border border-border bg-surface-elevated px-4 py-3 text-sm text-text-muted">
-          Settings are managed by your owner and admins.
-        </div>
-      )}
-
       <div className="mb-4 flex items-center justify-between">
         {embedded ? (
           <h2 className="font-sans text-lg font-semibold tracking-normal text-text-primary">Team</h2>
@@ -107,7 +87,7 @@ export default function TeamPage({ agencyId, showJoinedNotice = false, embedded 
         )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="rounded-lg border border-border bg-surface">
         {loading ? (
           <div className="px-4 py-8 text-center text-text-muted">Loading&hellip;</div>
         ) : error ? (

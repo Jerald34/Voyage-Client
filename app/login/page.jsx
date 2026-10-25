@@ -4,6 +4,8 @@ import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
+import { fetchApi } from "../lib/api/index.js";
+import { endSessionCheck, hasStoredUser } from "../lib/sessionCheck.js";
 import LegalModal from "../components/auth/LegalModal.jsx";
 import FloatingOrb from "../components/auth/FloatingOrb.jsx";
 import WizardProgress from "../components/auth/WizardProgress.jsx";
@@ -21,6 +23,7 @@ function AuthShell() {
   const [mounted, setMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [legalDoc, setLegalDoc] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -65,6 +68,41 @@ function AuthShell() {
     }
   }, [searchParams]);
 
+  // Already signed in: sign-in and sign-up have nothing to offer, so go into the
+  // app. Skipped for ?step= (signed-in users finishing the wizard), ?invite=
+  // (an invitation that may be meant for a different account), and visitors with
+  // no stored user (every sign-in stores one; this avoids a request that 401s).
+  const hasStep = Boolean(searchParams.get("step"));
+  const hasInvite = Boolean(searchParams.get("invite"));
+  useEffect(() => {
+    if (hasStep || hasInvite || !hasStoredUser()) {
+      endSessionCheck();
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingSession(true);
+    fetchApi("/auth/me")
+      .then((data) => {
+        if (cancelled) return;
+        if (!data?.user) {
+          setCheckingSession(false);
+          endSessionCheck();
+          return;
+        }
+        localStorage.setItem("voyage-user", JSON.stringify(data.user));
+        router.replace("/?authenticated=1");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (error?.status === 401) localStorage.removeItem("voyage-user");
+        setCheckingSession(false);
+        endSessionCheck();
+      });
+
+    return () => { cancelled = true; };
+  }, [hasStep, hasInvite, router]);
+
   const handleModeSwitch = (newMode) => {
     if (newMode === mode) return;
     setIsTransitioning(true);
@@ -81,6 +119,10 @@ function AuthShell() {
   };
 
   const isRegister = mode === "register";
+
+  if (checkingSession) {
+    return <div className="min-h-screen" aria-busy="true" />;
+  }
 
   return (
     <div className={`grid grid-cols-1 md:grid-cols-2 min-h-screen md:min-h-[calc(100vh-100px)] gap-0 md:rounded-lg md:overflow-hidden md:border md:border-border md:shadow-strong transition-all duration-650 ${mounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-6 scale-[0.985]"}`}>

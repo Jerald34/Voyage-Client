@@ -465,3 +465,110 @@ describe("agency review screen refresh", () => {
     await waitFor(() => expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=agency"));
   });
 });
+
+describe("plain `/` visit — signed-in users skip the landing page", () => {
+  beforeEach(() => {
+    mockState.prototypeState = landingPrototypeState();
+  });
+
+  it("opens the app when /auth/me confirms a session", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    mockState.fetchApi.mockResolvedValueOnce({
+      user: { id: "user-1", accountType: "PERSONAL", memberships: [] },
+    });
+
+    render(<Page />);
+
+    // Waits on the check instead of flashing the landing page.
+    expect(screen.queryByTestId("landing-page")).not.toBeInTheDocument();
+    expect(mockState.fetchApi).toHaveBeenCalledWith("/auth/me");
+    await waitFor(() => {
+      expect(mockState.setActiveScreen).toHaveBeenCalledWith("trip-brief");
+    });
+  });
+
+  it("shows the landing page and drops the stale stored user on 401", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    const authError = new Error("Authentication required.");
+    authError.status = 401;
+    mockState.fetchApi.mockRejectedValueOnce(authError);
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("landing-page")).toBeInTheDocument();
+    expect(window.localStorage.getItem("voyage-user")).toBeNull();
+    expect(mockState.routerPush).not.toHaveBeenCalled();
+  });
+
+  it("shows the landing page right away for visitors with no stored user, without calling /auth/me", () => {
+    render(<Page />);
+
+    expect(screen.getByTestId("landing-page")).toBeInTheDocument();
+    expect(mockState.fetchApi).not.toHaveBeenCalled();
+  });
+
+  it("un-hides the pre-paint check once the landing page is settled", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    document.documentElement.setAttribute("data-session-check", "");
+    const authError = new Error("Authentication required.");
+    authError.status = 401;
+    mockState.fetchApi.mockRejectedValueOnce(authError);
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("landing-page")).toBeInTheDocument();
+    expect(document.documentElement.hasAttribute("data-session-check")).toBe(false);
+  });
+});
+
+describe("landing page stays hidden while the session decides the route", () => {
+  beforeEach(() => {
+    mockState.prototypeState = landingPrototypeState();
+  });
+
+  it("hides the landing page during the ?authenticated=1 handoff", () => {
+    mockState.searchParamsAuthenticated = "1";
+
+    render(<Page />);
+
+    expect(screen.queryByTestId("landing-page")).not.toBeInTheDocument();
+  });
+
+  it("shows the landing page if the handoff fails transiently with no stored user", async () => {
+    mockState.searchParamsAuthenticated = "1";
+    const netError = new Error("Unable to connect. Please try again.");
+    netError.status = 0;
+    mockState.fetchApi.mockRejectedValueOnce(netError);
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("landing-page")).toBeInTheDocument();
+  });
+
+  it("keeps the landing page hidden while a PENDING user is sent to the type picker", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    mockState.fetchApi.mockResolvedValueOnce({
+      user: { id: "user-1", accountType: "PENDING", memberships: [] },
+    });
+
+    render(<Page />);
+
+    await waitFor(() => {
+      expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=type");
+    });
+    expect(screen.queryByTestId("landing-page")).not.toBeInTheDocument();
+  });
+
+  it("sends an agency user with no membership to the agency step", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    mockState.fetchApi.mockResolvedValueOnce({
+      user: { id: "user-1", accountType: "AGENCY_USER", memberships: [] },
+    });
+
+    render(<Page />);
+
+    await waitFor(() => {
+      expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=agency");
+    });
+  });
+});

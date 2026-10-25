@@ -9,6 +9,7 @@ import ApprovalDemo from "./ApprovalDemo.jsx";
 import DemoErrorBoundary from "./DemoErrorBoundary.jsx";
 import { AFTER_THE_PLAN, AFTER_THE_PLAN_TABS } from "../landingContent.js";
 import { FOCUS, FOCUS_INSET } from "../landingClasses.js";
+import { Reveal } from "../landingMotion.jsx";
 
 // jsPDF only loads once someone opens the PDF tab.
 const SamplePdfDemo = dynamic(() => import("./SamplePdfDemo.jsx"), {
@@ -65,11 +66,13 @@ export default function AfterThePlanTabs() {
 
   return (
     <section id="after-the-plan" aria-labelledby={`${baseId}-title`} className="mx-auto w-full max-w-[1220px] scroll-mt-24 px-4 pb-24">
-      <p className="m-0 text-[13px] font-semibold text-secondary-strong">{AFTER_THE_PLAN.overline}</p>
-      <h2 id={`${baseId}-title`} className="m-0 mt-2 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
-        {AFTER_THE_PLAN.title}
-      </h2>
-      <p className="mt-2 max-w-[60ch] text-base leading-relaxed text-text-muted">{AFTER_THE_PLAN.body}</p>
+      <Reveal>
+        <p className="m-0 text-[13px] font-semibold text-secondary-strong">{AFTER_THE_PLAN.overline}</p>
+        <h2 id={`${baseId}-title`} className="m-0 mt-2 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
+          {AFTER_THE_PLAN.title}
+        </h2>
+        <p className="mt-2 max-w-[60ch] text-base leading-relaxed text-text-muted">{AFTER_THE_PLAN.body}</p>
+      </Reveal>
 
       {/* The divider is an inset shadow, not a border + negative margin: a scroll container would clip the selected tab's underline. */}
       <div

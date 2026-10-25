@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../app/components/team/TeamPage.jsx", () => ({
@@ -90,5 +90,21 @@ describe("Settings Team panel", () => {
     renderSettings();
 
     expect(screen.getByRole("region", { name: "Team" })).not.toHaveFocus();
+  });
+
+  it.each(["OWNER", "ADMIN"])("sends %s members to the Agency tab instead of showing the Team panel", (role) => {
+    const onOpenAgency = vi.fn();
+    renderSettings({ membership: { role, status: "ACTIVE" }, onOpenAgency });
+
+    expect(screen.queryByRole("region", { name: "Team" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Agency details" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open Agency" }));
+    expect(onOpenAgency).toHaveBeenCalledOnce();
+  });
+
+  it("keeps read-only agency details for staff", () => {
+    renderSettings();
+    expect(screen.getByRole("heading", { name: "Agency details" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Agency" })).not.toBeInTheDocument();
   });
 });

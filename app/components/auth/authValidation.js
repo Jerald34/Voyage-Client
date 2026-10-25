@@ -81,3 +81,27 @@ export function mapAuthErrorToRegisterErrors(error) {
 
   return fieldErrors;
 }
+
+/**
+ * Checks the sign-in fields before they reach the server, so an empty or
+ * malformed field gets a field message instead of the server's generic
+ * "Request validation failed." Returns { email?, password? }.
+ */
+export function validateLoginFields(emailValue, passwordValue) {
+  const errors = {};
+  const trimmedEmail = String(emailValue ?? "").trim();
+  if (!trimmedEmail) errors.email = "Enter your email address";
+  else if (!/\S+@\S+\.\S+/.test(trimmedEmail)) errors.email = "Enter a valid email address";
+  if (!passwordValue) errors.password = "Enter your password";
+  return errors;
+}
+
+// Sign-in error text for the alert under the form. The server's schema
+// rejection reads "Request validation failed.", which means nothing to a user.
+export function getLoginErrorMessage(error) {
+  if (!error) return "";
+  if (error.code === "VALIDATION_ERROR") {
+    return "Check your email and password, then try again.";
+  }
+  return error.message || "Something went wrong. Please try again.";
+}
