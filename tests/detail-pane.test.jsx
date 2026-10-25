@@ -21,6 +21,15 @@ describe("DetailPane", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("ignores an Escape that something else already handled", () => {
+    const onClose = vi.fn();
+    render(<DetailPane open title="Acme" onClose={onClose}>x</DetailPane>);
+    const event = new KeyboardEvent("keydown", { key: "Escape", cancelable: true });
+    event.preventDefault();
+    window.dispatchEvent(event);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("calls onClose when the close button is clicked", () => {
     const onClose = vi.fn();
     render(<DetailPane open title="Acme" onClose={onClose}>x</DetailPane>);

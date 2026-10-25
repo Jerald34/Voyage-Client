@@ -20,11 +20,13 @@ export default function DetailPane({ open, onClose, title, children, ariaLabel }
   const lastFocused = useRef(null);
   const drag = useRef(null);
 
-  // Esc closes (drawer on mobile; clears selection on desktop)
+  // Esc closes (drawer on mobile; clears selection on desktop). A dialog opened from inside the
+  // pane (the account actions) handles Escape itself and marks it handled, so it must not also
+  // close the pane behind it.
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === "Escape" && !e.defaultPrevented) onClose?.();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
