@@ -7,7 +7,7 @@
  * in a .js file that Vite cannot parse. We mock the icons module here so the suite
  * can run.
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import LoginPage from "../app/login/page.jsx";
@@ -46,17 +46,31 @@ const useAuthState = {
 };
 
 // searchParamsMock lets individual tests set URL params without affecting others
-const searchParamsMock = { step: null, mode: null };
+const searchParamsMock = { step: null, mode: null, invite: null };
+const routerMock = { push: vi.fn(), replace: vi.fn() };
+const fetchApiMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => routerMock,
   useSearchParams: () => ({
     get: (key) => searchParamsMock[key] ?? null,
   }),
 }));
 
+vi.mock("../app/lib/api/index.js", () => ({
+  fetchApi: (...args) => fetchApiMock(...args),
+  requestEmailVerification: vi.fn(),
+}));
+
+function authError(status) {
+  const error = new Error("Authentication required.");
+  error.status = status;
+  return error;
+}
+
 vi.mock("../app/hooks/useAuth", () => ({
   useAuth: () => useAuthState,
+  setPendingInviteToken: vi.fn(),
 }));
 
 // --- setup -----------------------------------------------------------
@@ -66,6 +80,9 @@ beforeEach(() => {
   window.localStorage.clear();
   searchParamsMock.step = null;
   searchParamsMock.mode = null;
+  searchParamsMock.invite = null;
+  // Default: not signed in.
+  fetchApiMock.mockRejectedValue(authError(401));
   useAuthState.error = null;
   useAuthState.loading = false;
   useAuthState.register.mockResolvedValue({ id: "user-1" });
@@ -75,7 +92,7 @@ beforeEach(() => {
 // --- tests -----------------------------------------------------------
 
 describe("login page — stale-cache PENDING guard (Bug B fix)", () => {
-  it("(c) a stale PENDING localStorage entry does NOT force wizard mode without ?step=type", () => {
+  it("(c) a stale PENDING localStorage entry does NOT force wizard mode without ?step=type", async () => {
     // Simulate a user who abandoned a previous signup — stale PENDING left in storage
     window.localStorage.setItem(
       "voyage-user",
@@ -86,8 +103,8 @@ describe("login page — stale-cache PENDING guard (Bug B fix)", () => {
 
     render(<LoginPage />);
 
-    // The login form must be shown, not the wizard
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    // The login form must be shown (once /auth/me says the session is gone), not the wizard
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
     // Mode toggle must be visible (isAuthenticated=false)
     expect(screen.getByRole("button", { name: "Create account" })).toBeInTheDocument();
     // Must NOT be in the type-picker wizard
@@ -133,5 +150,61 @@ describe("login page — stale-cache PENDING guard (Bug B fix)", () => {
     // Falls back to the default login form
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.queryByText("One quick choice")).not.toBeInTheDocument();
+  });
+});
+
+describe("login page — already signed in", () => {
+  it("sends a signed-in user into the app instead of showing sign-in", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1", accountType: "PERSONAL" }));
+    fetchApiMock.mockResolvedValue({ user: { id: "user-1", accountType: "PERSONAL" } });
+
+    render(<LoginPage />);
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/?authenticated=1"));
+    expect(screen.queryByRole("button", { name: "Sign in" })).not.toBeInTheDocument();
+  });
+
+  it("drops a stale stored user and shows sign-in when the session is gone", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+
+    render(<LoginPage />);
+
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(window.localStorage.getItem("voyage-user")).toBeNull();
+    expect(routerMock.replace).not.toHaveBeenCalled();
+  });
+
+  it("does not redirect wizard steps or invitation links", () => {
+    fetchApiMock.mockResolvedValue({ user: { id: "user-1" } });
+
+    searchParamsMock.step = "type";
+    const { unmount } = render(<LoginPage />);
+    unmount();
+    searchParamsMock.step = null;
+    searchParamsMock.invite = "invite-token";
+    render(<LoginPage />);
+
+    expect(fetchApiMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("login form — field messages", () => {
+  it("shows field messages for empty fields instead of calling the server", async () => {
+    render(<LoginPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in to Voyage" }));
+
+    expect(screen.getByText("Enter your email address")).toBeInTheDocument();
+    expect(screen.getByText("Enter your password")).toBeInTheDocument();
+    expect(useAuthState.login).not.toHaveBeenCalled();
+  });
+
+  it("rewords the server's schema rejection", async () => {
+    useAuthState.error = { code: "VALIDATION_ERROR", message: "Request validation failed." };
+
+    render(<LoginPage />);
+
+    expect(await screen.findByText("Check your email and password, then try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Request validation failed.")).not.toBeInTheDocument();
   });
 });

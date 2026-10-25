@@ -465,3 +465,44 @@ describe("agency review screen refresh", () => {
     await waitFor(() => expect(mockState.routerPush).toHaveBeenCalledWith("/login?step=agency"));
   });
 });
+
+describe("plain `/` visit — signed-in users skip the landing page", () => {
+  beforeEach(() => {
+    mockState.prototypeState = landingPrototypeState();
+  });
+
+  it("opens the app when /auth/me confirms a session", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    mockState.fetchApi.mockResolvedValueOnce({
+      user: { id: "user-1", accountType: "PERSONAL", memberships: [] },
+    });
+
+    render(<Page />);
+
+    // Waits on the check instead of flashing the landing page.
+    expect(screen.queryByTestId("landing-page")).not.toBeInTheDocument();
+    expect(mockState.fetchApi).toHaveBeenCalledWith("/auth/me");
+    await waitFor(() => {
+      expect(mockState.setActiveScreen).toHaveBeenCalledWith("trip-brief");
+    });
+  });
+
+  it("shows the landing page and drops the stale stored user on 401", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    const authError = new Error("Authentication required.");
+    authError.status = 401;
+    mockState.fetchApi.mockRejectedValueOnce(authError);
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("landing-page")).toBeInTheDocument();
+    expect(window.localStorage.getItem("voyage-user")).toBeNull();
+    expect(mockState.routerPush).not.toHaveBeenCalled();
+  });
+
+  it("shows the landing page right away for visitors with no stored user", () => {
+    render(<Page />);
+
+    expect(screen.getByTestId("landing-page")).toBeInTheDocument();
+  });
+});

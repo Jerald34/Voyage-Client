@@ -27,6 +27,9 @@ function HomePageInner() {
   // notice; other team links open Agency -> Team for managers and Settings -> Team for everyone else.
   const { initialTab, showJoinedNotice, settingsSection } = resolveInitialView(searchParams);
   const [shouldBypassLanding, setShouldBypassLanding] = useState(false);
+  // A plain visit to `/` from someone who looks signed in (a stored user) waits
+  // on /auth/me before showing the landing page, so it doesn't flash first.
+  const [checkingSession, setCheckingSession] = useState(false);
   const [user, setUser] = useState(null);
   const [agencyStatus, setAgencyStatus] = useState(null); // null | { status, name, rejectionReason, suspensionReason }
   const {
@@ -141,6 +144,30 @@ function HomePageInner() {
     return () => { cancelled = true; };
   }, [authenticatedParam, applyAuthUser, handleSessionEnded]);
 
+  // Signed-in visitors on a plain `/` go into the app, not the landing page.
+  // Any failure leaves them on the landing page; a 401 also drops the stale
+  // stored user so the next visit doesn't wait on the check.
+  useEffect(() => {
+    if (authenticatedParam === "1") return;
+
+    let cancelled = false;
+    if (localStorage.getItem("voyage-user")) setCheckingSession(true);
+    fetchApi("/auth/me")
+      .then((data) => {
+        if (cancelled || !data?.user) return;
+        applyAuthUser(data.user);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (error?.status === 401) localStorage.removeItem("voyage-user");
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingSession(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [authenticatedParam, applyAuthUser]);
+
   useEffect(() => {
     if (shouldBypassLanding && activeScreen === "landing") {
       setActiveScreen("trip-brief");
@@ -187,6 +214,7 @@ function HomePageInner() {
   }
 
   if (currentScreen === "welcome") {
+    if (checkingSession || shouldBypassLanding) return <main className="min-h-screen" aria-busy="true" />;
     return <LandingPage onLogin={() => router.push("/login")} onStartPlanning={() => router.push("/login?mode=register")} />;
   }
 

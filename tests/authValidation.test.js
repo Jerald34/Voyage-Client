@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   sanitizeBusinessPhoneInput,
   validateBusinessPhone,
+  validateLoginFields,
+  getLoginErrorMessage,
 } from "../app/components/auth/authValidation.js";
 
 describe("sanitizeBusinessPhoneInput", () => {
@@ -56,5 +58,34 @@ describe("validateBusinessPhone", () => {
 
   it("accepts a 10-digit local number", () => {
     expect(validateBusinessPhone("1234567890")).toBeNull();
+  });
+});
+
+describe("validateLoginFields", () => {
+  it("asks for both fields when empty", () => {
+    expect(validateLoginFields("", "")).toEqual({
+      email: "Enter your email address",
+      password: "Enter your password",
+    });
+  });
+
+  it("flags a malformed email", () => {
+    expect(validateLoginFields("not-an-email", "secret")).toEqual({ email: "Enter a valid email address" });
+  });
+
+  it("passes valid input", () => {
+    expect(validateLoginFields(" voyager@example.com ", "secret")).toEqual({});
+  });
+});
+
+describe("getLoginErrorMessage", () => {
+  it("rewords VALIDATION_ERROR", () => {
+    expect(getLoginErrorMessage({ code: "VALIDATION_ERROR", message: "Request validation failed." }))
+      .toBe("Check your email and password, then try again.");
+  });
+
+  it("keeps the server message for other errors", () => {
+    expect(getLoginErrorMessage({ code: "INVALID_CREDENTIALS", message: "Email or password is incorrect." }))
+      .toBe("Email or password is incorrect.");
   });
 });
