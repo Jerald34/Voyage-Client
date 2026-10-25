@@ -2,8 +2,8 @@
 
 import VoyageLogo from "../brand/VoyageLogo";
 import WeatherIcon from "../weather/WeatherIcon.jsx";
-import { ArrowRightIcon, CalendarIcon, ChatIcon, LockIcon, MapIcon, MapPinIcon, ShareIcon, StarIcon } from "../icons/index.js";
-import { AUDIENCES, FAQS, FEATURES, FINAL_CTA, LANDING_NAV, STEPS } from "./landingContent.js";
+import { ArrowRightIcon, CalendarIcon, CarIcon, ChatIcon, GlobeIcon, LockIcon, MapIcon, MapPinIcon, ShareIcon, SparkleIcon, StarIcon } from "../icons/index.js";
+import { AUDIENCES, BUILT_ON, FAQS, FEATURES, FINAL_CTA, LANDING_NAV, STEPS } from "./landingContent.js";
 import { FOCUS, FOCUS_INSET, LANDING_SECTION, PRIMARY_BUTTON } from "./landingClasses.js";
 import { Reveal, RevealGroup, RevealItem } from "./landingMotion.jsx";
 
@@ -17,6 +17,16 @@ const FEATURE_ICONS = {
   lock: <LockIcon width={18} height={18} />,
   star: <StarIcon width={18} height={18} />,
   calendar: <CalendarIcon width={18} height={18} />,
+};
+
+const SERVICE_ICONS = {
+  gemini: <SparkleIcon width={18} height={18} />,
+  places: <MapPinIcon width={18} height={18} />,
+  routes: <CarIcon width={18} height={18} />,
+  maps: <MapIcon width={18} height={18} />,
+  signin: <LockIcon width={18} height={18} />,
+  weather: <WeatherIcon condition="RAIN" size={18} />,
+  globe: <GlobeIcon width={18} height={18} />,
 };
 
 // The closing band sits on bg-sidebar, where the shared terracotta ring is only 2.3:1 in light mode. White is 12:1 there
@@ -46,6 +56,45 @@ export function WhatItDoes() {
           </RevealItem>
         ))}
       </RevealGroup>
+    </section>
+  );
+}
+
+/** What Voyage is built on, service by service, in terms of what each gives the user (see BUILT_ON). */
+export function BuiltOn() {
+  return (
+    <section id="built-on" aria-labelledby="built-on-title" className={LANDING_SECTION}>
+      <Reveal>
+        <h2 id="built-on-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
+          {BUILT_ON.title}
+        </h2>
+        <p className="m-0 mt-2 max-w-[60ch] text-base leading-relaxed text-text-muted">{BUILT_ON.body}</p>
+      </Reveal>
+      {BUILT_ON.groups.map((group) => (
+        <div key={group.label} className="mt-6">
+          <h3 className="m-0 font-sans text-[13px] font-semibold text-secondary-strong">{group.label}</h3>
+          {/* One grid for both groups, so the two open-data tiles line up under the Google ones. */}
+          <RevealGroup
+            as="ul"
+            gap={0.07}
+            role="list"
+            aria-label={group.label}
+            className="m-0 mt-3 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-5"
+          >
+            {group.services.map((service) => (
+              // Laid out like the feature cards above: five across leaves too little room for an icon beside the text.
+              <RevealItem as="li" key={service.name} className="rounded-xl border border-border/15 bg-surface p-5">
+                <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary/10 text-secondary-strong">
+                  {SERVICE_ICONS[service.icon]}
+                </span>
+                <p className="m-0 mt-3 text-[15px] font-semibold text-text-primary">{service.name}</p>
+                <p className="m-0 mt-1 text-sm leading-relaxed text-text-muted">{service.body}</p>
+              </RevealItem>
+            ))}
+          </RevealGroup>
+        </div>
+      ))}
+      <p className="m-0 mt-4 text-[12px] text-text-muted">{BUILT_ON.trademarks}</p>
     </section>
   );
 }

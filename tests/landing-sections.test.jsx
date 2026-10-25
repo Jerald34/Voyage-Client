@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 
 vi.mock("../app/components/icons/index.js", async () => (await import("./helpers/iconsMock.js")).default);
 
-import { Faq, FinalCta, ForAgencies, HowItWorks, LandingFooter, WhatItDoes } from "../app/components/landing/LandingSections.jsx";
+import { BuiltOn, Faq, FinalCta, ForAgencies, HowItWorks, LandingFooter, WhatItDoes } from "../app/components/landing/LandingSections.jsx";
 
 describe("landing lower sections", () => {
   it("anchors each section the nav links to, with sans h2s", () => {
@@ -38,6 +38,25 @@ describe("landing lower sections", () => {
     expect(within(screen.getByRole("list", { name: "Steps" })).getAllByRole("listitem")).toHaveLength(4);
     expect(screen.getByRole("heading", { name: "For agency owners" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "For agents" })).toBeInTheDocument();
+  });
+
+  it("lists the Google services and open data Voyage is built on, by what each gives the user", () => {
+    render(<BuiltOn />);
+
+    const section = screen.getByRole("region", { name: "Built on services you already trust" });
+    const names = (label) =>
+      within(within(section).getByRole("list", { name: label }))
+        .getAllByRole("listitem")
+        .map((item) => item.querySelector("p").textContent);
+    expect(names("From Google")).toEqual(["Gemini", "Google Places", "Google Routes", "Google Maps", "Google Sign-In"]);
+    expect(names("Open data")).toEqual(["Open-Meteo", "OpenStreetMap"]);
+    expect(within(section).getByText(/trademarks of Google LLC/)).toBeInTheDocument();
+  });
+
+  it("keeps the recipe off the page: no model versions or back-office services", () => {
+    const { container } = render(<BuiltOn />);
+
+    expect(container.textContent).not.toMatch(/gemini-\d|flash|vertex|cloudinary|resend|serper|prompt/i);
   });
 
   it("puts each answer behind its question in a native disclosure", () => {

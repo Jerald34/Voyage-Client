@@ -45,7 +45,7 @@ describe("landing page", () => {
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const ids = [...container.querySelectorAll("main section[id]")].map((s) => s.id);
-    expect(ids).toEqual(["sample-trip", "after-the-plan", "what-it-does", "how-it-works", "for-agencies", "pricing", "faq"]);
+    expect(ids).toEqual(["sample-trip", "after-the-plan", "what-it-does", "built-on", "how-it-works", "for-agencies", "pricing", "faq"]);
   });
 
   it("shows the real sample trip in the hero and the annotated section", () => {
