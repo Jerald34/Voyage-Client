@@ -22,6 +22,32 @@ export async function fetchAccountDetail(userId) {
   return fetchApi(`/admin/users/${userId}`);
 }
 
+function postAccountAction(userId, action, body) {
+  return fetchApi(`/admin/users/${userId}/${action}`, { method: "POST", body: JSON.stringify(body) });
+}
+
+const withReason = (reason) => (reason && reason.trim() ? { reason: reason.trim() } : {});
+
+export async function adminDisableUser(userId, reason) {
+  return postAccountAction(userId, "disable", withReason(reason));
+}
+
+export async function adminEnableUser(userId, reason) {
+  return postAccountAction(userId, "enable", withReason(reason));
+}
+
+export async function adminSignOutUser(userId, reason) {
+  return postAccountAction(userId, "sign-out", withReason(reason));
+}
+
+export async function adminDeleteUser(userId, { confirmEmail, reason, newOwnerUserId } = {}) {
+  return postAccountAction(userId, "delete", {
+    confirmEmail,
+    ...withReason(reason),
+    ...(newOwnerUserId ? { newOwnerUserId } : {}),
+  });
+}
+
 export async function fetchPendingCount() {
   return fetchApi("/admin/agencies/pending-count");
 }

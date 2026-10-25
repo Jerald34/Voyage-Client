@@ -27,6 +27,8 @@ export function createApiError(response, data, fallbackMessage, fallbackCode = "
   error.code = data.error?.code || fallbackCode;
   error.status = response.status;
   error.issues = data.error?.issues || [];
+  // Extra fields some errors carry (e.g. which agency blocked a delete, when an agent pause ends).
+  error.details = data.error || {};
 
   if (response.status === 429) {
     const retryAfter = Number.parseInt(response.headers.get("retry-after") ?? "", 10);
