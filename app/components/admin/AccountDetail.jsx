@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchAccountDetail } from "../../lib/api/index.js";
 import AgencyStatusPill from "./AgencyStatusPill.jsx";
 import AccountActionDialog from "./AccountActionDialog.jsx";
@@ -38,14 +38,18 @@ export default function AccountDetail({ userId, onChanged, onDeleted }) {
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Which dialog is showing. The page keys this panel by account, so a different account is a fresh
+  // panel and never inherits an open dialog.
   const [dialog, setDialog] = useState(null); // "disable" | "enable" | "sign-out" | "delete" | null
+  // The account the panel is showing right now, so a late reload for an earlier one is dropped.
+  const currentUserId = useRef(userId);
 
   useEffect(() => {
     let cancelled = false;
+    currentUserId.current = userId;
     setLoading(true);
     setError(null);
     setAccount(null);
-    setDialog(null);
     (async () => {
       try {
         const data = await fetchAccountDetail(userId);
@@ -58,7 +62,21 @@ export default function AccountDetail({ userId, onChanged, onDeleted }) {
     })();
     return () => {
       cancelled = true;
+      currentUserId.current = null;
     };
+  }, [userId]);
+
+  // A dialog found out the account changed since it loaded (new owner, already deleted...). Load it
+  // again quietly, without the loading screen, so the open dialog redraws from fresh facts and keeps
+  // its message. If the reload fails the dialog simply keeps what it had.
+  const reloadAccount = useCallback(async () => {
+    const id = userId;
+    try {
+      const data = await fetchAccountDetail(id);
+      if (data?.user && currentUserId.current === id) setAccount(data.user);
+    } catch {
+      // The error the dialog is already showing is the useful one.
+    }
   }, [userId]);
 
   if (loading) {
@@ -87,7 +105,7 @@ export default function AccountDetail({ userId, onChanged, onDeleted }) {
   // since only super admins reach this page) and for an account that is already deleted.
   const canAct = account.role !== "SUPER_ADMIN" && account.status !== "DELETED";
 
-  // Neither dialog resets itself after a success, so closing it here is what unmounts it.
+  // A dialog never closes itself after a success: the parent hides it, and the dialog clears its form when it hides.
   const handleDone = (updated) => {
     setDialog(null);
     if (updated) setAccount(updated);
@@ -193,6 +211,7 @@ export default function AccountDetail({ userId, onChanged, onDeleted }) {
         account={account}
         onClose={() => setDialog(null)}
         onDone={handleDone}
+        onStale={reloadAccount}
       />
       <DeleteAccountDialog
         open={dialog === "delete"}
@@ -202,6 +221,7 @@ export default function AccountDetail({ userId, onChanged, onDeleted }) {
           setDialog(null);
           onDeleted?.();
         }}
+        onStale={reloadAccount}
         // "Disable instead" means nothing for an account that is already disabled.
         onDisableInstead={account.status === "DISABLED" ? undefined : () => setDialog("disable")}
       />

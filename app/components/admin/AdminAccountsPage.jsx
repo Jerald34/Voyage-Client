@@ -44,6 +44,10 @@ export default function AdminAccountsPage() {
   const [sortField, setSortField] = useState("joined");
   const [sortDir, setSortDir] = useState("desc");
   const [selectedAccountId, setSelectedAccountId] = useState(null);
+  // "Ana was deleted." The panel closes and the row leaves the list, so without this a screen reader
+  // user gets no word that the delete went through. It outranks the list count until the admin
+  // moves on (selects, filters or searches).
+  const [deletedNotice, setDeletedNotice] = useState("");
 
   // One load for everyone; the type filter, search and sort all happen here on the client.
   useEffect(() => {
@@ -138,6 +142,13 @@ export default function AdminAccountsPage() {
   if (!loading && !error) {
     announcement = sorted.length === 0 ? emptyMessage : `Showing ${sorted.length} of ${ofType.length} accounts`;
   }
+  // The list reloads right after a delete, which would replace the notice with a new count before it is read out.
+  if (deletedNotice) announcement = deletedNotice;
+
+  const selectAccount = (id) => {
+    setDeletedNotice("");
+    setSelectedAccountId(id);
+  };
 
   const list = (
     <>
@@ -170,7 +181,7 @@ export default function AdminAccountsPage() {
           sortDir={sortDir}
           onSort={handleSort}
           selectedAccountId={selectedAccountId}
-          onRowClick={setSelectedAccountId}
+          onRowClick={selectAccount}
         />
       )}
     </>
@@ -193,7 +204,10 @@ export default function AdminAccountsPage() {
             aria-label="Search accounts"
             placeholder="Search accounts…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setDeletedNotice("");
+              setSearchQuery(e.target.value);
+            }}
             className="w-full rounded-pill border border-border/12 bg-surface-elevated py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder:text-text-soft focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10 sm:w-64"
           />
         </div>
@@ -203,7 +217,10 @@ export default function AdminAccountsPage() {
             size="sm"
             ariaLabel="Filter by account type"
             value={typeFilter}
-            onChange={setTypeFilter}
+            onChange={(value) => {
+              setDeletedNotice("");
+              setTypeFilter(value);
+            }}
             options={typeOptions}
           />
         </div>
@@ -218,6 +235,8 @@ export default function AdminAccountsPage() {
               userId={selectedAccountId}
               onChanged={refreshQuietly}
               onDeleted={() => {
+                const name = selected ? displayName(selected) : "";
+                setDeletedNotice(name ? `${name} was deleted.` : "The account was deleted.");
                 setSelectedAccountId(null);
                 refreshQuietly();
               }}
@@ -227,7 +246,7 @@ export default function AdminAccountsPage() {
         detailTitle={selected ? displayName(selected) : "Account"}
         ariaLabel="Account details"
         open={!!selectedAccountId}
-        onClose={() => setSelectedAccountId(null)}
+        onClose={() => selectAccount(null)}
         emptyState={
           <EmptyState
             icon={<UserIcon width={28} height={28} />}

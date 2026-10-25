@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../app/lib/api/index.js", () => ({
@@ -10,9 +10,12 @@ vi.mock("../app/lib/api/index.js", () => ({
 }));
 // The dialogs have their own tests; here they are stubs that expose the callbacks the panel wires up.
 vi.mock("../app/components/admin/AccountActionDialog.jsx", () => ({
-  default: ({ open, action, onDone }) =>
+  default: ({ open, action, onDone, onStale }) =>
     open ? (
       <div role="dialog" aria-label={`action ${action}`}>
+        <button type="button" onClick={onStale}>
+          stub action stale
+        </button>
         <button
           type="button"
           onClick={() =>
@@ -36,9 +39,12 @@ vi.mock("../app/components/admin/AccountActionDialog.jsx", () => ({
     ) : null,
 }));
 vi.mock("../app/components/admin/DeleteAccountDialog.jsx", () => ({
-  default: ({ open, onDeleted, onDisableInstead }) =>
+  default: ({ open, onDeleted, onDisableInstead, onStale }) =>
     open ? (
       <div role="dialog" aria-label="delete">
+        <button type="button" onClick={onStale}>
+          stub stale
+        </button>
         <button type="button" onClick={onDeleted}>
           stub finish delete
         </button>
@@ -338,6 +344,72 @@ describe("AccountDetail", () => {
       fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
       expect(screen.getByRole("dialog", { name: "delete" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "stub disable instead" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when a dialog finds the account has changed", () => {
+    it("loads the account again without the loading screen, and keeps the dialog open", async () => {
+      await renderDetail();
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      fetchAccountDetail.mockResolvedValue({ user: detail({ status: "DELETED" }) });
+
+      fireEvent.click(screen.getByRole("button", { name: "stub stale" }));
+
+      expect(screen.queryByText("Loading account details…")).not.toBeInTheDocument();
+      // The status pill and the hidden actions come from the fresh copy.
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Sign out everywhere" })).not.toBeInTheDocument());
+      expect(screen.getByText("Deleted")).toBeInTheDocument();
+      expect(screen.getByRole("dialog", { name: "delete" })).toBeInTheDocument();
+      expect(fetchAccountDetail).toHaveBeenCalledTimes(2);
+      expect(fetchAccountDetail).toHaveBeenLastCalledWith("u2");
+    });
+
+    it("does the same for the disable, enable and sign out dialogs", async () => {
+      await renderDetail();
+      fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+      fetchAccountDetail.mockResolvedValue({ user: detail({ status: "DELETED" }) });
+
+      fireEvent.click(screen.getByRole("button", { name: "stub action stale" }));
+
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Sign out everywhere" })).not.toBeInTheDocument());
+      expect(screen.getByRole("dialog", { name: "action disable" })).toBeInTheDocument();
+    });
+
+    it("keeps what is on screen when the reload fails", async () => {
+      await renderDetail();
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      fetchAccountDetail.mockRejectedValue(new Error("offline"));
+
+      fireEvent.click(screen.getByRole("button", { name: "stub stale" }));
+
+      await waitFor(() => expect(fetchAccountDetail).toHaveBeenCalledTimes(2));
+      expect(screen.getByRole("dialog", { name: "delete" })).toBeInTheDocument();
+      expect(valueOf("Email")).toHaveTextContent("ana@alpha.com");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("drops a reload that lands after the panel moved on to another account", async () => {
+      fetchAccountDetail.mockResolvedValue({ user: detail() });
+      const { rerender } = render(<AccountDetail userId="u2" />);
+      await screen.findByText("Email");
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      let resolveReload;
+      fetchAccountDetail.mockImplementation((id) =>
+        id === "u2"
+          ? new Promise((r) => (resolveReload = r))
+          : Promise.resolve({ user: detail({ id: "u3", email: "third@example.com" }) })
+      );
+      fireEvent.click(screen.getByRole("button", { name: "stub stale" }));
+
+      // The admin picked someone else before the reload came back.
+      rerender(<AccountDetail userId="u3" />);
+      expect(await screen.findByText("third@example.com")).toBeInTheDocument();
+      await act(async () => {
+        resolveReload({ user: detail({ id: "u2", email: "late@example.com" }) });
+      });
+
+      expect(screen.getByText("third@example.com")).toBeInTheDocument();
+      expect(screen.queryByText("late@example.com")).not.toBeInTheDocument();
     });
   });
 

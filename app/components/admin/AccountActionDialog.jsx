@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { adminDisableUser, adminEnableUser, adminSignOutUser } from "../../lib/api/index.js";
 import { Button, Modal } from "../ui/index.js";
 import { displayName } from "./accountLabels.js";
@@ -30,30 +30,39 @@ export const ACCOUNT_ACTIONS = {
   },
 };
 
+// Plain words for the errors an admin can actually hit; anything else shows the server's own message.
+const ERROR_COPY = {
+  ACCOUNT_DELETED: "This account has been deleted, so it can't be changed.",
+  CANNOT_ACT_ON_SELF: "You can't do this to your own account.",
+  CANNOT_ACT_ON_SUPER_ADMIN: "Super admin accounts can't be changed here.",
+  VALIDATION_ERROR: "That reason isn't valid. Shorten it and try again.",
+};
+
+// The account no longer matches what is on screen, so the panel behind should load it again.
+const STALE_CODES = new Set(["ACCOUNT_DELETED"]);
+
 const FIELD =
   "w-full resize-y rounded-sm border border-border/20 bg-background p-3 font-sans text-sm text-text-primary placeholder:text-text-soft focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20";
 
-export default function AccountActionDialog({ open, action, account, onClose, onDone }) {
+export default function AccountActionDialog({ open, action, account, onClose, onDone, onStale }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const reasonRef = useRef(null);
   const config = ACCOUNT_ACTIONS[action];
 
-  // A fresh form each time the dialog opens.
+  // A fresh form whenever the dialog opens or closes. The parent hides the dialog after a success
+  // and this component stays mounted, so without this a re-open would still say "Working…".
   useEffect(() => {
-    if (open) {
-      setReason("");
-      setError(null);
-      setBusy(false);
-    }
+    setReason("");
+    setError(null);
+    setBusy(false);
   }, [open, action]);
 
-  // Stable identity: Modal re-runs its focus handling whenever onClose changes.
   // While a request is in flight, Escape / backdrop / Close do nothing.
-  const guardedClose = useCallback(() => {
+  const guardedClose = () => {
     if (!busy) onClose?.();
-  }, [busy, onClose]);
+  };
 
   if (!config || !account) return null;
 
@@ -64,8 +73,9 @@ export default function AccountActionDialog({ open, action, account, onClose, on
       const data = await config.run(account.id, reason);
       onDone?.(data?.user ?? null);
     } catch (e) {
-      setError(e?.message || "That didn't work. Try again.");
+      setError(ERROR_COPY[e?.code] || e?.message || "That didn't work. Try again.");
       setBusy(false);
+      if (STALE_CODES.has(e?.code)) onStale?.();
     }
   };
 

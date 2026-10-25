@@ -377,6 +377,59 @@ describe("AdminAccountsPage", () => {
       expect(statusRegion()).toHaveTextContent("Showing 5 of 5 accounts");
     });
 
+    it("announces who was deleted, and keeps saying so while the list reloads", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByTestId("account-row-u2"));
+      fetchAllAccounts.mockResolvedValue({
+        users: ACCOUNTS.map((a) => (a.id === "u2" ? { ...a, displayName: "Deleted user", status: "DELETED" } : a)),
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "stub deleted" }));
+      expect(statusRegion()).toHaveTextContent("Ana Reyes was deleted.");
+
+      await waitFor(() => expect(fetchAllAccounts).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.queryByTestId("account-row-u2")).not.toBeInTheDocument());
+      expect(statusRegion()).toHaveTextContent("Ana Reyes was deleted.");
+    });
+
+    it("goes back to the count once the admin picks another account, filters or searches", async () => {
+      const deleteAna = async () => {
+        fireEvent.click(screen.getByTestId("account-row-u2"));
+        fireEvent.click(screen.getByRole("button", { name: "stub deleted" }));
+        expect(statusRegion()).toHaveTextContent("was deleted.");
+      };
+
+      await renderLoaded();
+      await deleteAna();
+      fireEvent.click(screen.getByTestId("account-row-u1"));
+      expect(statusRegion()).not.toHaveTextContent("was deleted");
+      expect(statusRegion()).toHaveTextContent(/Showing/);
+
+      fireEvent.click(screen.getByRole("button", { name: "stub deleted" }));
+      expect(statusRegion()).toHaveTextContent("Pia Santos was deleted.");
+      fireEvent.click(screen.getByRole("radio", { name: /Personal/ }));
+      expect(statusRegion()).not.toHaveTextContent("was deleted");
+
+      fireEvent.click(screen.getByTestId("account-row-u1"));
+      fireEvent.click(screen.getByRole("button", { name: "stub deleted" }));
+      expect(statusRegion()).toHaveTextContent("was deleted.");
+      search("lia");
+      expect(statusRegion()).not.toHaveTextContent("was deleted");
+    });
+
+    it("says so plainly if the deleted account is no longer in the list", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByTestId("account-row-u2"));
+      // The list reloaded without the account while its panel was still open.
+      fetchAllAccounts.mockResolvedValue({ users: ACCOUNTS.filter((a) => a.id !== "u2") });
+      fireEvent.click(screen.getByRole("button", { name: "stub changed" }));
+      await waitFor(() => expect(screen.queryByTestId("account-row-u2")).not.toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole("button", { name: "stub deleted" }));
+
+      expect(statusRegion()).toHaveTextContent("The account was deleted.");
+    });
+
     it("is the only live region: neither table footer has aria-live", async () => {
       await renderLoaded();
       expect(document.querySelectorAll("[aria-live]")).toHaveLength(0);

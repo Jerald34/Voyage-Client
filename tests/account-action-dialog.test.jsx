@@ -53,4 +53,63 @@ describe("AccountActionDialog", () => {
     expect(onClose).not.toHaveBeenCalled();
     resolve({ user: account });
   });
+  describe("error copy", () => {
+    const failWith = async (error, onStale) => {
+      adminDisableUser.mockRejectedValue(error);
+      render(<AccountActionDialog open action="disable" account={account} onClose={vi.fn()} onDone={vi.fn()} onStale={onStale} />);
+      fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+      return screen.findByRole("alert");
+    };
+
+    it.each([
+      ["ACCOUNT_DELETED", /already been deleted|has been deleted/i],
+      ["CANNOT_ACT_ON_SELF", /your own account/i],
+      ["CANNOT_ACT_ON_SUPER_ADMIN", /super admin/i],
+      ["VALIDATION_ERROR", /reason/i],
+    ])("turns %s into plain words, not the server's wording", async (code, words) => {
+      const alert = await failWith(Object.assign(new Error("Request validation failed."), { code, status: 409 }));
+      expect(alert).toHaveTextContent(words);
+      expect(alert).not.toHaveTextContent("Request validation failed.");
+    });
+
+    it("shows the server's own message for a code it has no copy for", async () => {
+      const alert = await failWith(Object.assign(new Error("Too many requests. Please try again in 30 seconds."), { code: "RATE_LIMITED" }));
+      expect(alert).toHaveTextContent("Too many requests. Please try again in 30 seconds.");
+    });
+
+    it("falls back to a generic line when the error carries nothing", async () => {
+      const alert = await failWith({});
+      expect(alert).toHaveTextContent("That didn't work. Try again.");
+    });
+
+    it("asks the parent to load the account again when it turns out to be deleted already", async () => {
+      const onStale = vi.fn();
+      await failWith(Object.assign(new Error("raw"), { code: "ACCOUNT_DELETED", status: 409 }), onStale);
+      expect(onStale).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not for an error that says nothing about the account's state", async () => {
+      const onStale = vi.fn();
+      await failWith(Object.assign(new Error("raw"), { code: "VALIDATION_ERROR", status: 400 }), onStale);
+      expect(onStale).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("re-opening", () => {
+    it("starts clean after a success and a close, never stuck on Working…", async () => {
+      adminDisableUser.mockResolvedValue({ user: account });
+      const props = { action: "disable", account, onClose: vi.fn(), onDone: vi.fn() };
+      const { rerender } = render(<AccountActionDialog {...props} open />);
+      fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: "Left" } });
+      fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+      await waitFor(() => expect(props.onDone).toHaveBeenCalled());
+
+      rerender(<AccountActionDialog {...props} open={false} />);
+      rerender(<AccountActionDialog {...props} open />);
+
+      expect(screen.queryByText("Working…")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Disable" })).toBeEnabled();
+      expect(screen.getByLabelText(/reason/i)).toHaveValue("");
+    });
+  });
 });
