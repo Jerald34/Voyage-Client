@@ -10,6 +10,7 @@ export default function StopNumberBadge({ dayNumber, stopNumber, className = "" 
 
   return (
     <span
+      data-stop-badge=""
       className={`inline-flex h-6 min-w-6 flex-shrink-0 items-center justify-center rounded-full px-1.5 text-[0.72rem] font-bold leading-none tabular-nums ${
         color ? "text-white" : "border border-border/30 bg-surface-elevated text-text-primary"
       } ${className}`}
