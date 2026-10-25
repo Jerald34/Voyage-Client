@@ -48,15 +48,15 @@ describe("landing lower sections", () => {
       within(within(section).getByRole("list", { name: label }))
         .getAllByRole("listitem")
         .map((item) => item.querySelector("p").textContent);
-    expect(names("From Google")).toEqual(["Gemini", "Google Places", "Google Routes", "Google Maps", "Google Sign-In"]);
+    expect(names("From Google")).toEqual(["Google Places", "Google Routes", "Google Maps", "Google Sign-In"]);
     expect(names("Open data")).toEqual(["Open-Meteo", "OpenStreetMap"]);
     expect(within(section).getByText(/trademarks of Google LLC/)).toBeInTheDocument();
   });
 
-  it("keeps the recipe off the page: no model versions or back-office services", () => {
+  it("keeps the recipe off the page: no AI model or back-office services", () => {
     const { container } = render(<BuiltOn />);
 
-    expect(container.textContent).not.toMatch(/gemini-\d|flash|vertex|cloudinary|resend|serper|prompt/i);
+    expect(container.textContent).not.toMatch(/gemini|flash|vertex|cloudinary|resend|serper|prompt/i);
   });
 
   it("puts each answer behind its question in a native disclosure", () => {

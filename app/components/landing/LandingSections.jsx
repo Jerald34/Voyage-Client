@@ -2,7 +2,7 @@
 
 import VoyageLogo from "../brand/VoyageLogo";
 import WeatherIcon from "../weather/WeatherIcon.jsx";
-import { ArrowRightIcon, CalendarIcon, CarIcon, ChatIcon, GlobeIcon, LockIcon, MapIcon, MapPinIcon, ShareIcon, SparkleIcon, StarIcon } from "../icons/index.js";
+import { ArrowRightIcon, CalendarIcon, CarIcon, ChatIcon, GlobeIcon, LockIcon, MapIcon, MapPinIcon, ShareIcon, StarIcon } from "../icons/index.js";
 import { AUDIENCES, BUILT_ON, FAQS, FEATURES, FINAL_CTA, LANDING_NAV, STEPS } from "./landingContent.js";
 import { FOCUS, FOCUS_INSET, LANDING_SECTION, PRIMARY_BUTTON } from "./landingClasses.js";
 import { Reveal, RevealGroup, RevealItem } from "./landingMotion.jsx";
@@ -20,7 +20,6 @@ const FEATURE_ICONS = {
 };
 
 const SERVICE_ICONS = {
-  gemini: <SparkleIcon width={18} height={18} />,
   places: <MapPinIcon width={18} height={18} />,
   routes: <CarIcon width={18} height={18} />,
   maps: <MapIcon width={18} height={18} />,
@@ -79,10 +78,10 @@ export function BuiltOn() {
             gap={0.07}
             role="list"
             aria-label={group.label}
-            className="m-0 mt-3 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-5"
+            className="m-0 mt-3 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4"
           >
             {group.services.map((service) => (
-              // Laid out like the feature cards above: five across leaves too little room for an icon beside the text.
+              // Laid out like the feature cards above (icon over text), four across like them.
               <RevealItem as="li" key={service.name} className="rounded-xl border border-border/15 bg-surface p-5">
                 <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary/10 text-secondary-strong">
                   {SERVICE_ICONS[service.icon]}

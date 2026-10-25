@@ -81,7 +81,7 @@ export const FEATURES = [
 
 /**
  * The services behind Voyage, by what each gives the agency or traveller. Deliberately not how they're wired together:
- * no model versions, prompts, tools, fallbacks or back-office services (images, email, web search), so the page shows
+ * no AI model (not even its name), prompts, tools, fallbacks or back-office services (images, email, web search), so the page shows
  * what Voyage stands on without handing over the recipe. `icon` names a key in LandingSections' SERVICE_ICONS map.
  */
 export const BUILT_ON = {
@@ -91,7 +91,6 @@ export const BUILT_ON = {
     {
       label: "From Google",
       services: [
-        { icon: "gemini", name: "Gemini", body: "Plans the trip from your chat." },
         { icon: "places", name: "Google Places", body: "Real places with photos and ratings. Closed ones get flagged." },
         { icon: "routes", name: "Google Routes", body: "Travel times between stops." },
         { icon: "maps", name: "Google Maps", body: "The live map in every trip." },
@@ -106,7 +105,7 @@ export const BUILT_ON = {
       ],
     },
   ],
-  trademarks: "Google, Gemini, Google Maps and Google Sign-In are trademarks of Google LLC.",
+  trademarks: "Google, Google Maps and Google Sign-In are trademarks of Google LLC.",
 };
 
 export const STEPS = [
