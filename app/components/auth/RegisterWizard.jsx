@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth, LOGOUT_FAILED_MESSAGE } from "../../hooks/useAuth";
 import { requestEmailVerification } from "../../lib/api/index.js";
 import {
   agencyLocationOptions,
@@ -62,6 +62,7 @@ export default function RegisterWizard({
 
   // Step "type" error
   const [typeStepError, setTypeStepError] = useState(null);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   // Step 2 fields
   const [agencyName, setAgencyName] = useState("");
@@ -198,12 +199,24 @@ export default function RegisterWizard({
 
   // Signed-in users finishing signup (?step=type / ?step=agency) can't reach the
   // sign-in form any more (it sends them back here), so this is their way out.
+  const handleSignOut = async () => {
+    setSignOutFailed(false);
+    if (await auth.logout()) return;
+    // Shown here only, not in the agency form's error box.
+    auth.setError(null);
+    setSignOutFailed(true);
+  };
   const signOutPrompt = isAuthenticated && (
     <p className="text-center mt-6 text-text-muted text-[0.92rem]">
+      {signOutFailed && (
+        <span role="alert" className="block mb-2 text-status-danger font-semibold">
+          {LOGOUT_FAILED_MESSAGE}
+        </span>
+      )}
       Wrong account?{" "}
       <button
         type="button"
-        onClick={auth.logout}
+        onClick={handleSignOut}
         disabled={auth.loading}
         className="bg-none border-none text-secondary font-extrabold text-[0.92rem] cursor-pointer hover:text-text-primary hover:underline transition-colors disabled:opacity-55"
       >

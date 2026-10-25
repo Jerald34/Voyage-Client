@@ -71,6 +71,7 @@ function authError(status) {
 vi.mock("../app/hooks/useAuth", () => ({
   useAuth: () => useAuthState,
   setPendingInviteToken: vi.fn(),
+  LOGOUT_FAILED_MESSAGE: "Couldn't sign out. Check your connection and try again.",
 }));
 
 // --- setup -----------------------------------------------------------
@@ -175,6 +176,7 @@ describe("login page — already signed in", () => {
   });
 
   it("does not redirect wizard steps or invitation links", () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
     fetchApiMock.mockResolvedValue({ user: { id: "user-1" } });
 
     searchParamsMock.step = "type";
@@ -210,6 +212,20 @@ describe("login form — field messages", () => {
 });
 
 describe("register wizard — signed-in users can sign out", () => {
+  it("shows an error instead of leaving when sign-out fails", async () => {
+    window.localStorage.setItem(
+      "voyage-user",
+      JSON.stringify({ id: "user-new", accountType: "PENDING", memberships: [] }),
+    );
+    searchParamsMock.step = "type";
+    useAuthState.logout.mockResolvedValueOnce(false);
+
+    render(<LoginPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't sign out");
+  });
+
   it("offers Sign out on the account-type step", async () => {
     window.localStorage.setItem(
       "voyage-user",
@@ -251,5 +267,27 @@ describe("login form — stale alert", () => {
 
     expect(useAuthState.setError).toHaveBeenCalledWith(null);
     expect(document.activeElement?.id).toBe("auth-email");
+  });
+});
+
+describe("login page — no stored user", () => {
+  it("skips the session check entirely and shows the form", async () => {
+    document.documentElement.setAttribute("data-session-check", "");
+
+    render(<LoginPage />);
+
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(fetchApiMock).not.toHaveBeenCalled();
+    expect(document.documentElement.hasAttribute("data-session-check")).toBe(false);
+  });
+
+  it("un-hides the page after a stale session is rejected", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    document.documentElement.setAttribute("data-session-check", "");
+
+    render(<LoginPage />);
+
+    expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(document.documentElement.hasAttribute("data-session-check")).toBe(false);
   });
 });

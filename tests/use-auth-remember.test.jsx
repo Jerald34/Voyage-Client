@@ -61,3 +61,21 @@ describe("oauthStartUrl", () => {
     expect(oauthStartUrl("google")).toMatch(/\/auth\/google\/start$/);
   });
 });
+
+describe("useAuth — logout", () => {
+  it("stays put and reports failure when the server can't confirm the sign-out", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    const netError = new Error("Unable to connect. Please try again.");
+    netError.status = 0;
+    fetchApi.mockRejectedValueOnce(netError);
+    const { result } = renderHook(() => useAuth());
+
+    let ok;
+    await act(async () => { ok = await result.current.logout(); });
+
+    expect(ok).toBe(false);
+    expect(window.localStorage.getItem("voyage-user")).not.toBeNull();
+    expect(result.current.error).toBe(netError);
+    expect(result.current.loading).toBe(false);
+  });
+});

@@ -9,6 +9,7 @@ import { useAuth } from "./hooks/useAuth.js";
 import { fetchApi } from "./lib/api/index.js";
 import { resolveInitialView } from "./lib/deepLinks.js";
 import useAgencyStatusPolling from "./hooks/useAgencyStatusPolling.js";
+import { endSessionCheck, hasStoredUser } from "./lib/sessionCheck.js";
 
 import LandingPage from "./components/landing/LandingPage.jsx";
 import HomePage from "./components/trip-dashboard/HomePage.jsx";
@@ -31,6 +32,12 @@ function HomePageInner() {
   // for the `?authenticated=1` handoff, and for a plain `/` visit from someone who
   // looks signed in (a stored user). It stays up when the answer navigates away.
   const [checkingSession, setCheckingSession] = useState(authenticatedParam === "1");
+  // Done checking and staying on this page: show it, including anything the
+  // pre-paint script hid.
+  const finishSessionCheck = useCallback(() => {
+    setCheckingSession(false);
+    endSessionCheck();
+  }, []);
   const [user, setUser] = useState(null);
   const [agencyStatus, setAgencyStatus] = useState(null); // null | { status, name, rejectionReason, suspensionReason }
   const {
@@ -116,7 +123,7 @@ function HomePageInner() {
     fetchApi("/auth/me")
       .then((data) => {
         if (cancelled) return;
-        if (!applyAuthUser(data.user)) setCheckingSession(false);
+        if (!applyAuthUser(data.user)) finishSessionCheck();
       })
       .catch((error) => {
         if (cancelled) return;
@@ -142,34 +149,35 @@ function HomePageInner() {
             setShouldBypassLanding(true);
           } catch {}
         }
-        setCheckingSession(false);
+        finishSessionCheck();
       });
 
     return () => { cancelled = true; };
-  }, [authenticatedParam, applyAuthUser, handleSessionEnded]);
+  }, [authenticatedParam, applyAuthUser, handleSessionEnded, finishSessionCheck]);
 
   // Signed-in visitors on a plain `/` go into the app, not the landing page.
-  // Any failure leaves them on the landing page (unlike the handoff above, a
-  // stored user is not trusted here); a 401 also drops the stale stored user so
-  // the next visit doesn't wait on the check.
+  // Only someone with a stored user is checked (every sign-in stores one), so
+  // anonymous visitors don't send a request that just 401s. Any failure leaves
+  // them on the landing page (unlike the handoff above, a stored user is not
+  // trusted here); a 401 also drops the stale stored user.
   useEffect(() => {
-    if (authenticatedParam === "1") return;
+    if (authenticatedParam === "1" || !hasStoredUser()) return;
 
     let cancelled = false;
-    if (localStorage.getItem("voyage-user")) setCheckingSession(true);
+    setCheckingSession(true);
     fetchApi("/auth/me")
       .then((data) => {
         if (cancelled) return;
-        if (!data?.user || !applyAuthUser(data.user)) setCheckingSession(false);
+        if (!data?.user || !applyAuthUser(data.user)) finishSessionCheck();
       })
       .catch((error) => {
         if (cancelled) return;
         if (error?.status === 401) localStorage.removeItem("voyage-user");
-        setCheckingSession(false);
+        finishSessionCheck();
       });
 
     return () => { cancelled = true; };
-  }, [authenticatedParam, applyAuthUser]);
+  }, [authenticatedParam, applyAuthUser, finishSessionCheck]);
 
   useEffect(() => {
     if (shouldBypassLanding && activeScreen === "landing") {

@@ -10,6 +10,8 @@ import {
 
 const PENDING_INVITE_KEY = "voyage-pending-invite";
 
+export const LOGOUT_FAILED_MESSAGE = "Couldn't sign out. Check your connection and try again.";
+
 export function setPendingInviteToken(token) {
   if (typeof window === "undefined") return;
   if (token) window.localStorage.setItem(PENDING_INVITE_KEY, token);
@@ -142,15 +144,23 @@ export function useAuth() {
     }
   };
 
+  // Resolves false when the server didn't confirm the sign-out: the session is
+  // still live, so leaving would just land back in the app. Callers show
+  // LOGOUT_FAILED_MESSAGE instead.
   const logout = async () => {
     setLoading(true);
+    setError(null);
     try {
-      await fetchApi("/auth/logout", { method: "POST" }).catch(() => {});
-    } finally {
-      localStorage.removeItem("voyage-user");
+      await fetchApi("/auth/logout", { method: "POST" });
+    } catch (err) {
+      setError(err);
       setLoading(false);
-      window.location.href = "/";
+      return false;
     }
+    localStorage.removeItem("voyage-user");
+    setLoading(false);
+    window.location.href = "/";
+    return true;
   };
 
   const startOAuth = (provider, options) => {

@@ -270,6 +270,12 @@ body {
     linear-gradient(180deg, rgb(17 20 22) 0%, rgb(17 20 22) 48%, rgb(22 25 28) 100%);
 }
 
+/* Set before paint by SESSION_CHECK_SCRIPT (app/lib/sessionCheck.js) while a
+   signed-in visitor's session is checked on `/` or `/login`. */
+html[data-session-check] body {
+  visibility: hidden;
+}
+
 body::before {
   content: "";
   position: fixed;

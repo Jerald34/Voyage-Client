@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { fetchApi } from "../lib/api/index.js";
+import { endSessionCheck, hasStoredUser } from "../lib/sessionCheck.js";
 import LegalModal from "../components/auth/LegalModal.jsx";
 import FloatingOrb from "../components/auth/FloatingOrb.jsx";
 import WizardProgress from "../components/auth/WizardProgress.jsx";
@@ -68,20 +69,25 @@ function AuthShell() {
   }, [searchParams]);
 
   // Already signed in: sign-in and sign-up have nothing to offer, so go into the
-  // app. Skipped for ?step= (signed-in users finishing the wizard) and ?invite=
-  // (an invitation that may be meant for a different account).
+  // app. Skipped for ?step= (signed-in users finishing the wizard), ?invite=
+  // (an invitation that may be meant for a different account), and visitors with
+  // no stored user (every sign-in stores one; this avoids a request that 401s).
   const hasStep = Boolean(searchParams.get("step"));
   const hasInvite = Boolean(searchParams.get("invite"));
   useEffect(() => {
-    if (hasStep || hasInvite) return;
+    if (hasStep || hasInvite || !hasStoredUser()) {
+      endSessionCheck();
+      return;
+    }
 
     let cancelled = false;
-    if (localStorage.getItem("voyage-user")) setCheckingSession(true);
+    setCheckingSession(true);
     fetchApi("/auth/me")
       .then((data) => {
         if (cancelled) return;
         if (!data?.user) {
           setCheckingSession(false);
+          endSessionCheck();
           return;
         }
         localStorage.setItem("voyage-user", JSON.stringify(data.user));
@@ -91,6 +97,7 @@ function AuthShell() {
         if (cancelled) return;
         if (error?.status === 401) localStorage.removeItem("voyage-user");
         setCheckingSession(false);
+        endSessionCheck();
       });
 
     return () => { cancelled = true; };

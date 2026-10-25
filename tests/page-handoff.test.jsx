@@ -500,10 +500,24 @@ describe("plain `/` visit — signed-in users skip the landing page", () => {
     expect(mockState.routerPush).not.toHaveBeenCalled();
   });
 
-  it("shows the landing page right away for visitors with no stored user", () => {
+  it("shows the landing page right away for visitors with no stored user, without calling /auth/me", () => {
     render(<Page />);
 
     expect(screen.getByTestId("landing-page")).toBeInTheDocument();
+    expect(mockState.fetchApi).not.toHaveBeenCalled();
+  });
+
+  it("un-hides the pre-paint check once the landing page is settled", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
+    document.documentElement.setAttribute("data-session-check", "");
+    const authError = new Error("Authentication required.");
+    authError.status = 401;
+    mockState.fetchApi.mockRejectedValueOnce(authError);
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("landing-page")).toBeInTheDocument();
+    expect(document.documentElement.hasAttribute("data-session-check")).toBe(false);
   });
 });
 
@@ -546,6 +560,7 @@ describe("landing page stays hidden while the session decides the route", () => 
   });
 
   it("sends an agency user with no membership to the agency step", async () => {
+    window.localStorage.setItem("voyage-user", JSON.stringify({ id: "user-1" }));
     mockState.fetchApi.mockResolvedValueOnce({
       user: { id: "user-1", accountType: "AGENCY_USER", memberships: [] },
     });
