@@ -33,11 +33,16 @@ const EMPTY_CALENDAR = {
   events: [],
 };
 
+// The id the fixture's to-do row uses; the owner and staff fixtures share the Kyoto comments.
 const PENDING_COMMENT = {
-  id: "comment-1",
+  id: fixtures.ownerBusy.worklist.unreadComments[0].id,
   content: "Can we swap the day 2 lunch spot?",
   status: "PENDING",
   authorName: "Maria",
+  agencyReply: null,
+  dayNumber: null,
+  itemId: null,
+  itemTitle: null,
   createdAt: "2026-09-26T22:00:00.000Z",
 };
 
@@ -51,9 +56,8 @@ function serve(payload) {
     const url = String(path);
     if (isCalendar(url)) return Promise.resolve(EMPTY_CALENDAR);
     if (isDashboard(url)) return Promise.resolve(payload);
-    if (url.includes("/shares?tripId=")) return Promise.resolve({ shares: [{ id: "share-1" }] });
-    if (url.endsWith("/shares/share-1/comments")) return Promise.resolve({ comments: [PENDING_COMMENT] });
-    if (url.endsWith("/comments/comment-1/reply")) return Promise.resolve({ comment: { ...PENDING_COMMENT, status: "ADDRESSED" } });
+    if (url.includes("/dashboard/trips/")) return Promise.resolve({ trip: { id: "t", title: "Kyoto Autumn Escape", status: "IN_REVIEW", clientName: "Maria Santos" }, share: null, comments: [PENDING_COMMENT] });
+    if (url.endsWith(`/comments/${PENDING_COMMENT.id}/reply`)) return Promise.resolve({ comment: { ...PENDING_COMMENT, status: "ADDRESSED" } });
     return new Promise(() => {});
   });
 }
@@ -81,8 +85,7 @@ describe.each(DASHBOARDS)("$name dashboard after a reply from the trip panel", (
 
     const needsYou = screen.getByRole("region", { name: "Needs you today" });
     fireEvent.click(within(needsYou).getAllByRole("button", { name: "Reply" })[0]);
-    const panel = await screen.findByRole("dialog", { name: /^Trip comments:/ });
-    fireEvent.click(await within(panel).findByRole("button", { name: "Reply" }));
+    const panel = await screen.findByRole("dialog", { name: /^Trip:/ });
     fireEvent.change(within(panel).getByPlaceholderText("Write a reply…"), { target: { value: "Yes, we can." } });
 
     const dashboardBefore = dashboardCalls().length;
@@ -102,7 +105,7 @@ describe.each(DASHBOARDS)("$name dashboard Recently viewed rows", ({ ui, payload
     const viewed = screen.getByRole("region", { name: "Recently viewed" });
     fireEvent.click(within(viewed).getByRole("button", { name: /^Kyoto Autumn Escape, Maria Santos/ }));
 
-    const panel = await screen.findByRole("dialog", { name: /^Trip comments: Kyoto Autumn Escape/ });
+    const panel = await screen.findByRole("dialog", { name: /^Trip: Kyoto Autumn Escape/ });
     expect(within(panel).getByText("Maria Santos")).toBeVisible();
     // Let the panel finish loading, so nothing updates after the test ends.
     expect(await within(panel).findByText(PENDING_COMMENT.content)).toBeInTheDocument();

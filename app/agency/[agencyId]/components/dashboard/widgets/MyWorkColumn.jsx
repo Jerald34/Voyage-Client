@@ -1,65 +1,22 @@
 "use client";
 
-import { useId } from "react";
-import { useRouter } from "next/navigation";
+import { useId, useState } from "react";
 import { timeAgo } from "@/app/lib/relativeTime";
 import HeroContinueCard from "./HeroContinueCard";
 import RecentlyViewedPanel from "./RecentlyViewedPanel";
+import TripListPanel from "./TripListPanel";
+import TripStatusChip from "./TripStatusChip";
 
 /** Buttons dip to 97% while pressed. `scale` is the property Tailwind's scale utilities set, so it must be the one transitioned. */
 const PRESS = "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]";
 
-const STATUS_LABELS = {
-  DRAFT: "Draft",
-  IN_REVIEW: "In review",
-  APPROVED_INTERNAL: "Approved",
-  ARCHIVED: "Archived",
-};
-
-const STATUS_BG = {
-  DRAFT: "color-mix(in srgb, var(--warning) 12%, transparent)",
-  IN_REVIEW: "color-mix(in srgb, var(--accent) 12%, transparent)",
-  APPROVED_INTERNAL: "color-mix(in srgb, var(--success) 12%, transparent)",
-  ARCHIVED: "rgb(var(--color-border-rgb) / 0.08)",
-};
-
-// The label sits on a 12% tint of its own status colour, and under the row's
-// hover wash. Coloured text (terracotta, green, amber) drops below 4.5:1 at
-// 12px there, so the label reads in the body colour. The tint and the leading
-// dot carry the status; the muted colour already clears 4.5:1 for archived.
-const STATUS_TEXT = {
-  DRAFT: "rgb(var(--color-text-rgb))",
-  IN_REVIEW: "rgb(var(--color-text-rgb))",
-  APPROVED_INTERNAL: "rgb(var(--color-text-rgb))",
-  ARCHIVED: "rgb(var(--color-text-muted-rgb))",
-};
-
-const STATUS_DOT = {
-  DRAFT: "var(--warning)",
-  IN_REVIEW: "var(--accent)",
-  APPROVED_INTERNAL: "var(--success)",
-  ARCHIVED: "rgb(var(--color-text-muted-rgb))",
-};
-
-function StatusChip({ status }) {
-  if (!status) return null;
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-[0.04em]"
-      style={{
-        backgroundColor: STATUS_BG[status] ?? "rgb(var(--color-border-rgb) / 0.08)",
-        color: STATUS_TEXT[status] ?? "rgb(var(--color-text-muted-rgb))",
-      }}
-    >
-      <span
-        aria-hidden="true"
-        className="size-1.5 shrink-0 rounded-full"
-        style={{ backgroundColor: STATUS_DOT[status] ?? "rgb(var(--color-text-muted-rgb))" }}
-      />
-      {STATUS_LABELS[status] ?? status}
-    </span>
-  );
-}
+/** Each counter: its label, the payload keys, and its list's title. */
+const COUNTERS = [
+  { key: "drafts", label: "Drafts", title: "Your drafts" },
+  { key: "inReview", label: "In review", title: "Your trips in review" },
+  { key: "approvedThisMonth", label: "Approved this month", title: "Approved this month" },
+  { key: "activeNow", label: "Traveling now", title: "Traveling now" },
+];
 
 function RecentTripButton({ trip, onClick }) {
   return (
@@ -70,7 +27,7 @@ function RecentTripButton({ trip, onClick }) {
     >
       <span className="flex min-w-0 items-start justify-between gap-2">
         <span className="truncate text-[13px] font-semibold leading-snug text-text-primary">{trip.tripTitle}</span>
-        <StatusChip status={trip.statusChip} />
+        <TripStatusChip status={trip.statusChip} />
       </span>
       <span className="flex items-end justify-between gap-2">
         <span className="truncate text-[12px] text-text-muted">{trip.clientName}</span>
@@ -80,45 +37,45 @@ function RecentTripButton({ trip, onClick }) {
   );
 }
 
+/** A button that opens its trip list, or, without `onClick`, a plain number. */
 function PipelineCounter({ label, value, onClick }) {
+  const Tag = onClick ? "button" : "div";
+  const buttonProps = onClick
+    ? {
+        type: "button",
+        "aria-haspopup": "dialog",
+        // Safari doesn't focus a button on click. Focus it here, so the list can hand focus back when it closes.
+        onClick: (event) => {
+          event.currentTarget.focus();
+          onClick();
+        },
+      }
+    : {};
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`frame-tile flex flex-col items-start rounded-[12px] px-3 py-2 text-left hover:bg-text-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`}
+    <Tag
+      {...buttonProps}
+      className={`frame-tile flex flex-col items-start rounded-[12px] px-3 py-2 text-left ${
+        onClick
+          ? `hover:bg-text-primary/5 pointer-coarse:min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`
+          : ""
+      }`}
     >
       <span className="text-[20px] font-semibold leading-none tabular-nums text-text-primary">{value ?? 0}</span>
       <span className="mt-1 text-[12px] text-text-muted">{label}</span>
-    </button>
+    </Tag>
   );
 }
 
 /**
  * The staff dashboard's right column: continue the latest trip, the trips by
- * status (each count opens the filtered list), the recently viewed
- * itineraries (rows call `onOpenViewedTrip`; left out without `recentViews`)
- * and up to three recent trips.
+ * status (each count lists its trips, which open the trip panel; plain numbers
+ * without `pipelineTrips`), the recently viewed itineraries (rows call
+ * `onOpenViewedTrip`; left out without `recentViews`) and up to three recent
+ * trips.
  */
-export default function MyWorkColumn({
-  hero,
-  recent = [],
-  pipeline,
-  agencyId,
-  onOpenTrip,
-  onOpenItineraries,
-  recentViews,
-  onOpenViewedTrip,
-}) {
-  const router = useRouter();
+export default function MyWorkColumn({ hero, recent = [], pipeline, pipelineTrips = null, onOpenTrip, recentViews, onOpenViewedTrip }) {
   const headingId = useId();
-
-  function goToList(status) {
-    if (onOpenItineraries) {
-      onOpenItineraries(status);
-      return;
-    }
-    router.push(`/agency/${agencyId}/trip?status=${status}`);
-  }
+  const [openCounter, setOpenCounter] = useState(null);
 
   return (
     <aside aria-labelledby={headingId} className="frame-tile flex min-w-0 flex-col gap-4 self-start rounded-[20px] p-4">
@@ -132,14 +89,14 @@ export default function MyWorkColumn({
         <div>
           <h3 className="mb-2 font-sans text-[13px] font-semibold tracking-normal text-text-primary">Your trips</h3>
           <div role="group" aria-label="Your trips by status" className="grid grid-cols-2 gap-2">
-            <PipelineCounter label="Drafts" value={pipeline.drafts} onClick={() => goToList("DRAFT")} />
-            <PipelineCounter label="In review" value={pipeline.inReview} onClick={() => goToList("IN_REVIEW")} />
-            <PipelineCounter
-              label="Approved this month"
-              value={pipeline.approvedThisMonth}
-              onClick={() => goToList("APPROVED_INTERNAL")}
-            />
-            <PipelineCounter label="Traveling now" value={pipeline.activeNow} onClick={() => goToList("ACTIVE")} />
+            {COUNTERS.map((counter) => (
+              <PipelineCounter
+                key={counter.key}
+                label={counter.label}
+                value={pipeline[counter.key]}
+                onClick={pipelineTrips ? () => setOpenCounter(counter) : undefined}
+              />
+            ))}
           </div>
         </div>
       ) : null}
@@ -156,6 +113,15 @@ export default function MyWorkColumn({
           </div>
         </div>
       ) : null}
+
+      <TripListPanel
+        isOpen={!!openCounter}
+        title={openCounter?.title ?? ""}
+        trips={openCounter ? pipelineTrips?.[openCounter.key] ?? [] : []}
+        total={openCounter ? pipeline?.[openCounter.key] ?? null : null}
+        onOpenTrip={(tripId, tripTitle, clientName) => onOpenViewedTrip?.(tripId, tripTitle, clientName)}
+        onClose={() => setOpenCounter(null)}
+      />
     </aside>
   );
 }

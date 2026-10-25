@@ -209,13 +209,13 @@ export default function ItineraryHeader({
                   className={`${ACTION_BUTTON} ${showCommentsPanel ? "bg-secondary-strong text-on-secondary-strong border-secondary-strong" : ACTION_IDLE}`}
                   onClick={onToggleComments}
                   title="View client comments"
-                  aria-label="Comments"
+                  aria-label={unreadCommentCount > 0 ? `Comments, ${unreadCommentCount} unread` : "Comments"}
                   aria-pressed={showCommentsPanel}
                 >
                   <ChatIcon width={14} height={14} aria-hidden="true" />
                   <span className={ACTION_LABEL}>Comments</span>
                   {unreadCommentCount > 0 && (
-                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-pill bg-[#dc2626] text-white text-[0.65rem] font-extrabold leading-none flex-shrink-0">
+                    <span aria-hidden="true" className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-pill bg-status-danger text-on-primary text-[0.65rem] font-extrabold leading-none flex-shrink-0">
                       {unreadCommentCount > 99 ? "99+" : unreadCommentCount}
                     </span>
                   )}

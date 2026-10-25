@@ -1,241 +1,25 @@
 "use client";
 
 /**
- * TripSlideOver — right-side drawer that opens over the dashboard
- * when the user clicks Reply on a worklist row.
+ * TripSlideOver — the dashboard's trip panel: a right-side drawer with the
+ * trip at a glance (status, client, dates, travelers), its share link (views,
+ * rating, expiry, Extend) and every client comment with an inline reply.
  *
- * Comments are grouped by Day → Activity (matching CommentsPanel UX).
- * Each parent comment gets its own inline reply input.
+ * `focus` says what the person clicked for: { type: "comment", id } scrolls to
+ * that comment with its reply box open, { type: "share" } scrolls to the share
+ * link, null starts at the top.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  listTripShares,
-  listShareComments,
-  replyToShareComment,
-} from "@/app/lib/api/index.js";
-import { ChatIcon, CloseIcon, ReplyIcon } from "@/app/components/icons/index.js";
-import { formatCommentTime } from "@/app/lib/formatters.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CloseIcon } from "@/app/components/icons/index.js";
+import { useTripPreview } from "@/app/hooks/useTripPreview.js";
+import CommentsSection from "./tripPanel/CommentsSection";
+import SharedLinkSection from "./tripPanel/SharedLinkSection";
+import { describeTripLine } from "./tripPanel/tripPanelFormat";
+import TripStatusChip from "./widgets/TripStatusChip";
 
-// ─── Status helpers ───────────────────────────────────────────────────────────
-
-function getStatusClasses(status) {
-  if (status === "ADDRESSED")
-    return "bg-[#f0fdf4] text-[#166534] border border-[#dcfce7]";
-  if (status === "SEEN")
-    return "bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]";
-  return "bg-[#fef9c3] text-[#854d0e] border border-[#fef08a]";
-}
-
-function getStatusLabel(status) {
-  if (status === "ADDRESSED") return "Addressed";
-  if (status === "SEEN") return "Seen";
-  return "Pending";
-}
-
-// ─── Single comment card ─────────────────────────────────────────────────────
-
-function CommentCard({
-  comment,
-  agencyId,
-  onReplySent,
-}) {
-  const [replyOpen, setReplyOpen] = useState(false);
-  const [replyText, setReplyText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [replyError, setReplyError] = useState(null);
-
-  const isPending = comment.status === "PENDING";
-  const hasReply = !!comment.agencyReply;
-
-  const handleSubmit = async () => {
-    const content = replyText.trim();
-    if (!content || submitting) return;
-    setSubmitting(true);
-    setReplyError(null);
-    try {
-      await replyToShareComment(agencyId, comment.id, content);
-      setReplyText("");
-      setReplyOpen(false);
-      onReplySent?.(comment.id, content);
-    } catch {
-      setReplyError("Failed to send reply. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div
-      className={[
-        "dashboard-card px-4 py-3.5 flex flex-col gap-2.5 transition-shadow duration-200",
-        isPending && !hasReply
-          ? "border-l-[3px] border-l-secondary"
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {/* Author row */}
-      <div className="flex items-start gap-2.5">
-        <div
-          className={
-            "w-8 h-8 rounded-full bg-secondary text-white " +
-            "flex items-center justify-center text-[0.75rem] " +
-            "font-extrabold flex-shrink-0 shadow-sm mt-0.5"
-          }
-        >
-          {String(comment.authorName || "?")[0].toUpperCase()}
-        </div>
-        <div className="flex flex-col gap-px flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[0.85rem] font-bold text-text-primary">
-              {comment.authorName || "Client"}
-            </span>
-            <span className="text-[0.73rem] text-text-soft">
-              {formatCommentTime(comment.createdAt)}
-            </span>
-          </div>
-          {/* Context chip: item title */}
-          {comment.itemTitle && (
-            <span
-              className={
-                "inline-flex items-center self-start px-2 py-[3px] mt-1 rounded-[6px] " +
-                "text-[0.65rem] font-extrabold tracking-[0.04em] uppercase " +
-                "bg-[#eef2ff] text-[#3730a3] border border-[#e0e7ff] " +
-                "max-w-[220px] truncate"
-              }
-              title={comment.itemTitle}
-            >
-              {comment.itemTitle}
-            </span>
-          )}
-        </div>
-        <span
-          className={`flex-shrink-0 inline-flex items-center px-2 py-[3px] rounded-[6px] text-[0.65rem] font-extrabold tracking-[0.04em] uppercase ${getStatusClasses(comment.status)}`}
-        >
-          {getStatusLabel(comment.status)}
-        </span>
-      </div>
-
-      {/* Comment text */}
-      <p className="text-[0.88rem] text-text-primary leading-[1.55] m-0 pl-[2.375rem]">
-        {comment.content}
-      </p>
-
-      {/* Existing agency reply */}
-      {hasReply && (
-        <div
-          className={
-            "ml-[2.375rem] bg-background rounded-[10px] px-3.5 py-2.5 " +
-            "flex flex-col gap-1 border-l-[3px] border-secondary"
-          }
-        >
-          <div
-            className={
-              "flex items-center gap-[5px] text-[0.72rem] " +
-              "font-extrabold uppercase tracking-[0.04em] text-secondary"
-            }
-          >
-            <ReplyIcon width={12} height={12} />
-            Your reply
-          </div>
-          <p className="text-[0.85rem] text-text-primary leading-[1.5] m-0">
-            {comment.agencyReply}
-          </p>
-          {comment.agencyRepliedAt && (
-            <span className="text-[0.72rem] text-text-soft mt-0.5">
-              {formatCommentTime(comment.agencyRepliedAt)}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Reply controls */}
-      {!hasReply && (
-        <div className="ml-[2.375rem] flex flex-col">
-          {!replyOpen ? (
-            <button
-              type="button"
-              className={
-                "inline-flex items-center gap-[5px] px-2.5 py-[5px] " +
-                "rounded-lg border border-border bg-surface-elevated text-text-soft " +
-                "text-[0.78rem] font-bold cursor-pointer transition-all " +
-                "duration-150 self-start hover:bg-background " +
-                "hover:text-text-primary hover:border-secondary/50"
-              }
-              onClick={() => setReplyOpen(true)}
-            >
-              <ReplyIcon width={12} height={12} />
-              Reply
-            </button>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <textarea
-                className={
-                  "w-full px-3 py-2.5 rounded-[10px] border border-border " +
-                  "bg-background text-[0.85rem] font-[inherit] text-text-primary " +
-                  "resize-none leading-relaxed transition-all duration-200 box-border " +
-                  "focus:outline-none focus:border-secondary focus:bg-surface " +
-                  "focus:shadow-[0_0_0_3px_rgba(215,122,97,0.1)]"
-                }
-                placeholder="Write a reply…"
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                rows={2}
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                  if (e.key === "Escape") {
-                    setReplyOpen(false);
-                    setReplyError(null);
-                  }
-                }}
-                disabled={submitting}
-              />
-              {replyError && (
-                <span className="text-[0.78rem] text-[#dc2626] font-semibold">
-                  {replyError}
-                </span>
-              )}
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  type="button"
-                  className={
-                    "px-3 py-1.5 rounded-lg border border-border bg-surface-elevated " +
-                    "text-text-soft text-[0.8rem] font-bold cursor-pointer " +
-                    "transition-all duration-150 hover:bg-background hover:text-text-primary"
-                  }
-                  onClick={() => {
-                    setReplyOpen(false);
-                    setReplyError(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className={
-                    "px-4 py-1.5 rounded-lg border-none bg-secondary text-white " +
-                    "text-[0.8rem] font-bold cursor-pointer transition-all duration-150 " +
-                    "hover:enabled:bg-[#c4674e] disabled:opacity-45 disabled:cursor-not-allowed"
-                  }
-                  disabled={submitting || !replyText.trim()}
-                  onClick={handleSubmit}
-                >
-                  {submitting ? "Sending…" : "Send Reply"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+// Same press feedback the rest of the dashboard uses.
+const PRESS = "transition-[color,background-color,border-color,opacity,scale] duration-150 ease-out active:scale-[0.97]";
 
 // ─── Focus containment ───────────────────────────────────────────────────────
 
@@ -256,6 +40,29 @@ function isTabbable(element, root) {
 
 function tabbablesIn(root) {
   return [...root.querySelectorAll(TABBABLE_SELECTOR)].filter((element) => isTabbable(element, root));
+}
+
+// ─── Finding and showing what was clicked for ────────────────────────────────
+
+/** A comment's card in the panel. Ids are compared as attribute values, never pasted into a selector. */
+function findCommentCard(root, commentId) {
+  if (!root || commentId == null) return null;
+  const id = String(commentId);
+  return [...root.querySelectorAll("[data-comment-id]")].find((element) => element.getAttribute("data-comment-id") === id) ?? null;
+}
+
+/**
+ * Scrolls only the panel's own list. `scrollIntoView` may also scroll the page
+ * under the fixed panel. The jump is instant, which also suits reduced motion.
+ */
+function scrollWithin(container, target, block) {
+  if (!container || !target) return;
+  const box = container.getBoundingClientRect();
+  const rect = target.getBoundingClientRect();
+  const PADDING = 16; // the list's py-4
+  const fromTop = rect.top - box.top;
+  const centered = fromTop - (box.height - rect.height) / 2;
+  container.scrollTop += block === "center" && rect.height < box.height ? centered : fromTop - PADDING;
 }
 
 // ─── Load failure notice ─────────────────────────────────────────────────────
@@ -283,8 +90,9 @@ function LoadAlert({ message, onRetry }) {
 /**
  * `returnFocusRef` (optional) names where focus goes on close when the element
  * that opened the panel has left the page, e.g. a poll dropped its row while
- * the panel was open. Without it, focus is only returned to a surviving opener.
- * `onReplied(commentId)` (optional) runs once a reply is saved, so the
+ * the panel was open, or when nothing had focus at open (Safari does not focus
+ * a clicked button). Without it, focus is only returned to a surviving opener.
+ * `onChanged()` (optional) runs after a reply or an extension is saved, so the
  * dashboard can reload what still needs the agent.
  */
 export default function TripSlideOver({
@@ -294,21 +102,31 @@ export default function TripSlideOver({
   tripId,
   tripTitle = "Trip",
   subtitle = null,
+  focus = null,
   onOpenFull,
   returnFocusRef = undefined,
-  onReplied = undefined,
+  onChanged = undefined,
 }) {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  // Some shares' comments failed to load; the rest are shown.
-  const [partialError, setPartialError] = useState(false);
+  const { data, error, loading, reload, update } = useTripPreview({ agencyId, tripId, enabled: isOpen });
   const closeButtonRef = useRef(null);
   const panelRef = useRef(null);
   // Where focus rests while the list's own controls (the Retry button) are swapped out.
   const listRef = useRef(null);
-  // Stamps each load; a response only counts while its stamp is still the latest.
-  const requestIdRef = useRef(0);
+  const shareSectionRef = useRef(null);
+
+  // Each opening is a fresh visit. The hook keeps a trip's data between visits,
+  // so without this the sections would keep their old state: a reply box that
+  // should open for the clicked comment, or an earlier "Link extended" note.
+  // Derived during render (not in an effect), so StrictMode's double render agrees.
+  const [visit, setVisit] = useState({ open: isOpen, count: isOpen ? 1 : 0 });
+  if (visit.open !== isOpen) setVisit({ open: isOpen, count: isOpen ? visit.count + 1 : visit.count });
+  const visitKey = `${tripId ?? ""}:${visit.count}`;
+
+  // The newest committed data, for handlers that run after an await.
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   // Read at close time, so a parent passing a fresh ref object each render cannot re-run the focus effect.
   const returnFocusRefLatest = useRef(returnFocusRef);
@@ -326,10 +144,17 @@ export default function TripSlideOver({
     const active = document.activeElement;
     const opener = active instanceof HTMLElement && active !== document.body ? active : null;
     return () => {
-      if (!opener) return;
-      if (opener.isConnected) {
+      if (opener?.isConnected) {
         opener.focus();
         return;
+      }
+      // No opener happens in Safari, which does not focus a clicked button. Only
+      // step in while focus is still in the panel (or lost), never when the
+      // person has already moved it somewhere else on the page.
+      if (!opener) {
+        const now = document.activeElement;
+        const lost = !now || now === document.body || panelRef.current?.contains(now);
+        if (!lost) return;
       }
       const fallback = returnFocusRefLatest.current?.current;
       if (fallback?.isConnected) fallback.focus();
@@ -375,168 +200,103 @@ export default function TripSlideOver({
     return () => document.removeEventListener("keydown", handleTab);
   }, [isOpen]);
 
-  // ── Fetch all comments across shares ──
-  const fetchComments = useCallback(async () => {
-    if (!agencyId || !tripId) return;
-    // The panel stays mounted between trips, so a slow answer for an earlier
-    // trip can land after a later one has loaded. Drop any answer that is no
-    // longer the latest request.
-    const requestId = ++requestIdRef.current;
-    const isCurrent = () => requestId === requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    setPartialError(false);
-    try {
-      const sharesRes = await listTripShares(agencyId, tripId);
-      if (!isCurrent()) return;
-      const shares = Array.isArray(sharesRes?.shares) ? sharesRes.shares : [];
-
-      // allSettled, not a per-request catch: a failed request must not pass
-      // for a share with no comments.
-      const results = await Promise.allSettled(
-        shares.map((share) => listShareComments(agencyId, share.id)),
-      );
-      if (!isCurrent()) return;
-      const loaded = results.flatMap((result, index) =>
-        result.status === "fulfilled" && Array.isArray(result.value?.comments)
-          ? result.value.comments.map((c) => ({ ...c, shareId: shares[index].id }))
-          : [],
-      );
-      const failed = results.filter((result) => result.status === "rejected").length;
-
-      if (failed > 0 && failed === results.length) {
-        setComments([]);
-        setError("Couldn't load comments.");
-      } else {
-        setComments(loaded);
-        setPartialError(failed > 0);
-      }
-    } catch {
-      if (!isCurrent()) return;
-      setComments([]);
-      setError("Couldn't load comments.");
-    } finally {
-      if (isCurrent()) setLoading(false);
-    }
-  }, [agencyId, tripId]);
-
   // Retry swaps its own alert for the spinner, which would drop focus to <body>
   // inside an aria-modal dialog. Park focus on the list first.
-  const retryComments = useCallback(() => {
+  const retry = useCallback(() => {
     listRef.current?.focus();
-    fetchComments();
-  }, [fetchComments]);
+    reload();
+  }, [reload]);
 
+  // Close on Escape, unless the person is typing a reply (Escape closes that box instead).
   useEffect(() => {
-    if (isOpen && tripId) {
-      fetchComments();
-    }
-    // Closing, switching trips or unmounting retires whatever is still in flight.
-    return () => {
-      requestIdRef.current += 1;
-    };
-  }, [isOpen, tripId, fetchComments]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
     const handleEsc = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key !== "Escape") return;
+      if (e.target instanceof HTMLTextAreaElement) return;
+      onClose?.();
     };
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
-  // Optimistic reply update — avoids a full refetch on send
+  // ── Once loaded, bring what was clicked for into view (once per visit) ──
+  // Declared after the focus-in effect, so when the trip is already loaded the
+  // reply box wins over the Close button in the same commit. The box focuses
+  // itself as it mounts (autoFocus); this scrolls its card into view and
+  // re-focuses the box in case the Close button took focus since. A comment
+  // that is not on the page yet (a refresh may bring it) is tried again on the
+  // next data. focusKey stands in for `focus`, which parents may pass as a
+  // fresh object each render.
+  const focusKey = focus ? `${focus.type}:${focus.id ?? ""}` : "";
+  const targetKey = focusKey ? `${visitKey}|${focusKey}` : "";
+  const shownTargetRef = useRef("");
+  useEffect(() => {
+    if (!isOpen || !data || !targetKey || shownTargetRef.current === targetKey) return;
+    const isComment = focus?.type === "comment";
+    const target = isComment ? findCommentCard(panelRef.current, focus.id) : focus?.type === "share" ? shareSectionRef.current : null;
+    if (!target) return;
+    shownTargetRef.current = targetKey;
+    scrollWithin(listRef.current, target, isComment ? "center" : "start");
+    if (isComment) target.querySelector("textarea")?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, data, targetKey]);
+
+  // Saved changes are already on screen. A throwing dashboard handler must not
+  // reach the reply's catch and report "Failed to send reply"; log it instead.
+  const notifyChanged = useCallback(() => {
+    try {
+      onChanged?.();
+    } catch (err) {
+      console.error("TripSlideOver: onChanged threw after a saved change", err);
+    }
+  }, [onChanged]);
+
+  // "Reply sent" for screen readers. Sending removes the reply box (and may move
+  // the card to the answered group), which drops focus to <body>; the effect
+  // below puts it on the card instead.
+  const [replyNotice, setReplyNotice] = useState(null); // { visitKey, commentId, text }
+
   const handleReplySent = useCallback(
     (commentId, content) => {
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === commentId
-            ? {
-                ...c,
-                agencyReply: content,
-                agencyRepliedAt: new Date().toISOString(),
-                status: "ADDRESSED",
-              }
-            : c,
+      const author = dataRef.current?.comments?.find((c) => c.id === commentId)?.authorName;
+      update((prev) => ({
+        ...prev,
+        comments: (prev.comments ?? []).map((c) =>
+          c.id === commentId ? { ...c, agencyReply: content, agencyRepliedAt: new Date().toISOString(), status: "ADDRESSED" } : c,
         ),
-      );
-      // This runs inside CommentCard's try around the send. The reply is
-      // already saved, so a throwing dashboard handler must not reach the catch
-      // that reports "Failed to send reply"; log it instead.
-      try {
-        onReplied?.(commentId);
-      } catch (error) {
-        console.error("TripSlideOver: onReplied threw after a saved reply", error);
-      }
+      }));
+      setReplyNotice({ visitKey, commentId, text: `Reply sent to ${author || "the client"}.` });
+      notifyChanged();
     },
-    [onReplied],
+    [update, notifyChanged, visitKey],
   );
 
-  // ── Two-level grouping: Day → Activity ──
-  const grouped = useMemo(() => {
-    // Only show parent comments (not agency reply children).
-    // The API returns agencyReply on the parent, so parentId children
-    // are raw client sub-comments; we include them too but indent.
-    const parents = comments.filter((c) => !c.parentId);
+  useEffect(() => {
+    if (!isOpen || !replyNotice || replyNotice.visitKey !== visitKey) return;
+    const panel = panelRef.current;
+    const active = document.activeElement;
+    // Focus survived the send (say, the person already moved on): leave it.
+    if (panel && active && active !== document.body && panel.contains(active)) return;
+    const card = findCommentCard(panel, replyNotice.commentId);
+    if (!card) return;
+    // Focusable by script only, so it never joins the Tab order.
+    if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+    card.focus({ preventScroll: true });
+  }, [isOpen, replyNotice, visitKey]);
 
-    const dayMap = new Map();
-    for (const c of parents) {
-      const dayKey = c.dayNumber != null ? String(c.dayNumber) : "general";
-      const itemKey = c.itemTitle || "__day__";
-      if (!dayMap.has(dayKey)) dayMap.set(dayKey, new Map());
-      const itemMap = dayMap.get(dayKey);
-      if (!itemMap.has(itemKey)) itemMap.set(itemKey, []);
-      itemMap.get(itemKey).push(c);
-    }
+  const handleExtended = useCallback(
+    (share) => {
+      // The section only reports a saved link. Check it is still this trip's link:
+      // the answer can land after the panel moved to another trip.
+      update((prev) => (prev.share && prev.share.id === share.id ? { ...prev, share: { ...prev.share, ...share } } : prev));
+      notifyChanged();
+    },
+    [update, notifyChanged],
+  );
 
-    const dayKeys = [...dayMap.keys()]
-      .filter((k) => k !== "general")
-      .sort((a, b) => Number(a) - Number(b));
-
-    const ordered = [];
-
-    const buildSubgroups = (itemMap) => {
-      const subs = [];
-      for (const [itemKey, list] of itemMap) {
-        if (itemKey === "__day__") continue;
-        subs.push({ key: itemKey, title: itemKey, comments: list });
-      }
-      if (itemMap.has("__day__")) {
-        subs.push({
-          key: "__day__",
-          title: "General",
-          comments: itemMap.get("__day__"),
-        });
-      }
-      return subs;
-    };
-
-    for (const k of dayKeys) {
-      const itemMap = dayMap.get(k);
-      if (!itemMap.size) continue;
-      ordered.push({ key: k, label: `Day ${k}`, subgroups: buildSubgroups(itemMap) });
-    }
-
-    if (dayMap.has("general")) {
-      const itemMap = dayMap.get("general");
-      if (itemMap.size) {
-        ordered.push({
-          key: "general",
-          label: "General",
-          subgroups: buildSubgroups(itemMap),
-        });
-      }
-    }
-
-    return ordered;
-  }, [comments]);
-
-  const totalCount = comments.filter((c) => !c.parentId).length;
-  const pendingCount = comments.filter(
-    (c) => !c.parentId && c.status === "PENDING",
-  ).length;
+  const title = data?.trip?.title ?? tripTitle;
+  const tripLine = describeTripLine(data?.trip, subtitle);
+  const notice = replyNotice && replyNotice.visitKey === visitKey ? replyNotice.text : "";
 
   return (
     <>
@@ -549,166 +309,93 @@ export default function TripSlideOver({
         aria-hidden="true"
       />
 
-      {/* Panel */}
       {/* While closed the panel only sits off-screen, so `inert` keeps its buttons out of the tab order and `aria-hidden` out of the accessibility tree. */}
       <aside
         ref={panelRef}
         role="dialog"
-        aria-label={`Trip comments: ${tripTitle}`}
+        aria-label={`Trip: ${title}`}
         aria-modal="true"
         aria-hidden={isOpen ? undefined : true}
         inert={!isOpen}
-        className={`fixed top-0 right-0 z-[61] flex h-full w-full max-w-md flex-col border-l border-border/10 bg-background shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 z-[61] flex w-full max-w-md flex-col border-l border-border/10 bg-background shadow-2xl transition-transform duration-300 [transition-timing-function:var(--ease-drawer)] ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {/* ── Header ── */}
-        <header className="flex items-start gap-3 border-b border-border/10 px-5 py-4 flex-shrink-0">
-          <div className="flex-1 min-w-0">
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary/10 border border-secondary/20 text-secondary text-[0.65rem] font-extrabold uppercase tracking-[0.05em] mb-1.5">
-              TRIP
-            </span>
-            <h2 className="font-sans text-base font-semibold leading-snug tracking-normal text-text-primary truncate">
-              {tripTitle}
-            </h2>
-            {subtitle && (
-              <p className="text-xs text-text-muted mt-0.5 truncate">{subtitle}</p>
-            )}
+        <header className="flex flex-shrink-0 items-start gap-3 border-b border-border/10 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            {data?.trip?.status ? (
+              <div className="mb-1.5">
+                <TripStatusChip status={data.trip.status} />
+              </div>
+            ) : null}
+            <h2 className="line-clamp-2 break-words font-sans text-base font-semibold leading-snug tracking-normal text-text-primary">{title}</h2>
+            {tripLine ? <p className="mt-0.5 break-words text-xs text-text-muted">{tripLine}</p> : null}
           </div>
-
-          {/* Comment count badges */}
-          <div className="flex items-center gap-1.5 mt-1">
-            {totalCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-pill bg-secondary/15 text-secondary text-[0.7rem] font-extrabold">
-                {totalCount}
-              </span>
-            )}
-            {pendingCount > 0 && (
-              <span
-                className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-pill bg-[#fef9c3] text-[#854d0e] border border-[#fef08a] text-[0.7rem] font-extrabold"
-                title={`${pendingCount} pending`}
-              >
-                {pendingCount} pending
-              </span>
-            )}
-          </div>
-
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="shrink-0 mt-0.5 rounded-lg p-1.5 text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+            className={`-mr-1.5 mt-0.5 inline-flex shrink-0 items-center justify-center rounded-lg p-1.5 text-text-muted hover:bg-surface-elevated hover:text-text-primary pointer-coarse:min-h-11 pointer-coarse:min-w-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${PRESS}`}
             aria-label="Close panel"
           >
-            <CloseIcon width={18} height={18} />
+            <CloseIcon width={18} height={18} aria-hidden="true" />
           </button>
         </header>
 
-        {/* ── Comment list ── */}
+        {/* Always mounted, so screen readers are already listening when a reply is sent. */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {notice}
+        </p>
+
         {/* Not a tab stop: Retry moves focus here before its alert unmounts, so it stays inside the dialog. */}
         <div
           ref={listRef}
           role="region"
-          aria-label="Comments"
+          aria-label="Trip details"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 min-h-0 focus:outline-none"
+          className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 py-4 focus:outline-none"
         >
-          {/* Loading */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
-              <p className="text-xs text-text-muted">Loading comments…</p>
+          {loading && !data && !error ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-12">
+              <div aria-hidden="true" className="h-6 w-6 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
+              <p className="text-xs text-text-muted">Loading trip…</p>
             </div>
-          )}
+          ) : null}
 
-          {/* Error */}
-          {!loading && error && <LoadAlert message={error} onRetry={retryComments} />}
+          {!loading && error ? <LoadAlert message="Couldn't load this trip." onRetry={retry} /> : null}
 
-          {/* Some shares' comments failed; what loaded is listed below */}
-          {!loading && !error && partialError && (
-            <LoadAlert message="Some comments couldn't load." onRetry={retryComments} />
-          )}
-
-          {/* Empty state */}
-          {!loading && !error && !partialError && grouped.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-              <ChatIcon
-                width={40}
-                height={40}
-                strokeWidth={1.5}
-                className="text-text-muted/40"
+          {data ? (
+            <>
+              <SharedLinkSection
+                key={visitKey}
+                ref={shareSectionRef}
+                agencyId={agencyId}
+                share={data.share ?? null}
+                onExtended={handleExtended}
               />
-              <div>
-                <p className="text-sm font-semibold text-text-muted m-0">
-                  No comments yet
-                </p>
-                <p className="text-xs text-text-soft mt-1 m-0">
-                  Share the itinerary with your client to start a conversation.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Grouped comments */}
-          {!loading &&
-            !error &&
-            grouped.map(({ key, label, subgroups }) => (
-              <div key={key} className="flex flex-col gap-3">
-                {/* Day label */}
-                <div
-                  className={
-                    "text-[0.75rem] font-extrabold uppercase " +
-                    "tracking-[0.06em] text-text-soft pb-1.5 border-b border-border"
-                  }
-                >
-                  {label}
-                </div>
-
-                {subgroups.map((sub) => (
-                  <div key={sub.key} className="flex flex-col gap-2">
-                    {/* Activity sub-heading (skip "General" clutter when only one) */}
-                    {sub.title !== "General" && (
-                      <div
-                        className={
-                          "text-[0.7rem] font-bold uppercase " +
-                          "tracking-[0.05em] text-text-soft/80 pl-1"
-                        }
-                      >
-                        {sub.title}
-                      </div>
-                    )}
-
-                    {sub.comments.map((comment) => (
-                      <CommentCard
-                        key={comment.id}
-                        comment={comment}
-                        agencyId={agencyId}
-                        onReplySent={handleReplySent}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ))}
+              <div aria-hidden="true" className="border-t border-border/10" />
+              {/* Remounted per visit and target: CommentCard reads defaultReplyOpen only when it mounts. */}
+              <CommentsSection
+                key={`${visitKey}|${focusKey}`}
+                comments={data.comments ?? []}
+                agencyId={agencyId}
+                focusCommentId={focus?.type === "comment" ? focus.id : null}
+                onReplySent={handleReplySent}
+              />
+            </>
+          ) : null}
         </div>
 
-        {/* ── Footer: open full view ── */}
-        <div className="border-t border-border/10 px-5 py-3 flex-shrink-0">
+        <div className="flex-shrink-0 border-t border-border/10 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={() => {
               onOpenFull?.(tripId);
               onClose?.();
             }}
-            className={
-              "w-full rounded-lg border border-secondary/30 bg-secondary/5 " +
-              "px-4 py-2.5 text-sm font-bold text-secondary " +
-              "hover:bg-secondary/10 transition-colors " +
-              "focus-visible:outline-none focus-visible:ring-2 " +
-              "focus-visible:ring-secondary focus-visible:ring-offset-2"
-            }
+            className={`w-full rounded-lg border border-secondary/30 bg-secondary/5 px-4 py-2.5 text-sm font-bold text-secondary-strong hover:bg-secondary/10 pointer-coarse:min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${PRESS}`}
           >
-            Open in Planner →
+            Open in Planner <span aria-hidden="true">→</span>
           </button>
         </div>
       </aside>

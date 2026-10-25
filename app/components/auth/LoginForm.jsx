@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth, setPendingInviteToken } from "../../hooks/useAuth";
-import { sanitizeEmailInput } from "./authValidation.js";
+import { sanitizeEmailInput, validateLoginFields, getLoginErrorMessage } from "./authValidation.js";
 import OAuthButtons from "./OAuthButtons.jsx";
 import FormField, { fieldSurfaceClass as authFieldSurfaceClass, fieldBaseClass as authFieldBaseClass } from "../ui/FormField.jsx";
 import {
@@ -24,6 +24,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [notice, setNotice] = useState("");
   const [resendState, setResendState] = useState({ loading: false, sent: false, error: null });
 
@@ -45,7 +46,16 @@ export default function LoginForm() {
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    auth.login({ email, password, rememberMe });
+    const errors = validateLoginFields(email, password);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      // Drop an earlier server alert and move focus to the first field to fix,
+      // since the field messages themselves aren't announced.
+      auth.setError(null);
+      document.getElementById(errors.email ? "auth-email" : "auth-password")?.focus();
+      return;
+    }
+    auth.login({ email: email.trim(), password, rememberMe });
   };
 
   const handleResend = async () => {
@@ -80,13 +90,14 @@ export default function LoginForm() {
         <div className="flex-1 h-px bg-border/[0.12]" />
       </div>
 
-      <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5">
+      <form onSubmit={handleLoginSubmit} noValidate className="flex flex-col gap-5">
         <FormField
           id="auth-email"
           label="Email address"
           icon={<MailIcon width={18} height={18} />}
+          error={fieldErrors.email}
         >
-          <input id="auth-email" type="email" placeholder="voyager@example.com" value={email} onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))} autoComplete="email" className={`!pl-[46px] pr-[18px] py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
+          <input id="auth-email" type="email" placeholder="voyager@example.com" value={email} onChange={(e) => { setEmail(sanitizeEmailInput(e.target.value)); setFieldErrors((prev) => ({ ...prev, email: undefined })); }} autoComplete="email" className={`!pl-[46px] pr-[18px] py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
         </FormField>
 
         <FormField
@@ -100,13 +111,14 @@ export default function LoginForm() {
             </div>
           }
           icon={<LockIcon width={18} height={18} />}
+          error={fieldErrors.password}
           trailing={
             <button type="button" className="absolute right-3.5 flex items-center justify-center w-8.5 h-8.5 bg-none border-none text-text-soft cursor-pointer rounded-sm transition-all duration-160 hover:text-secondary hover:bg-[rgba(215,122,97,0.06)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
               {showPassword ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
             </button>
           }
         >
-          <input id="auth-password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className={`!pl-[46px] !pr-14 py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
+          <input id="auth-password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: undefined })); }} autoComplete="current-password" className={`!pl-[46px] !pr-14 py-[15px] ${authFieldSurfaceClass} ${authFieldBaseClass}`} />
         </FormField>
 
         <div className="flex items-start gap-3 py-0.5">
@@ -139,7 +151,7 @@ export default function LoginForm() {
             <p className="font-bold text-status-danger mb-1.5">Verify your email to sign in</p>
             <p className="text-text-muted mb-3">{auth.error.message}</p>
             {resendState.error && (
-              <p className="text-status-danger text-[0.9rem] font-semibold mb-3">{resendState.error.message}</p>
+              <p className="text-status-danger text-[0.9rem] font-semibold mb-3">{getLoginErrorMessage(resendState.error)}</p>
             )}
             {resendState.sent && (
               <p className="text-[rgba(32,178,170,0.9)] text-[0.9rem] font-semibold mb-3">Sent — check your inbox</p>
@@ -159,7 +171,7 @@ export default function LoginForm() {
           </div>
         ) : auth.error ? (
           <div className="p-3 rounded-sm bg-status-danger/[0.06] border border-status-danger/[0.18] text-status-danger text-[0.86rem] font-semibold leading-relaxed text-center" role="alert">
-            {auth.error.message}
+            {getLoginErrorMessage(auth.error)}
           </div>
         ) : null}
 

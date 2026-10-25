@@ -293,6 +293,10 @@ function resetApiMocks() {
   }));
 }
 
+vi.mock("../app/components/agency-admin/AgencyOverview.jsx", () => ({
+  default: () => <div data-testid="agency-overview" />,
+}));
+
 vi.mock("../app/hooks/useAgentRunStream.js", () => ({
   useAgentRunStream: () => ({
     ...mocks.streamState,
@@ -821,7 +825,7 @@ describe("Agency portfolio HomePage", () => {
     });
   });
 
-  it("opens settings with real account and agency data", async () => {
+  it("opens settings with account data and the Agency tab with agency data", async () => {
     render(
       <HomePage
         user={{
@@ -855,6 +859,13 @@ describe("Agency portfolio HomePage", () => {
 
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("Agency Owner")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Olongapo Travel Studio")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Agency" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Olongapo Travel Studio" })).toBeInTheDocument();
+    expect(screen.getByTestId("agency-overview")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Profile" }));
     expect(screen.getByDisplayValue("Olongapo Travel Studio")).toBeInTheDocument();
     expect(screen.getByDisplayValue("639001112222")).toBeInTheDocument();
     expect(screen.getByDisplayValue("hello@olongapo.example")).toBeInTheDocument();
@@ -964,73 +975,6 @@ describe("Agency portfolio HomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("heading", { name: "Use the map context" })).toBeInTheDocument();
     expect(document.querySelector('[data-tour-spotlight="workspace-map"]')).toBeInTheDocument();
-  });
-
-  it("normalizes saved workspace fields after a successful agency update", async () => {
-    const onUpdateAgency = vi.fn(async () => ({
-      agency: {
-        id: "agency-1",
-        name: "Voyage Travel Co",
-        status: "VERIFIED",
-        businessPhone: "639001112222",
-        businessEmail: "hello@voyage.example",
-        city: "Olongapo City",
-        country: "Philippines",
-      },
-    }));
-
-    render(
-      <SettingsPage
-        user={{
-          id: "user-1",
-          email: "owner@voyage.test",
-          displayName: "Agency Owner",
-          role: "USER",
-          status: "ACTIVE",
-          emailVerifiedAt: "2026-05-01T00:00:00.000Z",
-        }}
-        agency={{
-          id: "agency-1",
-          name: "Voyage Travel Studio",
-          status: "VERIFIED",
-          businessPhone: "639001112222",
-          businessEmail: "hello@voyage.example",
-          city: "Olongapo City",
-          country: "Philippines",
-        }}
-        membership={{ role: "OWNER", status: "ACTIVE" }}
-        logout={vi.fn()}
-        onUpdateProfile={vi.fn()}
-      onUpdateAgency={onUpdateAgency}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText("Agency name"), { target: { value: "  Voyage Travel Co  " } });
-    fireEvent.change(screen.getByLabelText("Business phone"), { target: { value: "  +63 900 111 2222  " } });
-    fireEvent.change(screen.getByLabelText("Business email"), { target: { value: "  hello@voyage.example  " } });
-    fireEvent.change(screen.getByLabelText("City"), { target: { value: "  Olongapo City  " } });
-    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "  Philippines  " } });
-
-    expect(screen.getByRole("button", { name: "Save workspace changes" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "Save workspace changes" }));
-
-    await waitFor(() => {
-      expect(onUpdateAgency).toHaveBeenCalledWith({
-        name: "Voyage Travel Co",
-        businessPhone: "639001112222",
-        businessEmail: "hello@voyage.example",
-        city: "Olongapo City",
-        country: "Philippines",
-      });
-    });
-
-    expect(screen.getByLabelText("Agency name")).toHaveValue("Voyage Travel Co");
-    expect(screen.getByLabelText("Business phone")).toHaveValue("639001112222");
-    expect(screen.getByLabelText("Business email")).toHaveValue("hello@voyage.example");
-    expect(screen.getByLabelText("City")).toHaveValue("Olongapo City");
-    expect(screen.getByLabelText("Country")).toHaveValue("Philippines");
-    expect(screen.getByLabelText("Agency name")).not.toHaveValue("  Voyage Travel Co  ");
-    expect(screen.getByRole("button", { name: "Save workspace changes" })).toBeDisabled();
   });
 
   it("offers a replay tutorial action from settings help", () => {

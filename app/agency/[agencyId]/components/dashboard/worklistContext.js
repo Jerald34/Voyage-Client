@@ -45,8 +45,9 @@ export function describeWorklistItem(kind, item, now = Date.now()) {
   switch (kind) {
     case "unreadComments": {
       const waited = since(item.createdAt, now);
+      const quote = item.commentExcerpt ? `“${item.commentExcerpt}”` : null;
       return {
-        subtitle: item.commentExcerpt ? `“${item.commentExcerpt}”` : null,
+        subtitle: item.authorName ? `Comment from ${item.authorName}` : quote,
         hint: waited && `Waiting ${waited}`,
       };
     }

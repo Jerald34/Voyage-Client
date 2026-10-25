@@ -92,18 +92,22 @@ describe("AgencyCalendar", () => {
     expect(within(dialog).getByRole("button", { name: "Open trip" })).toHaveFocus();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Open trip" }));
-    expect(onOpenTrip).toHaveBeenCalledWith("t-kyoto", "Kyoto Autumn Escape", "Reyes");
+    expect(onOpenTrip).toHaveBeenCalledWith("t-kyoto", "Kyoto Autumn Escape", "Reyes", null);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("offers to reply to a client comment", () => {
-    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={vi.fn()} />);
+  it("offers to reply to a client comment and opens the panel at that comment", () => {
+    const onOpenTrip = vi.fn();
+    render(<AgencyCalendar agencyId="agency-1" onOpenTrip={onOpenTrip} />);
 
     fireEvent.click(day("Friday, October 2"));
     const dialog = screen.getByRole("dialog", { name: "Friday, October 2" });
     expect(dialog).toHaveTextContent("Tanaka commented");
     expect(dialog).toHaveTextContent("“Can we swap lunch?”");
     expect(within(dialog).getByRole("button", { name: "Reply" })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reply" }));
+    expect(onOpenTrip).toHaveBeenCalledWith("t-lisbon", "Lisbon Getaway", "Tanaka", { type: "comment", id: "c1" });
   });
 
   it("closes on Escape and puts focus back on the day", () => {

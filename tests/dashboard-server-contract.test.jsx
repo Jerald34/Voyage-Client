@@ -54,7 +54,6 @@ function renderStaff() {
       initialData={fixtures.staff}
       onOpenTrip={vi.fn()}
       onNewTrip={vi.fn()}
-      onOpenItineraries={vi.fn()}
     />,
   );
 }
@@ -202,13 +201,13 @@ describe("Owner to-do list says why each trip is on it", () => {
     expect(rows[rows.length - 1]).toHaveTextContent("Last edited 9d ago");
   });
 
-  it("quotes each unread client comment and how long it has waited", () => {
+  it("names who left each unread client comment and how long it has waited", () => {
     renderOwner(fixtures.ownerBusy);
 
     const list = needsYouList();
-    expect(within(list).getByText("“Is the ryokan wheelchair accessible? My father uses one.”")).toBeInTheDocument();
+    // The server sends authorName now, so each comment row names the client instead of quoting them.
+    expect(within(list).getAllByText("Comment from Maria Santos")).toHaveLength(2);
     expect(within(list).getByText("Waiting 1d")).toBeInTheDocument();
-    expect(within(list).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
     expect(within(list).getByText("Waiting 6h")).toBeInTheDocument();
   });
 
@@ -266,7 +265,7 @@ describe("Staff dashboard with real server payloads", () => {
     renderStaff();
 
     const worklist = screen.getByRole("region", { name: "Needs you today" });
-    expect(within(worklist).getByText("“Can we swap the day 2 lunch spot?”")).toBeInTheDocument();
+    expect(within(worklist).getAllByText("Comment from Maria Santos")).toHaveLength(2);
     for (const text of ["Waiting 1d", "Waiting 6h", "Last edited 4d ago", "Link expires in 20h", "Starts in 3 days"]) {
       expect(within(worklist).getByText(text)).toBeInTheDocument();
     }

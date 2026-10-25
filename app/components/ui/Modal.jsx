@@ -1,7 +1,7 @@
 // Reusable modal — variants: center (default) or side (right slide-over sheet).
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
 
 const centerSizes = {
@@ -40,6 +40,8 @@ export default function Modal({
 }) {
   const panelRef = useRef(null);
   const previousFocus = useRef(null);
+  // The title names the dialog for screen readers.
+  const titleId = useId();
 
   const handleBackdropMouseDown = useCallback(
     (e) => {
@@ -124,6 +126,7 @@ export default function Modal({
           ref={panelRef}
           role="dialog"
           aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
           tabIndex={-1}
           // Below sm the panel is a bottom sheet, so a form opens over the phone's map
           // instead of covering the whole screen; from sm up it slides in from the right.
@@ -133,7 +136,7 @@ export default function Modal({
           {(title || onClose) && (
             <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-surface-elevated/80 backdrop-blur-md border-b border-border/10 shrink-0">
               {title && (
-                <h2 className="font-serif text-xl text-text-primary truncate pr-4">{title}</h2>
+                <h2 id={titleId} className="font-serif text-xl text-text-primary truncate pr-4">{title}</h2>
               )}
               <CloseButton onClick={onClose} />
             </div>
@@ -163,6 +166,7 @@ export default function Modal({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
         className={`${centerSizes[size] ?? centerSizes.md} max-h-[min(92vh,860px)] flex flex-col bg-white/[0.98] dark:bg-[rgba(17,20,22,0.98)] border border-border dark:border-[rgba(255,255,255,0.08)] rounded-[20px] shadow-[0_28px_60px_rgba(15,23,42,0.18)] overflow-hidden [animation:scale-in_0.2s_ease_both] focus:outline-none`}
       >
@@ -170,7 +174,7 @@ export default function Modal({
         {(title || onClose) && (
           <header className="flex items-start justify-between gap-4 px-6 py-5 border-b border-border/60 dark:border-[rgba(255,255,255,0.08)] shrink-0">
             {title && (
-              <h2 className="m-0 font-serif text-xl leading-snug text-text-primary">{title}</h2>
+              <h2 id={titleId} className="m-0 font-serif text-xl leading-snug text-text-primary">{title}</h2>
             )}
             <CloseButton onClick={onClose} />
           </header>

@@ -49,7 +49,7 @@ const CALENDAR = {
 beforeEach(() => {
   mocks.fetchApi.mockReset();
   resetCalendarCacheForTests();
-  // The dashboard payload stays as given; the calendar and the slide-over's shares load.
+  // The dashboard payload stays as given; the calendar and the slide-over's trip load.
   mocks.fetchApi.mockImplementation((path) => {
     if (String(path).includes("/dashboard/calendar")) return Promise.resolve(CALENDAR);
     if (String(path).includes("/dashboard?")) return new Promise(() => {});
@@ -107,19 +107,18 @@ async function openFromButton() {
   return opener;
 }
 
-/** One share with one pending comment, so the panel has a Reply button between Close and the footer. */
+/** A trip with one pending comment, so the panel has a Reply button between Close and the footer. */
 function serveOneComment() {
   mocks.fetchApi.mockImplementation((path) => {
     if (String(path).includes("/dashboard/calendar")) return Promise.resolve(CALENDAR);
     if (String(path).includes("/dashboard?")) return new Promise(() => {});
-    if (String(path).endsWith("/comments")) {
-      return Promise.resolve({
-        comments: [
-          { id: "c-1", content: "Can we swap lunch?", status: "PENDING", authorName: "Ana", createdAt: "2026-10-02T02:00:00.000Z" },
-        ],
-      });
-    }
-    return Promise.resolve({ shares: [{ id: "s-1" }] });
+    return Promise.resolve({
+      trip: null,
+      share: null,
+      comments: [
+        { id: "c-1", content: "Can we swap lunch?", status: "PENDING", authorName: "Ana", agencyReply: null, createdAt: "2026-10-02T02:00:00.000Z" },
+      ],
+    });
   });
 }
 
@@ -141,11 +140,11 @@ describe("TripSlideOver focus", () => {
     screen.getByRole("button", { name: "Open comments" }).focus();
     fireEvent.click(screen.getByRole("button", { name: "Open comments" }));
 
-    expect(await screen.findByRole("dialog", { name: "Trip comments: Kyoto" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Trip: Kyoto" })).toBeInTheDocument();
     expect(panel(container)).not.toHaveAttribute("inert");
     expect(panel(container)).not.toHaveAttribute("aria-hidden");
     expect(screen.getByRole("button", { name: "Close panel" })).toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 
   it("gives focus back to what opened it when it closes", async () => {
@@ -159,7 +158,7 @@ describe("TripSlideOver focus", () => {
 
     expect(opener).toHaveFocus();
     expect(panel(container)).toHaveAttribute("inert");
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 
   it("gives focus back after Escape too", async () => {
@@ -172,7 +171,7 @@ describe("TripSlideOver focus", () => {
     fireEvent.keyDown(document, { key: "Escape" });
 
     expect(opener).toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 
   it("does not try to focus an opener that has left the page", async () => {
@@ -188,7 +187,7 @@ describe("TripSlideOver focus", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
 
     expect(focus).not.toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 });
 
@@ -205,7 +204,7 @@ describe("Calendar action hands focus to the slide-over and back", () => {
     const popover = screen.getByRole("dialog", { name: "Thursday, October 8" });
     fireEvent.click(within(popover).getByRole("button", { name: "Open trip" }));
 
-    const slideOver = await screen.findByRole("dialog", { name: /Trip comments: Kyoto Autumn Escape/ });
+    const slideOver = await screen.findByRole("dialog", { name: /Trip: Kyoto Autumn Escape/ });
     expect(screen.queryByRole("dialog", { name: "Thursday, October 8" })).not.toBeInTheDocument();
     expect(slideOver).toContainElement(document.activeElement);
     expect(screen.getByRole("button", { name: "Close panel" })).toHaveFocus();
@@ -228,7 +227,7 @@ describe("TripSlideOver focus fallback", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
 
     expect(screen.getByRole("region", { name: "Needs you today" })).toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 
   it("lands on the fallback after Escape too", async () => {
@@ -239,7 +238,7 @@ describe("TripSlideOver focus fallback", () => {
     fireEvent.keyDown(document, { key: "Escape" });
 
     expect(screen.getByRole("region", { name: "Needs you today" })).toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 
   it("prefers the opener when it is still on the page", async () => {
@@ -249,7 +248,32 @@ describe("TripSlideOver focus fallback", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
 
     expect(opener).toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
+  });
+
+  it("lands on the fallback when nothing had focus at open (Safari does not focus a clicked button)", async () => {
+    render(<Harness fallback="present" />);
+    // No opener.focus(): body is active when the click opens the panel.
+    fireEvent.click(screen.getByRole("button", { name: "Open comments" }));
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
+
+    expect(screen.getByRole("region", { name: "Needs you today" })).toHaveFocus();
+    await waitFor(() => expect(screen.queryByText("Loading trip�")).not.toBeInTheDocument());
+  });
+
+  it("does not pull focus to the fallback when the person moved it elsewhere on the page", async () => {
+    render(<Harness fallback="present" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open comments" }));
+    await screen.findByRole("dialog");
+    const elsewhere = screen.getByRole("button", { name: "Open comments" });
+    elsewhere.focus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(elsewhere).toHaveFocus();
+    await waitFor(() => expect(screen.queryByText("Loading trip�")).not.toBeInTheDocument());
   });
 
   it("leaves focus alone when no fallback was given", async () => {
@@ -260,7 +284,7 @@ describe("TripSlideOver focus fallback", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
 
     expect(screen.getByRole("region", { name: "Needs you today" })).not.toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 
   it("copes with a fallback that is not rendered either", async () => {
@@ -271,7 +295,7 @@ describe("TripSlideOver focus fallback", () => {
 
     expect(() => fireEvent.click(screen.getByRole("button", { name: "Close panel" }))).not.toThrow();
     expect(screen.getByRole("dialog", { hidden: true })).toHaveAttribute("inert");
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 });
 
@@ -282,7 +306,7 @@ describe("TripSlideOver focus containment", () => {
   async function openAndSettle(ui = <Harness />) {
     const view = render(ui);
     const opener = await openFromButton();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
     return { ...view, opener };
   }
 
@@ -368,7 +392,7 @@ describe("TripSlideOver focus containment", () => {
 
     expect(screen.getByRole("dialog")).toContainElement(document.activeElement);
     expect(closeButton()).toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
 
     fireEvent.click(closeButton());
     expect(opener).toHaveFocus();
@@ -381,7 +405,7 @@ describe("TripSlideOver focus containment", () => {
     rerender(<Harness tripId="t-2" />);
 
     expect(closeButton()).toHaveFocus();
-    await waitFor(() => expect(screen.queryByText("Loading comments…")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Loading trip…")).not.toBeInTheDocument());
   });
 });
 
@@ -404,7 +428,7 @@ describe("Dashboards give the slide-over a stable place to return focus", () => 
 
   it.each([
     ["owner", fixtures.ownerBusy, (props) => <OwnerOverview {...props} />],
-    ["staff", fixtures.staff, (props) => <StaffMyWork {...props} onOpenItineraries={vi.fn()} />],
+    ["staff", fixtures.staff, (props) => <StaffMyWork {...props} />],
   ])("%s: returns to Needs you today when a poll removed the row that opened it", async (_, payload, ui) => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 9, 3, 10));
@@ -415,7 +439,7 @@ describe("Dashboards give the slide-over a stable place to return focus", () => 
     const reply = within(list).getAllByRole("button", { name: "Reply" })[0];
     reply.focus();
     fireEvent.click(reply);
-    await screen.findByRole("dialog", { name: /Trip comments: Kyoto Autumn Escape/ });
+    await screen.findByRole("dialog", { name: /Trip: Kyoto Autumn Escape/ });
 
     await act(async () => {
       respond(withoutComments(payload));

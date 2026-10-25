@@ -1,6 +1,6 @@
 "use client";
 import { useId, useState } from "react";
-import FunnelStageDetailPanel from "./FunnelStageDetailPanel";
+import TripListPanel from "./TripListPanel";
 
 const STAGE_LABELS = {
   created: "Trips created",
@@ -29,10 +29,10 @@ export function biggestDrop(stages) {
 
 /**
  * Compact trip progress for the Insights column: one bar per stage and a note
- * on where trips drop off most. Click (or Enter/Space) on a stage opens the
- * detail panel listing its trips.
+ * on where trips drop off most. Click a stage to list its trips; each opens the trip panel.
+ * (An `agencyId` prop from older callers is accepted and ignored.)
  */
-export default function FunnelChart({ stages = [], agencyId, periodLabel }) {
+export default function FunnelChart({ stages = [], periodLabel, onOpenTrip = () => {} }) {
   const headingId = useId();
   const [activeStage, setActiveStage] = useState(null);
 
@@ -73,7 +73,15 @@ export default function FunnelChart({ stages = [], agencyId, periodLabel }) {
         {drop ? <p className="mt-1.5 text-[12px] text-text-muted">{drop}</p> : null}
       </section>
 
-      <FunnelStageDetailPanel stage={activeStage} agencyId={agencyId} onClose={() => setActiveStage(null)} />
+      <TripListPanel
+        isOpen={!!activeStage}
+        title={activeStage ? STAGE_LABELS[activeStage.key] ?? activeStage.key : ""}
+        summary={activeStage ? `${activeStage.count} trip${activeStage.count === 1 ? "" : "s"}${periodLabel ? ` · ${periodLabel}` : ""}` : null}
+        trips={activeStage?.trips ?? []}
+        total={activeStage?.count ?? null}
+        onOpenTrip={onOpenTrip}
+        onClose={() => setActiveStage(null)}
+      />
     </>
   );
 }

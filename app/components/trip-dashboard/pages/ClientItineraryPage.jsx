@@ -3,7 +3,6 @@ import dynamic from "next/dynamic";
 import { useTheme } from "../../theme/ThemeProvider.jsx";
 import {
   fetchItineraryDraft,
-  getUnreadCommentCount,
   getUnreadCommentCountsByTrip,
   approveClientTrip,
 } from "../../../lib/api/index.js";
@@ -105,7 +104,6 @@ export default function ClientItineraryPage({
   const [activeStopIndex, setActiveStopIndex] = useState(0);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showCommentsPanel, setShowCommentsPanel] = useState(false);
-  const [unreadCommentCount, setUnreadCommentCount] = useState(0);
   const [unreadByTrip, setUnreadByTrip] = useState({});
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
@@ -257,23 +255,6 @@ export default function ClientItineraryPage({
     reloadItinerary();
   };
 
-  // Fetch unread comment count when a trip with a valid agencyId is selected
-  useEffect(() => {
-    if (!agencyId || !selectedTripId) {
-      setUnreadCommentCount(0);
-      return;
-    }
-    let cancelled = false;
-    getUnreadCommentCount(agencyId)
-      .then((res) => {
-        if (!cancelled) setUnreadCommentCount(res?.count ?? 0);
-      })
-      .catch(() => {
-        if (!cancelled) setUnreadCommentCount(0);
-      });
-    return () => { cancelled = true; };
-  }, [agencyId, selectedTripId, showCommentsPanel]);
-
   // Fetch per-trip unread counts so the Client Directory can badge each client.
   // Refreshes whenever the panel is opened/closed (reply mutates server state)
   // and whenever the agency or active trip changes.
@@ -309,6 +290,9 @@ export default function ClientItineraryPage({
     });
     return out;
   }, [clients, unreadByTrip]);
+
+  // The open trip's own unread count, from the per-trip map the client list badges use.
+  const unreadCommentCount = selectedTripId ? unreadByTrip[selectedTripId] ?? 0 : 0;
 
   // Reset per-trip UI state when trip changes
   useEffect(() => {
@@ -718,14 +702,22 @@ export default function ClientItineraryPage({
                       )}
                       <div className="flex items-center gap-2" data-tour-target="cip-actions">
                         <button
-                          className={`inline-flex items-center justify-center w-10 h-10 rounded-full border transition-all duration-200 ${showCommentsPanel
+                          className={`relative inline-flex items-center justify-center w-10 h-10 rounded-full border transition-all duration-200 ${showCommentsPanel
                             ? "bg-secondary text-white border-secondary"
                             : "bg-surface-elevated text-text-primary border-border/20"
                             }`}
                           onClick={() => setShowCommentsPanel((v) => !v)}
-                          aria-label="Comments"
+                          aria-label={unreadCommentCount > 0 ? `Comments, ${unreadCommentCount} unread` : "Comments"}
                         >
                         <ChatIcon width={16} height={16} />
+                        {unreadCommentCount > 0 && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute -right-1 -top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-pill bg-status-danger px-1 text-[0.65rem] font-extrabold leading-none text-on-primary"
+                          >
+                            {unreadCommentCount > 99 ? "99+" : unreadCommentCount}
+                          </span>
+                        )}
                       </button>
                       <button
                         className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-border/20 bg-surface-elevated text-text-primary transition-all duration-200"

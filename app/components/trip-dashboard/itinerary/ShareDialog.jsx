@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { listTripShares, revokeShare, createItineraryShare } from "../../../lib/api/index.js";
+import { listTripShares, revokeShare, regenerateShare } from "../../../lib/api/index.js";
 import { CloseIcon, CheckIcon, EyeIcon, LinkIcon, RefreshIcon } from "../../icons/index.js";
 import { Spinner } from "../../ui/index.js";
 import ShareLinkPanel from "./ShareLinkPanel.jsx";
@@ -39,6 +39,7 @@ export default function ShareDialog({
   const [revokingId, setRevokingId] = useState(null);
   const [confirmRevokeId, setConfirmRevokeId] = useState(null);
   const [regeneratingId, setRegeneratingId] = useState(null);
+  const [regenerateError, setRegenerateError] = useState(null);
   const [copyLinkSuccess, setCopyLinkSuccess] = useState(null);
 
   const fetchShares = useCallback(async () => {
@@ -59,6 +60,7 @@ export default function ShareDialog({
   useEffect(() => {
     if (!isOpen) return;
     setConfirmRevokeId(null);
+    setRegenerateError(null);
     fetchShares();
   }, [isOpen, fetchShares]);
 
@@ -85,15 +87,20 @@ export default function ShareDialog({
     }
   };
 
+  // The server makes the new link from the old one (same itinerary, client name,
+  // email and expiry) and turns the old one off in the same step.
   const handleRegenerate = async (shareId) => {
-    if (!agencyId || !itineraryId || regeneratingId) return;
+    if (!agencyId || regeneratingId) return;
     setRegeneratingId(shareId);
+    setRegenerateError(null);
     try {
-      await createItineraryShare(agencyId, itineraryId, {});
-      await revokeShare(agencyId, shareId);
+      await regenerateShare(agencyId, shareId);
       await fetchShares();
     } catch (err) {
       console.error("Failed to regenerate share:", err);
+      setRegenerateError(
+        err?.status === 409 && err.message ? err.message : "Couldn't make a new link. Try again."
+      );
     } finally {
       setRegeneratingId(null);
     }
@@ -182,6 +189,12 @@ export default function ShareDialog({
             <h3 className="m-0 mb-3.5 font-sans text-[13px] font-semibold tracking-normal text-text-primary">
               Existing Share Links
             </h3>
+
+            {regenerateError && (
+              <p role="alert" className="m-0 mb-3 px-3.5 py-2.5 rounded-sm bg-status-danger/8 border border-status-danger/30 text-status-danger text-[13px] leading-relaxed">
+                {regenerateError}
+              </p>
+            )}
 
             {isLoadingShares ? (
               <div className="flex items-center gap-2 text-[13px] text-text-soft py-2">
