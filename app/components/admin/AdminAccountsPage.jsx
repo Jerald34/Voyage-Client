@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchAllAccounts } from "../../lib/api/index.js";
 import { Spinner, EmptyState, Button } from "../ui/index.js";
 import { SearchIcon, UserIcon } from "../icons/index.js";
@@ -37,6 +37,8 @@ export default function AdminAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Set before a reload that follows an account action, so the list refreshes in place instead of flashing a spinner.
+  const quietReload = useRef(false);
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState("joined");
@@ -47,7 +49,8 @@ export default function AdminAccountsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      if (!quietReload.current) setLoading(true);
+      quietReload.current = false;
       setError(null);
       try {
         const data = await fetchAllAccounts();
@@ -62,6 +65,11 @@ export default function AdminAccountsPage() {
       cancelled = true;
     };
   }, [reloadKey]);
+
+  const refreshQuietly = () => {
+    quietReload.current = true;
+    setReloadKey((k) => k + 1);
+  };
 
   // Deleted (anonymized) accounts sit in their own filter so they never crowd the live list.
   const live = useMemo(() => accounts.filter((a) => a.status !== "DELETED"), [accounts]);
@@ -208,10 +216,10 @@ export default function AdminAccountsPage() {
             <AccountDetail
               key={selectedAccountId}
               userId={selectedAccountId}
-              onChanged={() => setReloadKey((k) => k + 1)}
+              onChanged={refreshQuietly}
               onDeleted={() => {
                 setSelectedAccountId(null);
-                setReloadKey((k) => k + 1);
+                refreshQuietly();
               }}
             />
           ) : null

@@ -273,6 +273,9 @@ describe("AdminAccountsPage", () => {
       });
 
       fireEvent.click(screen.getByRole("button", { name: "stub changed" }));
+      // Refreshes in place: the list never flashes back to the spinner.
+      expect(screen.queryByText("Loading accounts…")).not.toBeInTheDocument();
+      expect(screen.getByTestId("account-row-u2")).toBeInTheDocument();
       await waitFor(() => expect(fetchAllAccounts).toHaveBeenCalledTimes(2));
       await waitFor(() => expect(within(screen.getByTestId("account-row-u2")).getByText("Disabled")).toBeInTheDocument());
       expect(screen.getByTestId("account-detail")).toHaveTextContent("detail for u2");
