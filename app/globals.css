@@ -587,6 +587,17 @@ body::before {
   }
 }
 
+/* Landing sample map, tile layer only (pins and routes are unfiltered). OpenStreetMap's standard style is busy and its
+   orange roads match the faded day-1 pins, so light mode mutes it. It has no dark tiles, so dark mode inverts the light
+   ones and turns the hues back (water stays blue, parks green), then softens them to sit with the dark surface. */
+.landing-map-tiles {
+  filter: saturate(0.45) brightness(1.04);
+}
+
+.dark .landing-map-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85) saturate(0.6);
+}
+
 .landing-stops[data-revealed] [data-stop-badge] {
   animation: stop-badge-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   animation-delay: calc(var(--stop-base, 0ms) + 320ms + var(--stop-index, 0) * 120ms);

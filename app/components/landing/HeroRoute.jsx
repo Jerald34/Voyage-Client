@@ -85,7 +85,7 @@ export default function HeroRoute() {
               strokeDasharray="7 9"
               strokeLinecap="round"
             />
-                      </svg>
+          </svg>
           {reduceMotion ? null : (
             // The traveller: rides the same path (CSS offset-path) with the same timing as the draw, then fades as it reaches the card.
             <motion.span
