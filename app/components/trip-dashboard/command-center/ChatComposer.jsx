@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import ChatInput from "./ChatInput.jsx";
 import AskUserPanel from "./AskUserPanel.jsx";
+import AgentPausedStrip from "./AgentPausedStrip.jsx";
 import { buildAnswer, findPendingQuestion } from "../../../lib/agent/askUser.js";
 
 /**
  * The chat composer: the agent's open ask_user question as a picker, otherwise the
  * normal text box. Both composer mounts (desktop panel, mobile sheet) use it.
  * `onAnswer(text, answer)` sends the answer; every other prop goes to ChatInput.
+ * While the agent is paused for this user (`agentPause`), a locked strip replaces both,
+ * and its "Why?" calls `onShowAgentPause`.
  */
-export default function ChatComposer({ messages, onAnswer, ...inputProps }) {
+export default function ChatComposer({ messages, onAnswer, agentPause = null, onShowAgentPause, ...inputProps }) {
   const pending = useMemo(() => findPendingQuestion(messages), [messages]);
   // The question the user set aside to type a normal reply instead.
   const [dismissedId, setDismissedId] = useState(null);
@@ -20,6 +23,10 @@ export default function ChatComposer({ messages, onAnswer, ...inputProps }) {
   useEffect(() => {
     if (dismissedId) textareaRef?.current?.focus();
   }, [dismissedId, textareaRef]);
+
+  if (agentPause) {
+    return <AgentPausedStrip pause={agentPause} onWhy={onShowAgentPause} containerClassName={containerClassName} />;
+  }
 
   if (pending && pending.messageId !== dismissedId && !isSending) {
     return (

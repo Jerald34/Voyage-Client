@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACCOUNT_TYPE_LABELS,
+  AUDIT_ACTION_LABELS,
   MEMBERSHIP_ROLE_LABELS,
   SIGN_IN_LABELS,
   displayName,
@@ -32,5 +33,18 @@ describe("account labels", () => {
     expect(formatDate("2026-05-01T12:00:00.000Z")).toBe("May 1, 2026");
     expect(formatDate(null)).toBe("—");
     expect(formatDate(undefined)).toBe("—");
+  });
+});
+
+describe("AUDIT_ACTION_LABELS", () => {
+  it("names every account audit action in plain words", () => {
+    expect(AUDIT_ACTION_LABELS).toMatchObject({
+      USER_DISABLED: "Disabled",
+      USER_ENABLED: "Enabled",
+      USER_SESSIONS_REVOKED: "Signed out everywhere",
+      USER_DELETED: "Deleted",
+      AGENT_PAUSED: "Agent paused",
+      AGENT_RESUMED: "Agent resumed",
+    });
   });
 });

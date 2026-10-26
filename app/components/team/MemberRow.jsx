@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { activePause, shortUntil } from "../../lib/agentPause.js";
 import RolePill from "./RolePill";
 
 export default function MemberRow({ member, viewerRole, onChangeRole, onRemove }) {
@@ -8,6 +9,9 @@ export default function MemberRow({ member, viewerRole, onChangeRole, onRemove }
   const menuRef = useRef(null);
   const menuId = useId();
   const joined = new Date(member.createdAt).toLocaleDateString();
+  // The server only sends this to owners and admins, and only while the pause is in force; a pause whose
+  // end this clock has passed is treated as over.
+  const pause = activePause(member.agentPause);
 
   // Menu button pattern: the first item takes focus, a press outside or Escape closes it.
   useEffect(() => {
@@ -53,6 +57,15 @@ export default function MemberRow({ member, viewerRole, onChangeRole, onRemove }
           <div className="truncate text-xs text-text-muted">{member.user.email}</div>
           {/* Phones have no room for the date column, so it moves under the email. */}
           <div className="text-xs text-text-soft sm:hidden">Joined {joined}</div>
+          {/* The reason is plain text under the badge, not a tooltip, so touch and screen-reader users get it too. */}
+          {pause && (
+            <div className="mt-1 flex flex-col items-start gap-0.5">
+              <span className="rounded-pill border border-status-warning/30 bg-status-warning/10 px-2 py-0.5 text-[11px] font-semibold text-status-warning">
+                {shortUntil(pause)}
+              </span>
+              {pause.reason && <span className="break-words text-xs text-text-muted">{pause.reason}</span>}
+            </div>
+          )}
         </div>
       </div>
       <RolePill role={member.role} />

@@ -136,7 +136,12 @@ async function hydrateContext(agencyId, threadId, itineraryId) {
   };
 }
 
-export function useTripPlanning(agencyId) {
+/**
+ * `onSendError(error)` sees every failed send or image upload before an error banner is chosen. Return true when
+ * it has told the user itself (e.g. the agent-paused popup): no banner is shown, and a message that never
+ * reached the agent is taken back out of the chat.
+ */
+export function useTripPlanning(agencyId, { onSendError } = {}) {
   const [activeContext, setActiveContext] = useState(null);
   const [tripStates, setTripStates] = useState({});
   const [draftThreadStates, setDraftThreadStates] = useState({});
@@ -154,6 +159,12 @@ export function useTripPlanning(agencyId) {
   const hasLoadedInitialThreadRef = useRef(false);
   const loadInitialThreadsPromiseRef = useRef(null);
   const runTargetRef = useRef(null);
+  // The latest callback, so dispatchMessage never closes over a stale one.
+  const onSendErrorRef = useRef(onSendError);
+
+  useEffect(() => {
+    onSendErrorRef.current = onSendError;
+  }, [onSendError]);
 
   useEffect(() => {
     activeContextRef.current = activeContext;
@@ -399,12 +410,13 @@ export function useTripPlanning(agencyId) {
     }
   };
 
-  // Resolves to { sent, contextId, threadId } so callers can track what reached the server.
+  // Resolves to { sent, contextId, threadId } so callers can track what reached the server. `handled: true`
+  // is added when onSendError already told the user why it failed, so the caller may put the draft back.
   // `answers` (from buildAnswer) marks the message as the reply to ask_user questions.
   const dispatchMessage = async (content, startStream, imageFiles = [], travelerNeeds = null, { answers = null } = {}) => {
     const outcome = { sent: false, contextId: null, threadId: null };
     let sendContext = null;
-    let optimisticAnswerId = null;
+    let optimisticMessageId = null;
     if (!agencyId) {
       setAgentError("Missing agency context. Refresh and log in again.");
       return outcome;
@@ -462,7 +474,10 @@ export function useTripPlanning(agencyId) {
           imageUrls = (uploadResult.images || []).map((img) => img.url);
         } catch (uploadError) {
           console.error("Failed to upload images", uploadError);
-          setAgentError("Failed to upload images. Please try again.");
+          // A paused agent explains itself in a popup; no inline error needed.
+          const handled = onSendErrorRef.current?.(uploadError) === true;
+          if (handled) outcome.handled = true;
+          setAgentError(handled ? "" : "Failed to upload images. Please try again.");
           setIsSending(false);
           return outcome;
         }
@@ -480,7 +495,7 @@ export function useTripPlanning(agencyId) {
         content: messageContent,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       };
-      if (answers) optimisticAnswerId = message.id;
+      optimisticMessageId = message.id;
       if (currentContext.type === "draft") {
         setDraftThreadStates((prev) => ({
           ...prev,
@@ -507,21 +522,25 @@ export function useTripPlanning(agencyId) {
       if (runId && startStream) startStream(runId);
     } catch (error) {
       console.error("Failed to send agent message", error);
-      setAgentError(error?.message || "Unable to send your request to Voyage Agent.");
+      const handled = onSendErrorRef.current?.(error) === true;
+      if (handled) outcome.handled = true;
+      setAgentError(handled ? "" : error?.message || "Unable to send your request to Voyage Agent.");
       // The question closed elsewhere (another tab answered it): show the server's copy.
       if (answers && error?.code === "QUESTION_NOT_PENDING" && sendContext && outcome.threadId) {
         await reloadThreadMessages(sendContext, outcome.threadId);
-      } else if (optimisticAnswerId && sendContext) {
-        // Any other failure: take the answer back so the question returns to be answered again.
-        const dropAnswer = (prev) => ({
+      } else if (optimisticMessageId && sendContext && (answers || handled)) {
+        // An answer that failed goes back so its question returns to be answered again. A message the
+        // user was told about elsewhere (the agent is paused) never reached the agent, so it goes too;
+        // the caller puts the typed text back in the composer.
+        const dropMessage = (prev) => ({
           ...prev,
           [sendContext.id]: {
             ...(prev[sendContext.id] || {}),
-            messages: (prev[sendContext.id]?.messages || []).filter((item) => item.id !== optimisticAnswerId),
+            messages: (prev[sendContext.id]?.messages || []).filter((item) => item.id !== optimisticMessageId),
           },
         });
-        if (sendContext.type === "draft") setDraftThreadStates(dropAnswer);
-        else setTripStates(dropAnswer);
+        if (sendContext.type === "draft") setDraftThreadStates(dropMessage);
+        else setTripStates(dropMessage);
       }
     } finally {
       setIsSending(false);

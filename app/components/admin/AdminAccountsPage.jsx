@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchAllAccounts } from "../../lib/api/index.js";
 import { Spinner, EmptyState, Button } from "../ui/index.js";
 import { SearchIcon, UserIcon } from "../icons/index.js";
@@ -15,6 +15,7 @@ const TYPE_OPTIONS = [
   { value: "PERSONAL", label: ACCOUNT_TYPE_LABELS.PERSONAL },
   { value: "AGENCY_USER", label: ACCOUNT_TYPE_LABELS.AGENCY_USER },
   { value: "PENDING", label: ACCOUNT_TYPE_LABELS.PENDING },
+  { value: "DELETED", label: "Deleted" },
 ];
 
 // "Personal 3": the count is a tint of whatever colour the label is using, so it stays
@@ -31,22 +32,32 @@ function withCount(label, count) {
   );
 }
 
-export default function AdminAccountsPage() {
+/**
+ * @param {(selection: { id: string, label: string }) => void} [onOpenUsage] jump to the Usage tab with this person open
+ */
+export default function AdminAccountsPage({ onOpenUsage }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Set before a reload that follows an account action, so the list refreshes in place instead of flashing a spinner.
+  const quietReload = useRef(false);
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState("joined");
   const [sortDir, setSortDir] = useState("desc");
   const [selectedAccountId, setSelectedAccountId] = useState(null);
+  // "Ana was deleted." The panel closes and the row leaves the list, so without this a screen reader
+  // user gets no word that the delete went through. It outranks the list count until the admin
+  // moves on (selects, filters or searches).
+  const [deletedNotice, setDeletedNotice] = useState("");
 
   // One load for everyone; the type filter, search and sort all happen here on the client.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      if (!quietReload.current) setLoading(true);
+      quietReload.current = false;
       setError(null);
       try {
         const data = await fetchAllAccounts();
@@ -62,11 +73,20 @@ export default function AdminAccountsPage() {
     };
   }, [reloadKey]);
 
+  const refreshQuietly = () => {
+    quietReload.current = true;
+    setReloadKey((k) => k + 1);
+  };
+
+  // Deleted (anonymized) accounts sit in their own filter so they never crowd the live list.
+  const live = useMemo(() => accounts.filter((a) => a.status !== "DELETED"), [accounts]);
+  const deleted = useMemo(() => accounts.filter((a) => a.status === "DELETED"), [accounts]);
+
   const counts = useMemo(() => {
-    const c = { ALL: accounts.length, PERSONAL: 0, AGENCY_USER: 0, PENDING: 0 };
-    for (const a of accounts) if (a.accountType in c) c[a.accountType] += 1;
+    const c = { ALL: live.length, PERSONAL: 0, AGENCY_USER: 0, PENDING: 0, DELETED: deleted.length };
+    for (const a of live) if (a.accountType in c) c[a.accountType] += 1;
     return c;
-  }, [accounts]);
+  }, [live, deleted]);
 
   const typeOptions = TYPE_OPTIONS.map((o) => ({
     ...o,
@@ -74,7 +94,8 @@ export default function AdminAccountsPage() {
   }));
 
   // Everything in the chosen type; the table's "Showing X of Y" counts against this, like the agency table does.
-  const ofType = typeFilter === "ALL" ? accounts : accounts.filter((a) => a.accountType === typeFilter);
+  const ofType =
+    typeFilter === "DELETED" ? deleted : typeFilter === "ALL" ? live : live.filter((a) => a.accountType === typeFilter);
 
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
@@ -124,6 +145,13 @@ export default function AdminAccountsPage() {
   if (!loading && !error) {
     announcement = sorted.length === 0 ? emptyMessage : `Showing ${sorted.length} of ${ofType.length} accounts`;
   }
+  // The list reloads right after a delete, which would replace the notice with a new count before it is read out.
+  if (deletedNotice) announcement = deletedNotice;
+
+  const selectAccount = (id) => {
+    setDeletedNotice("");
+    setSelectedAccountId(id);
+  };
 
   const list = (
     <>
@@ -156,7 +184,7 @@ export default function AdminAccountsPage() {
           sortDir={sortDir}
           onSort={handleSort}
           selectedAccountId={selectedAccountId}
-          onRowClick={setSelectedAccountId}
+          onRowClick={selectAccount}
         />
       )}
     </>
@@ -179,7 +207,10 @@ export default function AdminAccountsPage() {
             aria-label="Search accounts"
             placeholder="Search accounts…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setDeletedNotice("");
+              setSearchQuery(e.target.value);
+            }}
             className="w-full rounded-pill border border-border/12 bg-surface-elevated py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder:text-text-soft focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10 sm:w-64"
           />
         </div>
@@ -189,7 +220,10 @@ export default function AdminAccountsPage() {
             size="sm"
             ariaLabel="Filter by account type"
             value={typeFilter}
-            onChange={setTypeFilter}
+            onChange={(value) => {
+              setDeletedNotice("");
+              setTypeFilter(value);
+            }}
             options={typeOptions}
           />
         </div>
@@ -197,11 +231,26 @@ export default function AdminAccountsPage() {
 
       <MasterDetailLayout
         list={list}
-        detail={selectedAccountId ? <AccountDetail key={selectedAccountId} userId={selectedAccountId} /> : null}
+        detail={
+          selectedAccountId ? (
+            <AccountDetail
+              key={selectedAccountId}
+              userId={selectedAccountId}
+              onChanged={refreshQuietly}
+              onOpenUsage={onOpenUsage}
+              onDeleted={() => {
+                const name = selected ? displayName(selected) : "";
+                setDeletedNotice(name ? `${name} was deleted.` : "The account was deleted.");
+                setSelectedAccountId(null);
+                refreshQuietly();
+              }}
+            />
+          ) : null
+        }
         detailTitle={selected ? displayName(selected) : "Account"}
         ariaLabel="Account details"
         open={!!selectedAccountId}
-        onClose={() => setSelectedAccountId(null)}
+        onClose={() => selectAccount(null)}
         emptyState={
           <EmptyState
             icon={<UserIcon width={28} height={28} />}

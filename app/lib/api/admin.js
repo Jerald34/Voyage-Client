@@ -22,6 +22,42 @@ export async function fetchAccountDetail(userId) {
   return fetchApi(`/admin/users/${userId}`);
 }
 
+function postAccountAction(userId, action, body) {
+  return fetchApi(`/admin/users/${userId}/${action}`, { method: "POST", body: JSON.stringify(body) });
+}
+
+const withReason = (reason) => (reason && reason.trim() ? { reason: reason.trim() } : {});
+
+export async function adminDisableUser(userId, reason) {
+  return postAccountAction(userId, "disable", withReason(reason));
+}
+
+export async function adminEnableUser(userId, reason) {
+  return postAccountAction(userId, "enable", withReason(reason));
+}
+
+export async function adminSignOutUser(userId, reason) {
+  return postAccountAction(userId, "sign-out", withReason(reason));
+}
+
+/** Pause one person's agent access. `duration` is "1h" | "24h" | "7d" | "indefinite"; the reason is required. */
+export async function adminPauseAgent(userId, { duration, reason } = {}) {
+  return postAccountAction(userId, "agent-pause", { duration, reason: (reason || "").trim() });
+}
+
+/** Lift a pause. The reason is optional and kept in the audit trail. */
+export async function adminResumeAgent(userId, reason) {
+  return postAccountAction(userId, "agent-resume", withReason(reason));
+}
+
+export async function adminDeleteUser(userId, { confirmEmail, reason, newOwnerUserId } = {}) {
+  return postAccountAction(userId, "delete", {
+    confirmEmail,
+    ...withReason(reason),
+    ...(newOwnerUserId ? { newOwnerUserId } : {}),
+  });
+}
+
 export async function fetchPendingCount() {
   return fetchApi("/admin/agencies/pending-count");
 }
@@ -56,9 +92,24 @@ export async function adminUnsuspendAgency(agencyId) {
   });
 }
 
-export async function fetchUsage({ period = "day", groupBy = "user", from, to } = {}) {
-  const qs = new URLSearchParams({ period, groupBy, ...(from ? { from } : {}), ...(to ? { to } : {}) });
+export async function fetchUsage({ range = "this_month", groupBy = "user" } = {}) {
+  const qs = new URLSearchParams({ range, groupBy });
   return fetchApi(`/admin/usage?${qs.toString()}`);
+}
+
+/** Runs behind one table row: pass exactly one of userId, agencyId, threadId. */
+export async function fetchUsageRuns({ range = "this_month", userId, agencyId, threadId }) {
+  const qs = new URLSearchParams({
+    range,
+    ...(userId ? { userId } : {}),
+    ...(agencyId ? { agencyId } : {}),
+    ...(threadId ? { threadId } : {}),
+  });
+  return fetchApi(`/admin/usage/runs?${qs.toString()}`);
+}
+
+export async function fetchUsageRun(runId) {
+  return fetchApi(`/admin/usage/runs/${runId}`);
 }
 
 export async function fetchReports(status) {

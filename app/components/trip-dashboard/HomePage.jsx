@@ -5,6 +5,7 @@ import { useAgentRunStream } from "../../hooks/useAgentRunStream.js";
 import { useAgentStreamOrchestration } from "../../hooks/useAgentStreamOrchestration.js";
 import { useTourFlow } from "../../hooks/useTourFlow.js";
 import { useTripPlanning } from "../../hooks/useTripPlanning.js";
+import { useAgentPause } from "../../hooks/useAgentPause.js";
 import {
   saveAgentThreadItinerary,
   deleteAgentThread,
@@ -12,6 +13,7 @@ import {
   listAgencyTrips,
   duplicateClientTrip,
   fetchPendingCount,
+  fetchCurrentUser,
   updateAgencySettings,
   updateCurrentUserProfile,
   fetchPersonalItineraries,
@@ -46,6 +48,7 @@ import AgencyAdminPage from "../agency-admin/AgencyAdminPage.jsx";
 import MobileGlassSheet from "./mobile/MobileGlassSheet.jsx";
 import useMobileViewport from "./mobile/useMobileViewport.js";
 import ChatComposer from "./command-center/ChatComposer.jsx";
+import AgentPausedModal from "./command-center/AgentPausedModal.jsx";
 import TravelerNeedsDialog from "../accessibility/TravelerNeedsDialog.jsx";
 import { useTravelerNeeds } from "../../hooks/useTravelerNeeds.js";
 import FirstUseTutorial from "./tutorial/FirstUseTutorial.jsx";
@@ -130,6 +133,9 @@ export default function HomePage({
     return out.sort((a, b) => a.localeCompare(b));
   }, [fetchedTrips]);
 
+  // useAgentPause needs currentTab (computed further down), so the send-error handler is wired through a ref.
+  const agentPauseErrorRef = useRef(null);
+
   const {
     activeContext,
     setActiveContext,
@@ -152,7 +158,7 @@ export default function HomePage({
     createPlanningContext,
     createRunTargetKey,
     renameThread,
-  } = useTripPlanning(agencyId);
+  } = useTripPlanning(agencyId, { onSendError: (error) => agentPauseErrorRef.current?.(error) ?? false });
 
   // Guard ref: when a dashboard action explicitly sets activeContext (e.g.
   // Resume / Open trip), the context-management effect must NOT clear it
@@ -475,6 +481,19 @@ export default function HomePage({
   // Agency tab (others fall back to Settings).
   const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId, membership: activeMembership });
 
+  // The pause popup opens by itself once the user is looking at the agent (and not behind the first-use tour).
+  // While paused, the hook re-reads the user (on focus, or from the popup's "Check again") so a pause an
+  // administrator lifts mid-session unlocks the composer; the fresh user replaces `user` like any other update.
+  const refreshUser = useCallback(async () => {
+    const data = await fetchCurrentUser();
+    if (data?.user) persistUser(data.user);
+  }, [persistUser]);
+  const agentPause = useAgentPause(user?.agentPause ?? null, {
+    surfaceActive: currentTab === "command-center" && !isFirstUseTutorialOpen,
+    refreshUser,
+  });
+  agentPauseErrorRef.current = agentPause.reportError;
+
   useEffect(() => {
     setSelectedPlaceId("");
   }, [activeContextKey]);
@@ -495,10 +514,20 @@ export default function HomePage({
     }
   }
 
+  // Sends a typed message. If the server refuses it because the agent is paused (the user is told in the
+  // popup), the message never reached the agent: the text goes back into the composer so it is still there
+  // when the pause ends. Resolves to the send outcome.
+  function dispatchComposerMessage(prompt, files = []) {
+    return sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs)).then((outcome) => {
+      if (outcome?.handled) setComposerInput((current) => current || prompt);
+      return outcome;
+    });
+  }
+
   function handleMobileSubmit(event) {
     event.preventDefault();
     if (!composerInput.trim()) return;
-    void sendWithNeeds((needs) => dispatchMessage(composerInput, startStream, [], needs));
+    void dispatchComposerMessage(composerInput);
     setComposerInput("");
   }
 
@@ -704,6 +733,8 @@ export default function HomePage({
         />
       )}
 
+      <AgentPausedModal open={agentPause.modalOpen} pause={agentPause.pause} onClose={agentPause.closeModal} onRecheck={agentPause.recheck} />
+
       <TravelerNeedsDialog
         open={isTravelerNeedsOpen}
         initialNeeds={activeTravelerNeeds}
@@ -814,7 +845,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
+                    dispatchAgentMessage={dispatchComposerMessage}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -837,6 +868,8 @@ export default function HomePage({
                     onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                     needsToggleRef={desktopNeedsToggleRef}
                     dispatchAgentAnswer={answerAgentQuestion}
+                    agentPause={agentPause.pause}
+                    onShowAgentPause={agentPause.openModal}
                   />
                 </div>
               </div>
@@ -864,6 +897,8 @@ export default function HomePage({
                       travelerNeeds={activeTravelerNeeds}
                       onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
                       needsToggleRef={mobileNeedsToggleRef}
+                      agentPause={agentPause.pause}
+                      onShowAgentPause={agentPause.openModal}
                     />
                   }
                 >
@@ -876,7 +911,7 @@ export default function HomePage({
                     tasks={isVisible ? tasks : []}
                     tasksTouchedThisRun={isVisible ? tasksTouchedThisRun : new Set()}
                     streamingItinerary={isVisible ? streamingItinerary : null}
-                    dispatchAgentMessage={(prompt, files) => sendWithNeeds((needs) => dispatchMessage(prompt, startStream, files, needs))}
+                    dispatchAgentMessage={dispatchComposerMessage}
                     composerInput={composerInput}
                     setComposerInput={setComposerInput}
                     isSending={isSending}
@@ -898,6 +933,8 @@ export default function HomePage({
                     onReuseInserted={handleReuseInserted}
                     travelerNeeds={activeTravelerNeeds}
                     onEditTravelerNeeds={() => setIsTravelerNeedsOpen(true)}
+                    agentPause={agentPause.pause}
+                    onShowAgentPause={agentPause.openModal}
                   />
                 </MobileGlassSheet>
               )}
@@ -1002,7 +1039,7 @@ export default function HomePage({
               onInitialSectionHandled={clearSettingsFocus}
             />
           ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
-            <AdminPage onPendingCountChange={refreshPendingCount} />
+            <AdminPage onPendingCountChange={refreshPendingCount} currentUserId={user?.id ?? null} />
           ) : null}
             </main>
           </div>
