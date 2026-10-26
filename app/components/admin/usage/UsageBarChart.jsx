@@ -5,6 +5,7 @@ import { fmtInt, fmtShortDate, fmtUsd } from "./usageFormat.js";
 
 const FORMAT = { costUsd: fmtUsd, totalTokens: fmtInt, runCount: fmtInt };
 const GROUP_LABEL = { costUsd: "Cost per day", totalTokens: "Tokens per day", runCount: "Runs per day" };
+const VALUE_HEADING = { costUsd: "Cost", totalTokens: "Tokens", runCount: "Runs" };
 
 function describe(d, metric) {
   const date = fmtShortDate(d.bucket);
@@ -12,6 +13,27 @@ function describe(d, metric) {
     return `${date}: ${fmtInt(d.runCount)} run${d.runCount === 1 ? "" : "s"}${d.failedRunCount ? `, ${d.failedRunCount} failed` : ""}`;
   }
   return `${date}: ${FORMAT[metric](d[metric] || 0)}`;
+}
+
+/** One sentence a screen reader can announce in place of the picture: what, when, total, peak. */
+function summarise(series, metric) {
+  const fmt = FORMAT[metric];
+  const first = fmtShortDate(series[0].bucket);
+  const last = fmtShortDate(series[series.length - 1].bucket);
+  const when = series.length > 1 ? `${first} to ${last}` : first;
+  const head = `${GROUP_LABEL[metric] || "Usage per day"}, ${when}.`;
+
+  let total = 0;
+  let failed = 0;
+  let peak = series[0];
+  for (const d of series) {
+    total += d[metric] || 0;
+    failed += d.failedRunCount || 0;
+    if ((d[metric] || 0) > (peak[metric] || 0)) peak = d;
+  }
+  if (!total) return `${head} No usage on any day.`;
+  const failedNote = metric === "runCount" && failed ? `, ${fmtInt(failed)} failed` : "";
+  return `${head} Total ${fmt(total)}${failedNote}. Peak ${fmt(peak[metric] || 0)} on ${fmtShortDate(peak.bucket)}.`;
 }
 
 export default function UsageBarChart({ series, metric = "costUsd", height = 160 }) {
@@ -38,9 +60,11 @@ export default function UsageBarChart({ series, metric = "costUsd", height = 160
         {activeDatum && <span className="font-semibold tabular-nums text-text-primary">{describe(activeDatum, metric)}</span>}
       </div>
 
+      {/* The bars are decoration for the mouse (hover tooltips); a screen reader gets the summary
+          label here plus the table below, and the keyboard gets no 30-bar tab trap. */}
       <svg
-        role="group"
-        aria-label={GROUP_LABEL[metric] || "Usage per day"}
+        role="img"
+        aria-label={summarise(series, metric)}
         viewBox={`0 0 100 ${height}`}
         preserveAspectRatio="none"
         className="w-full"
@@ -56,16 +80,7 @@ export default function UsageBarChart({ series, metric = "costUsd", height = 160
           const x = i * barW + barW * 0.15;
           const w = barW * 0.7;
           return (
-            <g
-              key={d.bucket}
-              role="img"
-              aria-label={describe(d, metric)}
-              tabIndex={0}
-              onMouseEnter={() => setActive(i)}
-              onMouseLeave={() => setActive(null)}
-              onFocus={() => setActive(i)}
-              onBlur={() => setActive(null)}
-            >
+            <g key={d.bucket} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)}>
               <title>{describe(d, metric)}</title>
               {/* An invisible full-height hit area keeps empty days hoverable. */}
               <rect x={i * barW} y={0} width={barW} height={height} fill="transparent" />
@@ -90,6 +105,26 @@ export default function UsageBarChart({ series, metric = "costUsd", height = 160
         {series.length > 2 && <span>{fmtShortDate(series[mid].bucket)}</span>}
         {series.length > 1 && <span>{fmtShortDate(series[series.length - 1].bucket)}</span>}
       </div>
+
+      <table className="sr-only">
+        <caption>{GROUP_LABEL[metric] || "Usage per day"}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">{VALUE_HEADING[metric] || "Value"}</th>
+            {metric === "runCount" && <th scope="col">Failed runs</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {series.map((d) => (
+            <tr key={d.bucket}>
+              <th scope="row">{fmtShortDate(d.bucket)}</th>
+              <td>{fmt(d[metric] || 0)}</td>
+              {metric === "runCount" && <td>{fmtInt(d.failedRunCount)}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
