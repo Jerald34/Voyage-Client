@@ -32,6 +32,26 @@ describe("PauseAgentDialog", () => {
     expect(adminPauseAgent).toHaveBeenCalledWith("u2", { duration: "indefinite", reason: "Abuse" });
   });
 
+  it("shows the spend a caller hands it, under the caller's own label, ahead of the account's monthly figure", () => {
+    render(<PauseAgentDialog open account={account} spend={{ label: "Last 7 days", costUsd: 0.2, runCount: 1 }} onClose={vi.fn()} onDone={vi.fn()} />);
+    expect(screen.getByText("Last 7 days: $0.200 · 1 run")).toBeInTheDocument();
+    expect(screen.queryByText(/^This month:/)).not.toBeInTheDocument();
+  });
+
+  it("leaves the spend line out when there is nothing to say", () => {
+    render(<PauseAgentDialog open account={{ id: "u2", displayName: "Mara Santos" }} onClose={vi.fn()} onDone={vi.fn()} />);
+    expect(screen.getByText("They can still sign in and edit trips by hand.")).toBeInTheDocument();
+    expect(screen.queryByText(/ runs?$/)).not.toBeInTheDocument();
+  });
+
+  it("makes the duration chips tint on hover only for a mouse, and animate only what changes", () => {
+    render(<PauseAgentDialog open account={account} onClose={vi.fn()} onDone={vi.fn()} />);
+    const chip = screen.getByRole("radio", { name: "1 hour" }).closest("label");
+    expect(chip).toHaveClass("transition-[color,background-color,border-color]", "duration-150", "ease-out");
+    expect(chip.className).toContain("[@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface");
+    expect(chip.className).not.toMatch(/(^|\s)hover:/);
+  });
+
   it("hands back the refreshed account", async () => {
     const user = { ...account, agentPause: { pausedAt: "p", until: null, reason: "Abuse" } };
     adminPauseAgent.mockResolvedValue({ user });

@@ -150,6 +150,31 @@ describe("UsageSection", () => {
     expect(typeof reload).toBe("function");
   });
 
+  it("tells the row-actions slot what the person spent in the range on screen, labelled by that range", async () => {
+    const renderRowActions = vi.fn(() => <button type="button">Pause agent</button>);
+    render(<UsageSection renderRowActions={renderRowActions} />);
+    fireEvent.click(within(await findBreakdown()).getByRole("button", { name: /Ana/ }));
+    await screen.findByRole("button", { name: "Pause agent" });
+    expect(renderRowActions.mock.calls.at(-1)[3]).toEqual({ spend: { label: "This month", costUsd: 0.75, runCount: 2 } });
+
+    fetchUsage.mockResolvedValue(response({ range: "7d", rows: [{ ...response().rows[0], costUsd: 0.2, runCount: 1 }] }));
+    fireEvent.click(screen.getByRole("radio", { name: "7 days" }));
+    await waitFor(() => expect(renderRowActions.mock.calls.at(-1)[3]).toEqual({ spend: { label: "Last 7 days", costUsd: 0.2, runCount: 1 } }));
+  });
+
+  it("offers no spend while the open row has no figures for the range on screen yet", async () => {
+    const first = deferred();
+    fetchUsage.mockReturnValueOnce(first.promise);
+    const renderRowActions = vi.fn(() => <button type="button">Pause agent</button>);
+    render(<UsageSection renderRowActions={renderRowActions} initialSelection={{ id: ANA, label: "Ana" }} />);
+    // Opened from the account panel before the first load: the placeholder zeros are not this month figures.
+    await screen.findByRole("button", { name: "Pause agent" });
+    expect(renderRowActions.mock.calls.at(-1)[3]).toEqual({ spend: null });
+    await act(async () => first.resolve(response()));
+    await findBreakdown();
+    await waitFor(() => expect(renderRowActions.mock.calls.at(-1)[3]).toEqual({ spend: { label: "This month", costUsd: 0.75, runCount: 2 } }));
+  });
+
   describe("loading, errors and stale data", () => {
     it("announces loading and the finished load in a persistent status region", async () => {
       const first = deferred();

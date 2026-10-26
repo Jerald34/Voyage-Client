@@ -33,8 +33,11 @@ const FIELD =
 /**
  * Pause one person's agent access for a while (or until lifted), with a required reason.
  * Resuming is a plain confirm, so it lives in AccountActionDialog ("resume-agent").
+ *
+ * `spend` ({ label, costUsd, runCount }) is the spend line the caller wants shown, for a caller that knows
+ * which period its figures cover (the Usage tab). Without it, the account's `usageThisMonth` is shown as "This month".
  */
-export default function PauseAgentDialog({ open, account, onClose, onDone, onStale }) {
+export default function PauseAgentDialog({ open, account, spend: spendProp = null, onClose, onDone, onStale }) {
   const [duration, setDuration] = useState("24h");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -58,7 +61,7 @@ export default function PauseAgentDialog({ open, account, onClose, onDone, onSta
 
   if (!account) return null;
 
-  const usage = account.usageThisMonth;
+  const spend = spendProp ?? (account.usageThisMonth ? { label: "This month", ...account.usageThisMonth } : null);
 
   const submit = async () => {
     setBusy(true);
@@ -93,9 +96,9 @@ export default function PauseAgentDialog({ open, account, onClose, onDone, onSta
     >
       <div className="mb-4 space-y-1 text-sm text-text-muted">
         <p className="leading-relaxed">They can still sign in and edit trips by hand.</p>
-        {usage && (
+        {spend && (
           <p className="tabular-nums">
-            This month: {fmtUsd(usage.costUsd)} · {fmtInt(usage.runCount)} {usage.runCount === 1 ? "run" : "runs"}
+            {spend.label}: {fmtUsd(spend.costUsd)} · {fmtInt(spend.runCount)} {spend.runCount === 1 ? "run" : "runs"}
           </p>
         )}
       </div>
@@ -106,10 +109,10 @@ export default function PauseAgentDialog({ open, account, onClose, onDone, onSta
           {DURATIONS.map((d) => (
             <label
               key={d.value}
-              className={`cursor-pointer rounded-pill border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-secondary/50 ${
+              className={`cursor-pointer rounded-pill border px-3 py-1.5 text-sm transition-[color,background-color,border-color] duration-150 ease-out has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-secondary/50 ${
                 duration === d.value
                   ? "border-status-warning/40 bg-status-warning/10 font-semibold text-text-primary"
-                  : "border-border/30 text-text-muted hover:bg-surface"
+                  : "border-border/30 text-text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface"
               }`}
             >
               <input

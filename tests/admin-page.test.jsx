@@ -20,6 +20,8 @@ vi.mock("../app/components/admin/AdminAccountsPage.jsx", () => ({
 
 // Besides the focus it was given, the section stub offers the page's row-actions slot a few rows and
 // groupings, so the page's choice of which rows get a Pause button is observable.
+const SPEND = { label: "Last 7 days", costUsd: 1.5, runCount: 4 };
+
 vi.mock("../app/components/admin/usage/UsageSection.jsx", () => ({
   default: function UsageSectionStub({ initialSelection, renderRowActions }) {
     const [reloads, setReloads] = useState(0);
@@ -28,6 +30,8 @@ vi.mock("../app/components/admin/usage/UsageSection.jsx", () => ({
       ["active-user", { id: "u1", drillable: true, roleTag: "STAFF", agentPause: null }, "user"],
       ["paused-user", { id: "u2", drillable: true, roleTag: "OWNER", agentPause: { pausedAt: "p", until: null, reason: "r" } }, "user"],
       ["personal-user", { id: "u3", drillable: true, roleTag: "PERSONAL", agentPause: null }, "user"],
+      ["super-admin", { id: "u6", drillable: true, roleTag: "OWNER", isSuperAdmin: true, agentPause: null }, "user"],
+      ["my-own-row", { id: "admin-me", drillable: true, roleTag: "STAFF", isSuperAdmin: false, agentPause: null }, "user"],
       ["deleted-user", { id: "u4", drillable: true, roleTag: null, agentPause: null }, "user"],
       ["unknown-pause", { id: "u5", drillable: true }, "user"],
       ["not-drillable", { id: "none", drillable: false, roleTag: null }, "user"],
@@ -43,7 +47,7 @@ vi.mock("../app/components/admin/usage/UsageSection.jsx", () => ({
           <ul>
             {cases.map(([name, row, groupBy]) => (
               <li key={name} data-testid={`actions-${name}`}>
-                {renderRowActions(row, groupBy, reload)}
+                {renderRowActions(row, groupBy, reload, { spend: SPEND })}
               </li>
             ))}
           </ul>
@@ -54,9 +58,9 @@ vi.mock("../app/components/admin/usage/UsageSection.jsx", () => ({
 }));
 
 vi.mock("../app/components/admin/UsagePauseButton.jsx", () => ({
-  default: ({ row, onChanged }) => (
+  default: ({ row, spend, onChanged }) => (
     <button type="button" onClick={onChanged}>
-      {`pause button for ${row.id}`}
+      {`pause button for ${row.id}${spend ? ` (${spend.label}: ${spend.runCount} runs)` : ""}`}
     </button>
   ),
 }));
@@ -156,23 +160,35 @@ describe("AdminPage", () => {
 
 describe("AdminPage usage row actions", () => {
   const openUsage = () => {
-    render(<AdminPage />);
+    render(<AdminPage currentUserId="admin-me" />);
     fireEvent.click(screen.getByRole("tab", { name: "Usage" }));
   };
 
-  it("gives each person row with a known pause state a Pause button, and nothing else", () => {
+  it("gives each person row with a known pause state a Pause button, and nothing else (no super admins, not the signed-in admin)", () => {
     openUsage();
     for (const name of ["active-user", "paused-user", "personal-user"]) {
       expect(within(screen.getByTestId(`actions-${name}`)).getByRole("button")).toBeInTheDocument();
     }
-    for (const name of ["deleted-user", "unknown-pause", "not-drillable", "agency", "chat"]) {
+    for (const name of ["super-admin", "my-own-row", "deleted-user", "unknown-pause", "not-drillable", "agency", "chat"]) {
       expect(within(screen.getByTestId(`actions-${name}`)).queryByRole("button")).not.toBeInTheDocument();
     }
   });
 
   it("passes the row, and reloads the usage when the button reports a change", () => {
     openUsage();
-    fireEvent.click(screen.getByRole("button", { name: "pause button for u2" }));
+    fireEvent.click(screen.getByRole("button", { name: /^pause button for u2/ }));
     expect(screen.getByTestId("reloads")).toHaveTextContent("1");
+  });
+
+  it("hands the button the spend the Usage tab worked out for the range on screen", () => {
+    openUsage();
+    expect(screen.getByRole("button", { name: "pause button for u1 (Last 7 days: 4 runs)" })).toBeInTheDocument();
+  });
+
+  it("still hides the button on a super admin row when it does not know who is signed in", () => {
+    render(<AdminPage />);
+    fireEvent.click(screen.getByRole("tab", { name: "Usage" }));
+    expect(within(screen.getByTestId("actions-my-own-row")).getByRole("button")).toBeInTheDocument();
+    expect(within(screen.getByTestId("actions-super-admin")).queryByRole("button")).not.toBeInTheDocument();
   });
 });

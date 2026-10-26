@@ -1039,7 +1039,7 @@ export default function HomePage({
               onInitialSectionHandled={clearSettingsFocus}
             />
           ) : currentTab === "admin" && user?.role === "SUPER_ADMIN" ? (
-            <AdminPage onPendingCountChange={refreshPendingCount} />
+            <AdminPage onPendingCountChange={refreshPendingCount} currentUserId={user?.id ?? null} />
           ) : null}
             </main>
           </div>

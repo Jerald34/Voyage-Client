@@ -9,7 +9,7 @@ import UsageStatCards from "./UsageStatCards.jsx";
 import UsageBarChart from "./UsageBarChart.jsx";
 import UsageTable from "./UsageTable.jsx";
 import UsageDrillIn from "./UsageDrillIn.jsx";
-import { GROUP_OPTIONS, RANGE_OPTIONS } from "./usageFormat.js";
+import { GROUP_OPTIONS, RANGE_OPTIONS, RANGE_SPEND_LABELS } from "./usageFormat.js";
 
 const METRIC_OPTIONS = [
   { value: "costUsd", label: "Cost" },
@@ -29,7 +29,9 @@ function ScrollX({ children }) {
 
 /**
  * @param {{ id: string, label: string } | null} [initialSelection] open a user's drill-in on arrival
- * @param {(row, groupBy, reload) => React.ReactNode} [renderRowActions] extra buttons in the drill-in (Part 3)
+ * @param {(row, groupBy, reload, context) => React.ReactNode} [renderRowActions] extra buttons in the drill-in.
+ *   `context.spend` is `{ label, costUsd, runCount }`: what the open row spent in the range on screen, or null
+ *   until a load has answered that range (the row's figures are placeholders before then).
  */
 export default function UsageSection({ initialSelection = null, renderRowActions }) {
   const [range, setRange] = useState("this_month");
@@ -120,6 +122,7 @@ export default function UsageSection({ initialSelection = null, renderRowActions
     selected && figuresReady
       ? (data.rows.find((r) => r.id === selected.id) ?? { ...selected, runCount: 0, failedRunCount: 0, totalTokens: 0, costUsd: 0 })
       : selected;
+  const spend = figuresReady && openRow ? { label: RANGE_SPEND_LABELS[range] ?? labelOf(RANGE_OPTIONS, range), costUsd: openRow.costUsd, runCount: openRow.runCount } : null;
   const startsBeforeMetering = Boolean(data?.meteredSince && data?.from && new Date(data.from) < new Date(data.meteredSince));
 
   const describeQuery = (r, g) => `${labelOf(RANGE_OPTIONS, r).toLowerCase()}, by ${labelOf(GROUP_OPTIONS, g).toLowerCase()}`;
@@ -195,7 +198,7 @@ export default function UsageSection({ initialSelection = null, renderRowActions
       {selected && (
         // Keyed by row so choosing another row while one is open hands focus to the new panel too.
         <DetailPane key={selected.id} open onClose={closePane} title={selected.label} ariaLabel={selected.label}>
-          <UsageDrillIn row={openRow} groupBy={groupBy} range={range} figuresPending={!figuresReady} actions={renderRowActions?.(openRow, groupBy, load) ?? null} />
+          <UsageDrillIn row={openRow} groupBy={groupBy} range={range} figuresPending={!figuresReady} actions={renderRowActions?.(openRow, groupBy, load, { spend }) ?? null} />
         </DetailPane>
       )}
     </div>

@@ -49,6 +49,14 @@ export const RANGE_OPTIONS = [
   { value: "30d", label: "30 days" },
 ];
 
+/** What a person's spend in each range is called where it is shown on its own ("Last 7 days: $1.40 · 12 runs"). */
+export const RANGE_SPEND_LABELS = {
+  this_month: "This month",
+  last_month: "Last month",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+};
+
 export const GROUP_OPTIONS = [
   { value: "user", label: "Users" },
   { value: "agency", label: "Agencies" },

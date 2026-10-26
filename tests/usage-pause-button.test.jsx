@@ -3,10 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 // The dialogs have their own tests; here they are stubs that expose the props the button wires up.
 vi.mock("../app/components/admin/PauseAgentDialog.jsx", () => ({
-  default: ({ open, account, onClose, onDone, onStale }) =>
+  default: ({ open, account, spend, onClose, onDone, onStale }) =>
     open ? (
       <div role="dialog" aria-label="pause">
         <span>{`pause ${account.id} as ${account.displayName}`}</span>
+        {spend && <span>{`spend ${spend.label} ${spend.costUsd} ${spend.runCount}`}</span>}
         <button type="button" onClick={onClose}>
           stub close
         </button>
@@ -49,6 +50,22 @@ describe("UsagePauseButton", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pause agent" }));
     expect(screen.getByRole("dialog", { name: "pause" })).toBeInTheDocument();
     expect(screen.getByText("pause u2 as Ana Reyes")).toBeInTheDocument();
+  });
+
+  it("gives the pause dialog the spend it was handed, so the admin sees what they are pausing", () => {
+    const spend = { label: "Last 30 days", costUsd: 2.5, runCount: 9 };
+    render(<UsagePauseButton row={row()} spend={spend} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Pause agent" }));
+    expect(screen.getByText("spend Last 30 days 2.5 9")).toBeInTheDocument();
+  });
+
+  it("makes the button tint on hover only for a mouse, and animate only what changes", () => {
+    render(<UsagePauseButton row={row()} onChanged={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Pause agent" });
+    expect(button).toHaveClass("transition-[color,background-color,transform]", "duration-150", "ease-out");
+    expect(button).not.toHaveClass("transition-colors");
+    expect(button.className).toContain("[@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface/80");
+    expect(button.className).not.toMatch(/(^|\s)hover:/);
   });
 
   it("offers Resume agent for a paused person, with the pause noted above it", () => {

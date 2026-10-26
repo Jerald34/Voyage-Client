@@ -19,13 +19,19 @@ const SECTIONS = [
 // Pause / Resume sits in the drill-in of a person's row. Not for agency or chat rows, not for a row with no
 // role left (a deleted account), and not for a row that carries no pause state: the one an account panel
 // opens for someone with no usage in the range, where the button could not say which action is right.
-const showsPauseButton = (row, groupBy) =>
-  groupBy === "user" && row.drillable && row.roleTag !== null && row.agentPause !== undefined;
+// The server refuses a super admin's account and the signed-in admin's own, so those get no button either.
+const showsPauseButton = (row, groupBy, currentUserId) =>
+  groupBy === "user" &&
+  row.drillable &&
+  row.roleTag !== null &&
+  row.agentPause !== undefined &&
+  !row.isSuperAdmin &&
+  !(currentUserId && row.id === currentUserId);
 
-const renderUsageRowActions = (row, groupBy, reload) =>
-  showsPauseButton(row, groupBy) ? <UsagePauseButton row={row} onChanged={reload} /> : null;
+export default function AdminPage({ onPendingCountChange, reportsBadge = 0, currentUserId = null }) {
+  const renderUsageRowActions = (row, groupBy, reload, context) =>
+    showsPauseButton(row, groupBy, currentUserId) ? <UsagePauseButton row={row} spend={context?.spend ?? null} onChanged={reload} /> : null;
 
-export default function AdminPage({ onPendingCountChange, reportsBadge = 0 }) {
   const [section, setSection] = useState("agencies");
   const [badge, setBadge] = useState(reportsBadge);
   // The person the account panel sent us to Usage for ({ id, label }), or null for the plain tab.
