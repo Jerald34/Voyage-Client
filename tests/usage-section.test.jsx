@@ -275,6 +275,38 @@ describe("UsageSection", () => {
       expect(rowButton).toHaveFocus();
     });
 
+    it("returns focus to that person's row when a drill-in opened from the account panel is closed", async () => {
+      render(<UsageSection initialSelection={{ id: ANA, label: "Ana" }} />);
+      const table = await findBreakdown();
+      const rowButton = within(table).getByRole("button", { name: /Ana/ });
+      await screen.findByRole("dialog", { name: "Ana" });
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(rowButton).toHaveFocus();
+    });
+
+    it("returns focus to the row when the pane is closed with its button and no row button had focus when it opened", async () => {
+      render(<UsageSection />);
+      const rowButton = within(await findBreakdown()).getByRole("button", { name: /Ana/ });
+      // A mouse click in Safari does not focus the button, so there is no remembered opener.
+      fireEvent.click(rowButton);
+      await screen.findByRole("dialog", { name: "Ana" });
+      fireEvent.click(screen.getByRole("button", { name: /close details/i }));
+      expect(rowButton).toHaveFocus();
+    });
+
+    it("falls back to the Breakdown heading when the open row is not in the table (nothing used in the range)", async () => {
+      fetchUsage.mockResolvedValue(response({ rows: [] }));
+      render(<UsageSection initialSelection={{ id: ANA, label: "Ana" }} />);
+      await screen.findByText("No usage to show for this range.");
+      await screen.findByRole("dialog", { name: "Ana" });
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Breakdown" })).toHaveFocus();
+    });
+
     it("hands focus to the new drill-in when another row is chosen while one is open", async () => {
       const second = { ...response().rows[0], id: "22222222-2222-4222-8222-222222222222", label: "Ben" };
       fetchUsage.mockResolvedValue(response({ rows: [...response().rows, second] }));

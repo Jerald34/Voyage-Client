@@ -47,6 +47,7 @@ export default function UsageSection({ initialSelection = null, renderRowActions
   const latestRequest = useRef(0);
   const tableWrap = useRef(null);
   const trigger = useRef(null);
+  const breakdownHeading = useRef(null);
 
   const load = useCallback(async () => {
     const id = ++latestRequest.current;
@@ -83,11 +84,28 @@ export default function UsageSection({ initialSelection = null, renderRowActions
     setSelected(row);
   };
 
+  // Where focus goes when the pane closes: the table button that opened it; failing that (it was opened from
+  // the account panel, or by a click in a browser that does not focus buttons) the open row's button; failing
+  // that (the row has no usage in this range) the Breakdown heading. Never nowhere, which drops it to the page.
   const closePane = useCallback(() => {
     const opener = trigger.current;
     trigger.current = null;
+    let landed = false;
+    if (opener?.isConnected) {
+      opener.focus();
+      landed = true;
+    } else {
+      // The table and the phone cards both carry the row; whichever one is hidden cannot take focus.
+      for (const button of tableWrap.current?.querySelectorAll('button[aria-current="true"]') ?? []) {
+        button.focus();
+        if (document.activeElement === button) {
+          landed = true;
+          break;
+        }
+      }
+    }
+    if (!landed) breakdownHeading.current?.focus();
     setSelected(null);
-    if (opener?.isConnected) opener.focus();
   }, []);
 
   const data = loaded?.data;
@@ -156,7 +174,9 @@ export default function UsageSection({ initialSelection = null, renderRowActions
             <UsageBarChart series={data.series} metric={metric} />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-sans text-xs font-semibold uppercase tracking-wider text-text-muted">Breakdown</h2>
+              <h2 ref={breakdownHeading} tabIndex={-1} className="font-sans text-xs font-semibold uppercase tracking-wider text-text-muted focus:outline-none">
+                Breakdown
+              </h2>
               <ScrollX>
                 <SegmentedControl as="radio" size="sm" ariaLabel="Group by" value={groupBy} onChange={changeGroup} options={GROUP_OPTIONS} />
               </ScrollX>
