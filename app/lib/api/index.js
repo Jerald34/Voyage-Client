@@ -10,6 +10,7 @@ export { fetchApi, API_URL } from "./client.js";
 
 // Auth
 export {
+  fetchCurrentUser,
   updateCurrentUserProfile,
   setAccountType,
   requestEmailVerification,

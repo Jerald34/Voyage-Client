@@ -13,6 +13,7 @@ import {
   listAgencyTrips,
   duplicateClientTrip,
   fetchPendingCount,
+  fetchCurrentUser,
   updateAgencySettings,
   updateCurrentUserProfile,
   fetchPersonalItineraries,
@@ -481,8 +482,15 @@ export default function HomePage({
   const currentTab = resolveVisibleTab({ activeTab, user, isPersonal, agencyId, membership: activeMembership });
 
   // The pause popup opens by itself once the user is looking at the agent (and not behind the first-use tour).
+  // While paused, the hook re-reads the user (on focus, or from the popup's "Check again") so a pause an
+  // administrator lifts mid-session unlocks the composer; the fresh user replaces `user` like any other update.
+  const refreshUser = useCallback(async () => {
+    const data = await fetchCurrentUser();
+    if (data?.user) persistUser(data.user);
+  }, [persistUser]);
   const agentPause = useAgentPause(user?.agentPause ?? null, {
     surfaceActive: currentTab === "command-center" && !isFirstUseTutorialOpen,
+    refreshUser,
   });
   agentPauseErrorRef.current = agentPause.reportError;
 
@@ -725,7 +733,7 @@ export default function HomePage({
         />
       )}
 
-      <AgentPausedModal open={agentPause.modalOpen} pause={agentPause.pause} onClose={agentPause.closeModal} />
+      <AgentPausedModal open={agentPause.modalOpen} pause={agentPause.pause} onClose={agentPause.closeModal} onRecheck={agentPause.recheck} />
 
       <TravelerNeedsDialog
         open={isTravelerNeedsOpen}

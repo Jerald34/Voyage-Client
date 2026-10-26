@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activeLearnedPause,
   activePause,
-  describeUntil,
+  describePause,
   learnedPauseEnd,
   pauseFromError,
   pauseKey,
@@ -19,21 +19,25 @@ describe("agent pause helpers", () => {
     expect(activePause(null, NOW)).toBeNull();
   });
 
-  it("describes the end in words", () => {
-    expect(describeUntil({ until: null }, NOW)).toBe("until an administrator lifts it");
-    expect(describeUntil({ until: "2026-10-25T08:30:00.000Z" }, NOW)).toMatch(/^until .+ \(in 30 minutes\)$/);
-    expect(describeUntil({ until: "2026-10-26T07:00:00.000Z" }, NOW)).toMatch(/\(in 23 hours\)$/);
-    expect(describeUntil({ until: "2026-11-01T08:00:00.000Z" }, NOW)).toMatch(/\(in 7 days\)$/);
+  it("describes the pause in a sentence, with its end in words", () => {
+    expect(describePause({ until: null }, NOW)).toBe(
+      "An administrator has paused your access to the agent. It stays paused until they lift it."
+    );
+    expect(describePause({ until: "2026-10-25T08:30:00.000Z" }, NOW)).toMatch(
+      /^An administrator has paused your access to the agent until .+ \(in 30 minutes\)\.$/
+    );
+    expect(describePause({ until: "2026-10-26T07:00:00.000Z" }, NOW)).toMatch(/\(in 23 hours\)\.$/);
+    expect(describePause({ until: "2026-11-01T08:00:00.000Z" }, NOW)).toMatch(/\(in 7 days\)\.$/);
   });
 
   it("uses singular units and never says 0 minutes", () => {
-    expect(describeUntil({ until: "2026-10-25T08:01:00.000Z" }, NOW)).toMatch(/\(in 1 minute\)$/);
-    expect(describeUntil({ until: "2026-10-25T08:00:10.000Z" }, NOW)).toMatch(/\(in 1 minute\)$/);
-    expect(describeUntil({ until: "2026-10-25T09:00:00.000Z" }, NOW)).toMatch(/\(in 1 hour\)$/);
+    expect(describePause({ until: "2026-10-25T08:01:00.000Z" }, NOW)).toMatch(/\(in 1 minute\)\.$/);
+    expect(describePause({ until: "2026-10-25T08:00:10.000Z" }, NOW)).toMatch(/\(in 1 minute\)\.$/);
+    expect(describePause({ until: "2026-10-25T09:00:00.000Z" }, NOW)).toMatch(/\(in 1 hour\)\.$/);
   });
 
   it("does not promise a future time for an end this device's clock has already passed", () => {
-    expect(describeUntil({ until: "2026-10-25T07:50:00.000Z" }, NOW)).toMatch(/^until .+ \(any moment now\)$/);
+    expect(describePause({ until: "2026-10-25T07:50:00.000Z" }, NOW)).toMatch(/until .+ \(any moment now\)\.$/);
   });
 
   it("gives a short end for badges and the composer strip", () => {

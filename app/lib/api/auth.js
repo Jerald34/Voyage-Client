@@ -3,6 +3,11 @@
  */
 import { fetchApi } from "./client.js";
 
+/** The signed-in user as the server sees them right now (same shape as login returns). */
+export async function fetchCurrentUser() {
+  return fetchApi("/auth/me");
+}
+
 export async function updateCurrentUserProfile(payload) {
   return fetchApi("/auth/me", {
     method: "PATCH",

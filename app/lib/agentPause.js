@@ -23,13 +23,16 @@ function relative(ms) {
 }
 
 /**
- * "until Oct 26, 3:40 PM (in 23 hours)" or "until an administrator lifts it". An end this device's
- * clock has already passed (the server still enforces it, so the clock is ahead) never reads as a future time.
+ * The pause in one sentence, for the popup: "An administrator has paused your access to the agent until
+ * Oct 26, 3:40 PM (in 23 hours)." or, with no end, "...the agent. It stays paused until they lift it."
+ * An end this device's clock has already passed (the server still enforces it, so the clock is ahead)
+ * never reads as a future time.
  */
-export function describeUntil(pause, now = Date.now()) {
-  if (!pause?.until) return "until an administrator lifts it";
+export function describePause(pause, now = Date.now()) {
+  const lead = "An administrator has paused your access to the agent";
+  if (!pause?.until) return `${lead}. It stays paused until they lift it.`;
   const ms = Date.parse(pause.until) - now;
-  return `until ${fmtWhen(pause.until)} (${ms <= 0 ? "any moment now" : relative(ms)})`;
+  return `${lead} until ${fmtWhen(pause.until)} (${ms <= 0 ? "any moment now" : relative(ms)}).`;
 }
 
 /** Short label for the composer strip and the Team badge. */

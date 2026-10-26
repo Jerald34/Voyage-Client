@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // HomePage's own suite fails to import in the baseline, so this wiring test carries its own mocks
@@ -54,9 +54,14 @@ vi.mock("../app/hooks/useDashboardPoll.js", () => {
   return { default: useDashboardPoll, useDashboardPoll };
 });
 
+const never = () => new Promise(() => {});
+
+// Everything the page asks for stays pending, except what a test sets up (the /auth/me re-read).
+const fetchApiMock = vi.hoisted(() => vi.fn());
+
 vi.mock("../app/lib/api/client.js", () => ({
   API_URL: "/api",
-  fetchApi: () => new Promise(() => {}),
+  fetchApi: fetchApiMock,
 }));
 
 const api = vi.hoisted(() => ({
@@ -107,6 +112,8 @@ function sendTyped(text) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fetchApiMock.mockReset();
+  fetchApiMock.mockImplementation(never);
   localStorage.clear();
   localStorage.setItem(tourStorageKey("user-owner"), "true");
   if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -137,6 +144,99 @@ describe("HomePage for a user whose agent is paused", () => {
     expect(composerBox()).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: POPUP })).toBeNull();
     expect(screen.queryByText("Agent paused")).toBeNull();
+  });
+});
+
+const meCalls = () => fetchApiMock.mock.calls.filter(([path]) => path === "/auth/me");
+const serverSays = (agentPause) =>
+  fetchApiMock.mockImplementation((path) => (path === "/auth/me" ? Promise.resolve({ user: { ...user, agentPause } }) : never()));
+const focusWindow = () => act(async () => { window.dispatchEvent(new Event("focus")); });
+
+describe("HomePage for a user whose pause an administrator lifts while the page is open", () => {
+  it("re-reads the user when the window gains focus and unlocks the composer once the server says the pause is lifted", async () => {
+    serverSays(null);
+    render(<HomePage user={{ ...user, agentPause: pauseDetails }} initialTab="command-center" />);
+    await screen.findByRole("dialog", { name: POPUP });
+    expect(screen.queryByPlaceholderText(/ask|plan|trip/i)).toBeNull();
+    expect(meCalls()).toHaveLength(0);
+
+    await focusWindow();
+
+    expect(meCalls()).toHaveLength(1);
+    await waitFor(() => expect(composerBox()).toBeInTheDocument());
+    expect(screen.queryByRole("dialog", { name: POPUP })).toBeNull();
+    expect(screen.queryByText("Agent paused")).toBeNull();
+  });
+
+  it("stays locked when the server says the pause is still on", async () => {
+    serverSays(pauseDetails);
+    render(<HomePage user={{ ...user, agentPause: pauseDetails }} initialTab="command-center" />);
+    await screen.findByRole("dialog", { name: POPUP });
+
+    await focusWindow();
+
+    await waitFor(() => expect(meCalls()).toHaveLength(1));
+    expect(screen.queryByPlaceholderText(/ask|plan|trip/i)).toBeNull();
+    expect(screen.getByRole("dialog", { name: POPUP })).toBeInTheDocument();
+  });
+
+  it("does not ask the server anything on focus for a user who is not paused", async () => {
+    serverSays(null);
+    render(<HomePage user={user} initialTab="command-center" />);
+
+    await focusWindow();
+
+    expect(meCalls()).toHaveLength(0);
+    expect(composerBox()).toBeInTheDocument();
+  });
+
+  it("unlocks a pause learned from a refusal when the user was loaded before the pause and the admin has since resumed", async () => {
+    api.sendMessage.mockRejectedValueOnce(refusal(pauseDetails));
+    serverSays(null);
+    render(<HomePage user={user} initialTab="command-center" />);
+    sendTyped("Plan 3 days in Cebu");
+    await screen.findByRole("dialog", { name: POPUP });
+    expect(screen.queryByPlaceholderText(/ask|plan|trip/i)).toBeNull();
+
+    await focusWindow();
+
+    await waitFor(() => expect(composerBox()).toBeInTheDocument());
+    expect(screen.queryByRole("dialog", { name: POPUP })).toBeNull();
+    expect(screen.queryByText("Agent paused")).toBeNull();
+  });
+
+  it("has a Check again button in the popup that unlocks the composer and closes the popup", async () => {
+    serverSays(null);
+    render(<HomePage user={{ ...user, agentPause: pauseDetails }} initialTab="command-center" />);
+    const dialog = await screen.findByRole("dialog", { name: POPUP });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Check again" }));
+
+    await waitFor(() => expect(composerBox()).toBeInTheDocument());
+    expect(screen.queryByRole("dialog", { name: POPUP })).toBeNull();
+    expect(meCalls()).toHaveLength(1);
+  });
+
+  it("tells the user the pause is still on when Check again finds it so", async () => {
+    serverSays(pauseDetails);
+    render(<HomePage user={{ ...user, agentPause: pauseDetails }} initialTab="command-center" />);
+    const dialog = await screen.findByRole("dialog", { name: POPUP });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Check again" }));
+
+    expect(await within(dialog).findByText("Still paused. Checked just now.")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/ask|plan|trip/i)).toBeNull();
+  });
+
+  it("tells the user when Check again could not reach the server", async () => {
+    fetchApiMock.mockImplementation((path) => (path === "/auth/me" ? Promise.reject(new Error("offline")) : never()));
+    render(<HomePage user={{ ...user, agentPause: pauseDetails }} initialTab="command-center" />);
+    const dialog = await screen.findByRole("dialog", { name: POPUP });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Check again" }));
+
+    expect(await within(dialog).findByText("Couldn't check right now. Try again in a moment.")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/ask|plan|trip/i)).toBeNull();
   });
 });
 
