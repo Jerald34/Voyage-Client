@@ -109,6 +109,15 @@ describe("UsageSection", () => {
     expect(screen.queryByText(/Usage is recorded from/)).not.toBeInTheDocument();
   });
 
+  it("heads the breakdown as an h2 (the page title is the h1), in the sans label style", async () => {
+    render(<UsageSection />);
+    await findBreakdown();
+    const heading = screen.getByRole("heading", { name: "Breakdown" });
+    expect(heading.tagName).toBe("H2");
+    expect(heading.className).toContain("font-sans");
+    expect(heading.className).toContain("font-semibold");
+  });
+
   it("opens the drill-in for a clicked row", async () => {
     render(<UsageSection />);
     fireEvent.click(within(await findBreakdown()).getByRole("button", { name: /Ana/ }));

@@ -156,7 +156,7 @@ export default function UsageSection({ initialSelection = null, renderRowActions
             <UsageBarChart series={data.series} metric={metric} />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-text-muted">Breakdown</h3>
+              <h2 className="font-sans text-xs font-semibold uppercase tracking-wider text-text-muted">Breakdown</h2>
               <ScrollX>
                 <SegmentedControl as="radio" size="sm" ariaLabel="Group by" value={groupBy} onChange={changeGroup} options={GROUP_OPTIONS} />
               </ScrollX>
