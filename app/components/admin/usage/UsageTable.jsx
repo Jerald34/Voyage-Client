@@ -11,6 +11,8 @@ const COLUMNS = [
   { key: "costUsd", label: "Cost", numeric: true, fmt: fmtUsd },
 ];
 
+const TABLE_NAME = { user: "Usage by user", agency: "Usage by agency", chat: "Usage by chat" };
+
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 
 function subLine(row, groupBy) {
@@ -68,6 +70,7 @@ export default function UsageTable({ rows = [], groupBy, onSelect, selectedId })
     <>
       <div className="hidden overflow-hidden rounded-md border border-border/12 shadow-soft sm:block">
         <table className="w-full table-fixed text-sm">
+          <caption className="sr-only">{TABLE_NAME[groupBy] || "Usage breakdown"}</caption>
           <thead className="sticky top-0 z-10 bg-surface-elevated">
             <tr>
               {COLUMNS.map((c) => (

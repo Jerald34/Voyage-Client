@@ -63,4 +63,13 @@ describe("UsageTable", () => {
     render(<UsageTable rows={chats} groupBy="chat" onSelect={vi.fn()} />);
     expect(within(screen.getByRole("table")).getByText("Hops Travel")).toBeInTheDocument();
   });
+
+  it("names the table after its grouping so it can be told apart from the chart's data table", () => {
+    const { rerender } = render(<UsageTable rows={rows} groupBy="user" onSelect={vi.fn()} />);
+    expect(screen.getByRole("table", { name: "Usage by user" })).toBeInTheDocument();
+    rerender(<UsageTable rows={rows} groupBy="agency" onSelect={vi.fn()} />);
+    expect(screen.getByRole("table", { name: "Usage by agency" })).toBeInTheDocument();
+    rerender(<UsageTable rows={rows} groupBy="chat" onSelect={vi.fn()} />);
+    expect(screen.getByRole("table", { name: "Usage by chat" })).toBeInTheDocument();
+  });
 });
