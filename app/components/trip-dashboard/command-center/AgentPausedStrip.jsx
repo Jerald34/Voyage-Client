@@ -33,7 +33,7 @@ export default function AgentPausedStrip({ pause, onWhy, containerClassName = ""
         <button
           type="button"
           onClick={onWhy}
-          className="flex-none cursor-pointer rounded-sm px-3 py-2 text-sm font-semibold text-text-primary underline underline-offset-2 transition-colors duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/10"
+          className="flex-none min-h-11 cursor-pointer rounded-sm px-3 py-2 text-sm font-semibold text-text-primary underline underline-offset-2 transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/10"
         >
           Why?
         </button>
