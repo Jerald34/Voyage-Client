@@ -82,9 +82,24 @@ export async function adminUnsuspendAgency(agencyId) {
   });
 }
 
-export async function fetchUsage({ period = "day", groupBy = "user", from, to } = {}) {
-  const qs = new URLSearchParams({ period, groupBy, ...(from ? { from } : {}), ...(to ? { to } : {}) });
+export async function fetchUsage({ range = "this_month", groupBy = "user" } = {}) {
+  const qs = new URLSearchParams({ range, groupBy });
   return fetchApi(`/admin/usage?${qs.toString()}`);
+}
+
+/** Runs behind one table row: pass exactly one of userId, agencyId, threadId. */
+export async function fetchUsageRuns({ range = "this_month", userId, agencyId, threadId }) {
+  const qs = new URLSearchParams({
+    range,
+    ...(userId ? { userId } : {}),
+    ...(agencyId ? { agencyId } : {}),
+    ...(threadId ? { threadId } : {}),
+  });
+  return fetchApi(`/admin/usage/runs?${qs.toString()}`);
+}
+
+export async function fetchUsageRun(runId) {
+  return fetchApi(`/admin/usage/runs/${runId}`);
 }
 
 export async function fetchReports(status) {

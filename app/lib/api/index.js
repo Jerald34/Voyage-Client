@@ -100,6 +100,8 @@ export {
   adminSuspendAgency,
   adminUnsuspendAgency,
   fetchUsage,
+  fetchUsageRuns,
+  fetchUsageRun,
   fetchReports,
   fetchReportDetail,
   updateReport,
