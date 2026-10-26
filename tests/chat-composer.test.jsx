@@ -91,3 +91,34 @@ describe("ChatComposer", () => {
     expect(screen.getByPlaceholderText("Ask the agent to adjust the draft...")).toHaveFocus();
   });
 });
+
+describe("ChatComposer while the agent is paused", () => {
+  it("replaces the input and the question panel with a locked strip whose Why? reopens the popup", () => {
+    const onShowAgentPause = vi.fn();
+    render(<ChatComposer {...composerProps({ agentPause: { pausedAt: "p", until: null, reason: "x" }, onShowAgentPause })} />);
+
+    expect(screen.queryByRole("group", { name: "Car or train?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByText("Agent paused")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Why?" }));
+    expect(onShowAgentPause).toHaveBeenCalled();
+  });
+
+  it("announces the lock as a status and keeps the page spacing the input had", () => {
+    const { container } = render(
+      <ChatComposer {...composerProps({ agentPause: { pausedAt: "p", until: null, reason: "x" }, containerClassName: "px-3 pb-3" })} />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Agent paused");
+    expect(container.firstChild).toHaveClass("mt-auto", "w-full", "px-3", "pb-3");
+  });
+
+  it("brings the input back when the pause is lifted", () => {
+    const props = composerProps({ messages: [], agentPause: { pausedAt: "p", until: null, reason: "x" } });
+    const { rerender } = render(<ChatComposer {...props} />);
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+
+    rerender(<ChatComposer {...props} agentPause={null} />);
+    expect(screen.getByPlaceholderText("Ask the agent to adjust the draft...")).toBeInTheDocument();
+  });
+});
