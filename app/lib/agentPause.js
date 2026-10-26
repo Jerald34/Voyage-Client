@@ -22,10 +22,14 @@ function relative(ms) {
   return `in ${days} days`;
 }
 
-/** "until Oct 26, 3:40 PM (in 23 hours)" or "until an administrator lifts it". */
+/**
+ * "until Oct 26, 3:40 PM (in 23 hours)" or "until an administrator lifts it". An end this device's
+ * clock has already passed (the server still enforces it, so the clock is ahead) never reads as a future time.
+ */
 export function describeUntil(pause, now = Date.now()) {
   if (!pause?.until) return "until an administrator lifts it";
-  return `until ${fmtWhen(pause.until)} (${relative(Date.parse(pause.until) - now)})`;
+  const ms = Date.parse(pause.until) - now;
+  return `until ${fmtWhen(pause.until)} (${ms <= 0 ? "any moment now" : relative(ms)})`;
 }
 
 /** Short label for the composer strip and the Team badge. */
@@ -39,6 +43,28 @@ export function pauseFromError(error) {
   if (error?.code !== "AGENT_PAUSED") return null;
   const d = error.details || {};
   return { until: d.until ?? null, reason: d.reason ?? "", pausedAt: d.pausedAt ?? null };
+}
+
+/**
+ * How long a pause the server has just enforced stays in force on screen even though this device's clock
+ * says it already ended. The server answered AGENT_PAUSED, so it is the authority: the remaining wait is
+ * at most the clock difference, which is small in practice. After the hold the user may try again, and the
+ * server's next refusal brings the popup and the lock back.
+ */
+export const SERVER_PAUSE_HOLD_MS = 60 * 1000;
+
+/** When (ms since epoch) a pause learned from an AGENT_PAUSED refusal at `learnedAt` stops showing; null = never. */
+export function learnedPauseEnd(pause, learnedAt) {
+  if (!pause?.until) return null;
+  const until = Date.parse(pause.until);
+  return until > learnedAt ? until : learnedAt + SERVER_PAUSE_HOLD_MS;
+}
+
+/** The pause learned from an AGENT_PAUSED refusal while it is still shown, else null. */
+export function activeLearnedPause(pause, learnedAt, now = Date.now()) {
+  if (!pause) return null;
+  const end = learnedPauseEnd(pause, learnedAt);
+  return end === null || end > now ? pause : null;
 }
 
 /** Identity of a pause, so the popup shows once per pause rather than once per render. */
