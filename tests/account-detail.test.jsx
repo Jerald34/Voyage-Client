@@ -7,6 +7,8 @@ vi.mock("../app/lib/api/index.js", () => ({
   adminEnableUser: vi.fn(),
   adminSignOutUser: vi.fn(),
   adminDeleteUser: vi.fn(),
+  adminPauseAgent: vi.fn(),
+  adminResumeAgent: vi.fn(),
 }));
 // The dialogs have their own tests; here they are stubs that expose the callbacks the panel wires up.
 vi.mock("../app/components/admin/AccountActionDialog.jsx", () => ({
@@ -19,7 +21,19 @@ vi.mock("../app/components/admin/AccountActionDialog.jsx", () => ({
         <button
           type="button"
           onClick={() =>
-            onDone(action === "sign-out" ? null : {
+            onDone(action === "sign-out" ? null : action === "resume-agent" ? {
+              id: "u2",
+              email: "ana@alpha.com",
+              displayName: "Ana Reyes",
+              role: "USER",
+              status: "ACTIVE",
+              accountType: "AGENCY_USER",
+              memberships: [],
+              signInMethods: [],
+              activity: {},
+              agentPause: null,
+              auditEvents: [{ id: "e10", action: "AGENT_RESUMED", reason: null, createdAt: "2026-10-26T00:00:00.000Z", adminName: "Jerald" }],
+            } : {
               id: "u2",
               email: "ana@alpha.com",
               displayName: "Ana Reyes",
@@ -34,6 +48,38 @@ vi.mock("../app/components/admin/AccountActionDialog.jsx", () => ({
           }
         >
           stub finish action
+        </button>
+      </div>
+    ) : null,
+}));
+// The pause dialog has its own test; here it exposes the callbacks the panel wires up.
+vi.mock("../app/components/admin/PauseAgentDialog.jsx", () => ({
+  default: ({ open, account, onDone, onStale }) =>
+    open ? (
+      <div role="dialog" aria-label="pause">
+        <span>pausing {account.id}</span>
+        <button type="button" onClick={onStale}>
+          stub pause stale
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onDone({
+              id: "u2",
+              email: "ana@alpha.com",
+              displayName: "Ana Reyes",
+              role: "USER",
+              status: "ACTIVE",
+              accountType: "AGENCY_USER",
+              memberships: [],
+              signInMethods: [],
+              activity: {},
+              agentPause: { pausedAt: "2026-10-26T00:00:00.000Z", until: null, reason: "Too many runs" },
+              auditEvents: [{ id: "e11", action: "AGENT_PAUSED", reason: "Too many runs", createdAt: "2026-10-26T00:00:00.000Z", adminName: "Jerald" }],
+            })
+          }
+        >
+          stub finish pause
         </button>
       </div>
     ) : null,
@@ -85,6 +131,7 @@ const detail = (over = {}) => ({
   activity: { itineraries: 12, clientTrips: 3, agentThreads: 41 },
   auditEvents: [],
   ownedAgencies: [],
+  agentPause: null,
   ...over,
 });
 
@@ -344,6 +391,101 @@ describe("AccountDetail", () => {
       fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
       expect(screen.getByRole("dialog", { name: "delete" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "stub disable instead" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("agent pause controls", () => {
+    // Local clock, any time zone: a mid-month midday far in the future is Jun 15 or 16 everywhere.
+    const timed = { pausedAt: "2026-10-26T00:00:00.000Z", until: "2099-06-15T12:00:00.000Z", reason: "Testing the limits" };
+
+    it("offers Pause agent, which opens the pause dialog for this account", async () => {
+      await renderDetail();
+      fireEvent.click(screen.getByRole("button", { name: "Pause agent" }));
+      expect(screen.getByRole("dialog", { name: "pause" })).toBeInTheDocument();
+      expect(screen.getByText("pausing u2")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Resume agent" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Agent paused")).not.toBeInTheDocument();
+    });
+
+    it("shows an active pause and offers Resume", async () => {
+      await renderDetail(detail({ agentPause: { pausedAt: "p", until: null, reason: "Abuse" } }));
+      // The pill and the pause notice both say it.
+      expect(screen.getAllByText("Agent paused")).toHaveLength(2);
+      expect(screen.getByText("Abuse")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Pause agent" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Resume agent" }));
+      expect(screen.getByRole("dialog", { name: "action resume-agent" })).toBeInTheDocument();
+    });
+
+    it("says when a timed pause ends, next to the reason", async () => {
+      await renderDetail(detail({ agentPause: timed }));
+      expect(screen.getByText(/^Agent paused until Jun 1[56]/)).toBeInTheDocument();
+      expect(screen.getByText("Testing the limits")).toBeInTheDocument();
+      expect(screen.getByText("Agent paused")).toBeInTheDocument(); // just the pill
+    });
+
+    it("leaves out the reason line when there is none", async () => {
+      await renderDetail(detail({ agentPause: { pausedAt: "p", until: null, reason: "" } }));
+      const notice = screen.getAllByText("Agent paused")[1].closest("div");
+      expect(notice.querySelectorAll("p")).toHaveLength(1);
+    });
+
+    it("treats a pause that has already ended as no pause", async () => {
+      await renderDetail(detail({ agentPause: { pausedAt: "2026-01-01T00:00:00.000Z", until: "2026-01-02T00:00:00.000Z", reason: "Old" } }));
+      expect(screen.queryByText(/Agent paused/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Old")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Pause agent" })).toBeInTheDocument();
+    });
+
+    it("applies the refreshed account after a pause: Resume button, pause notice and audit line", async () => {
+      const onChanged = vi.fn();
+      await renderDetail(detail(), { onChanged });
+      fireEvent.click(screen.getByRole("button", { name: "Pause agent" }));
+      fireEvent.click(screen.getByRole("button", { name: "stub finish pause" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onChanged).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Resume agent" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Pause agent" })).not.toBeInTheDocument();
+      expect(screen.getAllByText("Agent paused")).toHaveLength(3); // the pill, the notice and the audit entry
+      expect(screen.getAllByText("Too many runs")).toHaveLength(2); // the notice and the audit entry
+    });
+
+    it("applies the refreshed account after a resume", async () => {
+      const onChanged = vi.fn();
+      await renderDetail(detail({ agentPause: { pausedAt: "p", until: null, reason: "Abuse" } }), { onChanged });
+      fireEvent.click(screen.getByRole("button", { name: "Resume agent" }));
+      fireEvent.click(screen.getByRole("button", { name: "stub finish action" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onChanged).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Pause agent" })).toBeInTheDocument();
+      expect(screen.queryByText("Abuse")).not.toBeInTheDocument();
+      expect(screen.queryByText("Agent paused")).not.toBeInTheDocument();
+      expect(screen.getByText("Agent resumed")).toBeInTheDocument(); // the audit line
+    });
+
+    it("loads the account again when the pause dialog finds it changed, keeping the dialog open", async () => {
+      await renderDetail();
+      fireEvent.click(screen.getByRole("button", { name: "Pause agent" }));
+      fetchAccountDetail.mockResolvedValue({ user: detail({ status: "DELETED" }) });
+
+      fireEvent.click(screen.getByRole("button", { name: "stub pause stale" }));
+
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Sign out everywhere" })).not.toBeInTheDocument());
+      expect(screen.getByRole("dialog", { name: "pause" })).toBeInTheDocument();
+      expect(fetchAccountDetail).toHaveBeenCalledTimes(2);
+    });
+
+    it("offers no pause controls for a super admin", async () => {
+      await renderDetail(detail({ role: "SUPER_ADMIN" }));
+      expect(screen.queryByRole("button", { name: "Pause agent" })).not.toBeInTheDocument();
+    });
+
+    it("offers no pause controls for a deleted account", async () => {
+      await renderDetail(detail({ status: "DELETED" }));
+      expect(screen.queryByRole("button", { name: "Pause agent" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Resume agent" })).not.toBeInTheDocument();
     });
   });
 

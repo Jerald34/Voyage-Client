@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { useState } from "react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../app/components/admin/AdminAgenciesPage.jsx", () => ({
@@ -17,12 +18,46 @@ vi.mock("../app/components/admin/AdminAccountsPage.jsx", () => ({
   ),
 }));
 
+// Besides the focus it was given, the section stub offers the page's row-actions slot a few rows and
+// groupings, so the page's choice of which rows get a Pause button is observable.
 vi.mock("../app/components/admin/usage/UsageSection.jsx", () => ({
-  default: ({ initialSelection }) => (
-    <div>
-      Usage analytics
-      {initialSelection && <span data-testid="usage-focus">{`${initialSelection.id}:${initialSelection.label}`}</span>}
-    </div>
+  default: function UsageSectionStub({ initialSelection, renderRowActions }) {
+    const [reloads, setReloads] = useState(0);
+    const reload = () => setReloads((n) => n + 1);
+    const cases = [
+      ["active-user", { id: "u1", drillable: true, roleTag: "STAFF", agentPause: null }, "user"],
+      ["paused-user", { id: "u2", drillable: true, roleTag: "OWNER", agentPause: { pausedAt: "p", until: null, reason: "r" } }, "user"],
+      ["personal-user", { id: "u3", drillable: true, roleTag: "PERSONAL", agentPause: null }, "user"],
+      ["deleted-user", { id: "u4", drillable: true, roleTag: null, agentPause: null }, "user"],
+      ["unknown-pause", { id: "u5", drillable: true }, "user"],
+      ["not-drillable", { id: "none", drillable: false, roleTag: null }, "user"],
+      ["agency", { id: "ag1", drillable: true, agentPause: null }, "agency"],
+      ["chat", { id: "t1", drillable: true, agentPause: null }, "chat"],
+    ];
+    return (
+      <div>
+        Usage analytics
+        {initialSelection && <span data-testid="usage-focus">{`${initialSelection.id}:${initialSelection.label}`}</span>}
+        <span data-testid="reloads">{reloads}</span>
+        {renderRowActions && (
+          <ul>
+            {cases.map(([name, row, groupBy]) => (
+              <li key={name} data-testid={`actions-${name}`}>
+                {renderRowActions(row, groupBy, reload)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  },
+}));
+
+vi.mock("../app/components/admin/UsagePauseButton.jsx", () => ({
+  default: ({ row, onChanged }) => (
+    <button type="button" onClick={onChanged}>
+      {`pause button for ${row.id}`}
+    </button>
   ),
 }));
 
@@ -116,5 +151,28 @@ describe("AdminPage", () => {
 
       expect(screen.getByTestId("usage-focus")).toHaveTextContent("u2:Ana Reyes");
     });
+  });
+});
+
+describe("AdminPage usage row actions", () => {
+  const openUsage = () => {
+    render(<AdminPage />);
+    fireEvent.click(screen.getByRole("tab", { name: "Usage" }));
+  };
+
+  it("gives each person row with a known pause state a Pause button, and nothing else", () => {
+    openUsage();
+    for (const name of ["active-user", "paused-user", "personal-user"]) {
+      expect(within(screen.getByTestId(`actions-${name}`)).getByRole("button")).toBeInTheDocument();
+    }
+    for (const name of ["deleted-user", "unknown-pause", "not-drillable", "agency", "chat"]) {
+      expect(within(screen.getByTestId(`actions-${name}`)).queryByRole("button")).not.toBeInTheDocument();
+    }
+  });
+
+  it("passes the row, and reloads the usage when the button reports a change", () => {
+    openUsage();
+    fireEvent.click(screen.getByRole("button", { name: "pause button for u2" }));
+    expect(screen.getByTestId("reloads")).toHaveTextContent("1");
   });
 });

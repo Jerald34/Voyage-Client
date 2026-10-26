@@ -93,6 +93,8 @@ export {
   adminEnableUser,
   adminSignOutUser,
   adminDeleteUser,
+  adminPauseAgent,
+  adminResumeAgent,
   fetchPendingCount,
   fetchAgencyDetail,
   adminApproveAgency,

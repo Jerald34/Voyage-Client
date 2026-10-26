@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { activePause } from "../../../lib/agentPause.js";
 import { fmtInt, fmtUsd, roleTagLine } from "./usageFormat.js";
 
 const COLUMNS = [
@@ -27,6 +28,8 @@ function NameCell({ row, groupBy, onSelect, selected }) {
     <>
       <span className="block truncate font-semibold text-text-primary">{row.label}</span>
       {sub && <span className="block truncate text-xs text-text-muted">{sub}</span>}
+      {/* Words, not just a tint: a paused person is easy to spot in a long list. */}
+      {activePause(row.agentPause) && <span className="mt-0.5 block text-xs font-semibold text-status-warning">Agent paused</span>}
     </>
   );
   if (!row.drillable) return <div className="min-w-0">{text}</div>;

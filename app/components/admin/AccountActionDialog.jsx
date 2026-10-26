@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { adminDisableUser, adminEnableUser, adminSignOutUser } from "../../lib/api/index.js";
+import { adminDisableUser, adminEnableUser, adminResumeAgent, adminSignOutUser } from "../../lib/api/index.js";
 import { Button, Modal } from "../ui/index.js";
 import { displayName } from "./accountLabels.js";
 
-/** One entry per reversible account action. Part 3 adds "resume-agent" here. */
+/** One entry per reversible account action. (Pausing the agent has its own dialog: it needs a duration.) */
 export const ACCOUNT_ACTIONS = {
   disable: {
     title: (name) => `Disable ${name}?`,
@@ -27,6 +27,13 @@ export const ACCOUNT_ACTIONS = {
     confirm: "Sign out everywhere",
     tone: "primary",
     run: (id, reason) => adminSignOutUser(id, reason),
+  },
+  "resume-agent": {
+    title: (name) => `Resume the agent for ${name}?`,
+    body: "They can use the agent again straight away.",
+    confirm: "Resume agent",
+    tone: "primary",
+    run: (id, reason) => adminResumeAgent(id, reason),
   },
 };
 

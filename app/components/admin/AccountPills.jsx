@@ -39,6 +39,11 @@ export function AccountStatusPill({ status }) {
   );
 }
 
+/** Warning-toned pill for a user whose agent access is paused. The words carry the meaning; the tint is only a cue. */
+export function AgentPausedPill() {
+  return <span className={`${PILL} border-status-warning/30 bg-status-warning/10 text-status-warning`}>Agent paused</span>;
+}
+
 /** Small chip marking a platform administrator. Text carries the meaning; the teal tint is only a cue. */
 export function SuperAdminChip() {
   return (

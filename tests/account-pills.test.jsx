@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { AccountTypePill, AccountStatusPill, SuperAdminChip } from "../app/components/admin/AccountPills.jsx";
+import { AccountTypePill, AccountStatusPill, AgentPausedPill, SuperAdminChip } from "../app/components/admin/AccountPills.jsx";
 
 describe("account pills", () => {
   it("labels every account type and gives each its own tone", () => {
@@ -34,5 +34,12 @@ describe("account pills", () => {
   it("renders the Super admin chip as plain text so it never relies on colour", () => {
     render(<SuperAdminChip />);
     expect(screen.getByText("Super admin")).toBeInTheDocument();
+  });
+
+  it("marks a paused agent in words, in the warning family", () => {
+    render(<AgentPausedPill />);
+    const pill = screen.getByText("Agent paused");
+    expect(pill.className).toContain("text-status-warning");
+    expect(pill.className).toContain("rounded-pill");
   });
 });

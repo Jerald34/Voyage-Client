@@ -18,6 +18,26 @@ describe("UsageTable", () => {
     expect(within(bodyRows[1]).getByText("Personal")).toBeInTheDocument();
   });
 
+  it("marks a user whose agent is paused, in words, and nobody else", () => {
+    const withPause = [
+      { ...rows[0], agentPause: { pausedAt: "2026-10-25T01:00:00.000Z", until: null, reason: "Abuse" } },
+      { ...rows[1], agentPause: null },
+      rows[2],
+    ];
+    render(<UsageTable rows={withPause} groupBy="user" onSelect={vi.fn()} />);
+    const table = within(screen.getByRole("table"));
+    expect(table.getAllByText("Agent paused")).toHaveLength(1);
+    expect(within(table.getByRole("button", { name: /Jerald/ })).getByText("Agent paused")).toBeInTheDocument();
+    // The phone cards carry it too.
+    expect(screen.getAllByText("Agent paused")).toHaveLength(2);
+  });
+
+  it("does not mark a pause that has already ended", () => {
+    const over = [{ ...rows[0], agentPause: { pausedAt: "2026-01-01T00:00:00.000Z", until: "2026-01-02T00:00:00.000Z", reason: "x" } }];
+    render(<UsageTable rows={over} groupBy="user" onSelect={vi.fn()} />);
+    expect(screen.queryByText("Agent paused")).not.toBeInTheDocument();
+  });
+
   it("opens a drillable row and leaves the others plain", () => {
     const onSelect = vi.fn();
     render(<UsageTable rows={rows} groupBy="user" onSelect={onSelect} />);

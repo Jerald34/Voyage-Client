@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchAccountDetail } from "../../lib/api/index.js";
+import { activePause, shortUntil } from "../../lib/agentPause.js";
 import AgencyStatusPill from "./AgencyStatusPill.jsx";
 import AccountActionDialog from "./AccountActionDialog.jsx";
 import DeleteAccountDialog from "./DeleteAccountDialog.jsx";
-import { AccountTypePill, AccountStatusPill, SuperAdminChip } from "./AccountPills.jsx";
+import PauseAgentDialog from "./PauseAgentDialog.jsx";
+import { AccountTypePill, AccountStatusPill, AgentPausedPill, SuperAdminChip } from "./AccountPills.jsx";
 import { AUDIT_ACTION_LABELS, MEMBERSHIP_ROLE_LABELS, SIGN_IN_LABELS, displayName, formatDate } from "./accountLabels.js";
 import { fmtInt, fmtUsd } from "./usage/usageFormat.js";
 
@@ -41,7 +43,7 @@ export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsag
   const [error, setError] = useState(null);
   // Which dialog is showing. The page keys this panel by account, so a different account is a fresh
   // panel and never inherits an open dialog.
-  const [dialog, setDialog] = useState(null); // "disable" | "enable" | "sign-out" | "delete" | null
+  const [dialog, setDialog] = useState(null); // "disable" | "enable" | "sign-out" | "pause" | "resume-agent" | "delete" | null
   // The account the panel is showing right now, so a late reload for an earlier one is dropped.
   const currentUserId = useRef(userId);
 
@@ -103,6 +105,8 @@ export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsag
   const auditEvents = account.auditEvents || [];
   // Kept for a deleted account too: what it spent this month is still part of the bill.
   const usage = account.usageThisMonth || null;
+  // The server only sends a pause that is in force, but the panel can stay open past a timed pause's end.
+  const pause = activePause(account.agentPause);
 
   // The server refuses all three for a super admin (this includes the signed-in admin's own account,
   // since only super admins reach this page) and for an account that is already deleted.
@@ -121,6 +125,7 @@ export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsag
         <AccountTypePill type={account.accountType} />
         {account.role === "SUPER_ADMIN" && <SuperAdminChip />}
         <AccountStatusPill status={account.status} />
+        {pause && <AgentPausedPill />}
       </div>
 
       <dl className="mb-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -129,6 +134,14 @@ export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsag
         <Field label="Sign-in methods">{signIn || "—"}</Field>
         <Field label="Joined">{formatDate(account.createdAt)}</Field>
       </dl>
+
+      {pause && (
+        <div className="mb-6 rounded-sm border border-status-warning/25 bg-status-warning/8 p-3 text-sm text-text-primary">
+          {/* For a pause with no end this reads the same as the pill: "Agent paused". */}
+          <p className="font-semibold">{shortUntil(pause)}</p>
+          {pause.reason && <p className="mt-1 break-words text-text-muted">{pause.reason}</p>}
+        </div>
+      )}
 
       {usage && (
         <Section title="Agent usage this month">
@@ -213,6 +226,15 @@ export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsag
 
       {canAct && (
         <div className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap gap-2 border-t border-border/10 bg-surface-elevated px-5 pb-2 pt-4">
+          {pause ? (
+            <button type="button" className={SECONDARY_ACTION} onClick={() => setDialog("resume-agent")}>
+              Resume agent
+            </button>
+          ) : (
+            <button type="button" className={SECONDARY_ACTION} onClick={() => setDialog("pause")}>
+              Pause agent
+            </button>
+          )}
           <button type="button" className={SECONDARY_ACTION} onClick={() => setDialog("sign-out")}>
             Sign out everywhere
           </button>
@@ -232,8 +254,15 @@ export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsag
       )}
 
       <AccountActionDialog
-        open={dialog === "disable" || dialog === "enable" || dialog === "sign-out"}
+        open={dialog === "disable" || dialog === "enable" || dialog === "sign-out" || dialog === "resume-agent"}
         action={dialog}
+        account={account}
+        onClose={() => setDialog(null)}
+        onDone={handleDone}
+        onStale={reloadAccount}
+      />
+      <PauseAgentDialog
+        open={dialog === "pause"}
         account={account}
         onClose={() => setDialog(null)}
         onDone={handleDone}

@@ -302,6 +302,27 @@ describe("AdminAccountsPage", () => {
     });
   });
 
+  describe("agent pause", () => {
+    const pause = { pausedAt: "2026-10-25T01:00:00.000Z", until: null, reason: "Abuse" };
+
+    it("flags a paused account in the list, and only that one", async () => {
+      await renderLoaded([account({ id: "u1" }), account({ id: "u2", displayName: "Ana Reyes", email: "ana@alpha.com", agentPause: pause })]);
+      expect(within(screen.getByTestId("account-row-u2")).getByText("Agent paused")).toBeInTheDocument();
+      expect(within(screen.getByTestId("account-card-u2")).getByText("Agent paused")).toBeInTheDocument();
+      expect(within(screen.getByTestId("account-row-u1")).queryByText("Agent paused")).not.toBeInTheDocument();
+    });
+
+    it("shows the pill after the panel reports a pause, without a spinner", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByTestId("account-row-u2"));
+      fetchAllAccounts.mockResolvedValue({ users: ACCOUNTS.map((a) => (a.id === "u2" ? { ...a, agentPause: pause } : a)) });
+
+      fireEvent.click(screen.getByRole("button", { name: "stub changed" }));
+      expect(screen.queryByText("Loading accounts…")).not.toBeInTheDocument();
+      await waitFor(() => expect(within(screen.getByTestId("account-row-u2")).getByText("Agent paused")).toBeInTheDocument());
+    });
+  });
+
   describe("opening Usage for a person", () => {
     it("hands the panel's choice to the page that owns the tabs", async () => {
       const onOpenUsage = vi.fn();

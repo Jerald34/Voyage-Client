@@ -40,6 +40,16 @@ export async function adminSignOutUser(userId, reason) {
   return postAccountAction(userId, "sign-out", withReason(reason));
 }
 
+/** Pause one person's agent access. `duration` is "1h" | "24h" | "7d" | "indefinite"; the reason is required. */
+export async function adminPauseAgent(userId, { duration, reason } = {}) {
+  return postAccountAction(userId, "agent-pause", { duration, reason: (reason || "").trim() });
+}
+
+/** Lift a pause. The reason is optional and kept in the audit trail. */
+export async function adminResumeAgent(userId, reason) {
+  return postAccountAction(userId, "agent-resume", withReason(reason));
+}
+
 export async function adminDeleteUser(userId, { confirmEmail, reason, newOwnerUserId } = {}) {
   return postAccountAction(userId, "delete", {
     confirmEmail,

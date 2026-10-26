@@ -5,9 +5,10 @@ vi.mock("../app/lib/api/index.js", () => ({
   adminDisableUser: vi.fn(),
   adminEnableUser: vi.fn(),
   adminSignOutUser: vi.fn(),
+  adminResumeAgent: vi.fn(),
 }));
 
-import { adminDisableUser, adminSignOutUser } from "../app/lib/api/index.js";
+import { adminDisableUser, adminResumeAgent, adminSignOutUser } from "../app/lib/api/index.js";
 import AccountActionDialog from "../app/components/admin/AccountActionDialog.jsx";
 
 const account = { id: "u2", displayName: "Mara Santos", email: "mara@hops.travel" };
@@ -92,6 +93,40 @@ describe("AccountActionDialog", () => {
       const onStale = vi.fn();
       await failWith(Object.assign(new Error("raw"), { code: "VALIDATION_ERROR", status: 400 }), onStale);
       expect(onStale).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("resume-agent", () => {
+    it("asks to resume, sends the optional reason and hands back the account", async () => {
+      adminResumeAgent.mockResolvedValue({ user: { ...account, agentPause: null } });
+      const onDone = vi.fn();
+      render(<AccountActionDialog open action="resume-agent" account={account} onClose={vi.fn()} onDone={onDone} />);
+
+      expect(screen.getByRole("dialog", { name: "Resume the agent for Mara Santos?" })).toBeInTheDocument();
+      expect(screen.getByText("They can use the agent again straight away.")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: "Cleared after review" } });
+      fireEvent.click(screen.getByRole("button", { name: "Resume agent" }));
+
+      await waitFor(() => expect(onDone).toHaveBeenCalledWith({ ...account, agentPause: null }));
+      expect(adminResumeAgent).toHaveBeenCalledWith("u2", "Cleared after review");
+    });
+
+    it("resumes without a reason when none is typed", async () => {
+      adminResumeAgent.mockResolvedValue({ user: account });
+      const onDone = vi.fn();
+      render(<AccountActionDialog open action="resume-agent" account={account} onClose={vi.fn()} onDone={onDone} />);
+      fireEvent.click(screen.getByRole("button", { name: "Resume agent" }));
+      await waitFor(() => expect(onDone).toHaveBeenCalled());
+      expect(adminResumeAgent).toHaveBeenCalledWith("u2", "");
+    });
+
+    it("shows the server's message when resuming fails and stays open", async () => {
+      adminResumeAgent.mockRejectedValue(Object.assign(new Error("raw"), { code: "ACCOUNT_DELETED", status: 409 }));
+      const onStale = vi.fn();
+      render(<AccountActionDialog open action="resume-agent" account={account} onClose={vi.fn()} onDone={vi.fn()} onStale={onStale} />);
+      fireEvent.click(screen.getByRole("button", { name: "Resume agent" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(/deleted/i);
+      expect(onStale).toHaveBeenCalledTimes(1);
     });
   });
 

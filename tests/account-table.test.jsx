@@ -195,6 +195,39 @@ describe("AccountTable", () => {
     });
   });
 
+  describe("agent pause", () => {
+    const paused = account({ id: "u7", email: "pat@alpha.com", displayName: "Pat Dela Cruz", agentPause: { pausedAt: "2026-10-25T01:00:00.000Z", until: null, reason: "Abuse" } });
+
+    it("shows an Agent paused pill in the type cell, stacked with the type, only for a paused account", () => {
+      renderTable({ accounts: [...everyone, paused], sorted: [...everyone, paused] });
+      const pill = within(row("u7")).getByText("Agent paused");
+      expect(within(pill.closest("td")).getByText("Personal")).toBeInTheDocument();
+      expect(screen.getAllByText("Agent paused")).toHaveLength(2); // the row and the card of the one paused account
+      for (const id of ["u1", "u2", "u3", "u4", "u5"]) {
+        expect(within(row(id)).queryByText("Agent paused")).not.toBeInTheDocument();
+        expect(within(screen.getByTestId(`account-card-${id}`)).queryByText("Agent paused")).not.toBeInTheDocument();
+      }
+    });
+
+    it("shows it on the mobile card too", () => {
+      renderTable({ accounts: [paused], sorted: [paused] });
+      expect(within(screen.getByTestId("account-card-u7")).getByText("Agent paused")).toBeInTheDocument();
+    });
+
+    it("can sit beside a Disabled pill", () => {
+      const both = account({ id: "u8", status: "DISABLED", agentPause: { pausedAt: "p", until: null, reason: "x" } });
+      renderTable({ accounts: [both], sorted: [both] });
+      expect(within(row("u8")).getByText("Disabled")).toBeInTheDocument();
+      expect(within(row("u8")).getByText("Agent paused")).toBeInTheDocument();
+    });
+
+    it("says nothing for a pause that has already ended", () => {
+      const over = account({ id: "u9", agentPause: { pausedAt: "2026-01-01T00:00:00.000Z", until: "2026-01-02T00:00:00.000Z", reason: "x" } });
+      renderTable({ accounts: [over], sorted: [over] });
+      expect(screen.queryByText("Agent paused")).not.toBeInTheDocument();
+    });
+  });
+
   it("formats the joined date", () => {
     renderTable();
     expect(within(row("u1")).getByText("May 1, 2026")).toBeInTheDocument();

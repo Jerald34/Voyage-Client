@@ -22,12 +22,14 @@ export const SIGN_IN_LABELS = {
   APPLE: "Apple",
 };
 
-/** Audit-trail lines on the account panel. Part 3 adds the agent-pause actions. */
+/** Audit-trail lines on the account panel. */
 export const AUDIT_ACTION_LABELS = {
   USER_DISABLED: "Disabled",
   USER_ENABLED: "Enabled",
   USER_SESSIONS_REVOKED: "Signed out everywhere",
   USER_DELETED: "Deleted",
+  AGENT_PAUSED: "Agent paused",
+  AGENT_RESUMED: "Agent resumed",
 };
 
 /** How an account is named in lists and titles: its display name, else its email. */

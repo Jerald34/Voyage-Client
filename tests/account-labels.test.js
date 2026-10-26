@@ -43,6 +43,8 @@ describe("AUDIT_ACTION_LABELS", () => {
       USER_ENABLED: "Enabled",
       USER_SESSIONS_REVOKED: "Signed out everywhere",
       USER_DELETED: "Deleted",
+      AGENT_PAUSED: "Agent paused",
+      AGENT_RESUMED: "Agent resumed",
     });
   });
 });
