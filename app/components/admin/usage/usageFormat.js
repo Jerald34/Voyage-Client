@@ -2,13 +2,22 @@
 
 export const fmtInt = (n) => Math.round(n ?? 0).toLocaleString("en-US");
 
-/** Small costs keep enough digits to be told apart; whole dollars use cents. */
+const usdText = (v, dp) => v.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+/**
+ * Money, with enough digits that a small cost never looks like nothing: $1 and up show cents,
+ * $0.01-$1 show three decimals, under a cent shows four, and anything smaller (but not zero) reads "<$0.0001".
+ * Exactly zero is "$0.00". A value that rounds up across a boundary uses the next size's precision.
+ */
 export function fmtUsd(n) {
   const v = n ?? 0;
   if (v === 0) return "$0.00";
-  if (Math.abs(v) < 0.01) return `$${v.toFixed(4)}`;
-  if (Math.abs(v) < 1) return `$${v.toFixed(3)}`;
-  return `$${v.toFixed(2)}`;
+  if (v < 0) return `-${fmtUsd(-v)}`;
+  if (v < 0.0001) return "<$0.0001";
+  let dp = v >= 1 ? 2 : v >= 0.01 ? 3 : 4;
+  if (dp === 3 && Number(v.toFixed(3)) >= 1) dp = 2;
+  if (dp === 4 && Number(v.toFixed(4)) >= 0.01) dp = 3;
+  return `$${usdText(v, dp)}`;
 }
 
 export const fmtPct = (ratio) => `${Math.round((ratio ?? 0) * 100)}%`;

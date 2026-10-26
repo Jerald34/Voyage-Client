@@ -9,6 +9,29 @@ describe("usage formatters", () => {
     expect(fmtUsd(4.8231)).toBe("$4.82");
   });
 
+  it("never prints a zero-looking amount for a cost that is not zero", () => {
+    expect(fmtUsd(0.00004)).toBe("<$0.0001");
+    expect(fmtUsd(0.0000001)).toBe("<$0.0001");
+    expect(fmtUsd(0.0001)).toBe("$0.0001");
+    expect(fmtUsd(0)).toBe("$0.00");
+    expect(fmtUsd(null)).toBe("$0.00");
+  });
+
+  it("uses a fixed number of decimals within each size and thousands separators", () => {
+    expect(fmtUsd(0.5)).toBe("$0.500");
+    expect(fmtUsd(0.01)).toBe("$0.010");
+    expect(fmtUsd(0.005)).toBe("$0.0050");
+    expect(fmtUsd(1)).toBe("$1.00");
+    expect(fmtUsd(12.3)).toBe("$12.30");
+    expect(fmtUsd(1234.5)).toBe("$1,234.50");
+    expect(fmtUsd(1234567.891)).toBe("$1,234,567.89");
+  });
+
+  it("does not show a rounded-up value at the wrong precision at a size boundary", () => {
+    expect(fmtUsd(0.9996)).toBe("$1.00");
+    expect(fmtUsd(0.00999)).toBe("$0.010");
+  });
+
   it("formats counts, percents and dates", () => {
     expect(fmtInt(1313790.4)).toBe("1,313,790");
     expect(fmtPct(0.4467)).toBe("45%");
