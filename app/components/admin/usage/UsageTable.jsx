@@ -68,8 +68,11 @@ export default function UsageTable({ rows = [], groupBy, onSelect, selectedId })
 
   return (
     <>
-      <div className="hidden overflow-hidden rounded-md border border-border/12 shadow-soft sm:block">
-        <table className="w-full table-fixed text-sm">
+      {/* Numeric columns size to their content and never wrap; the name column takes what is left and
+          truncates. Below the table's minimum width (the pane squeezing it) the wrapper scrolls sideways
+          rather than clipping the Cost column. */}
+      <div className="hidden overflow-x-auto rounded-md border border-border/12 shadow-soft sm:block">
+        <table className="w-full min-w-[30rem] text-sm">
           <caption className="sr-only">{TABLE_NAME[groupBy] || "Usage breakdown"}</caption>
           <thead className="sticky top-0 z-10 bg-surface-elevated">
             <tr>
@@ -78,8 +81,8 @@ export default function UsageTable({ rows = [], groupBy, onSelect, selectedId })
                   key={c.key}
                   aria-sort={sortKey === c.key ? (dir === "asc" ? "ascending" : "descending") : "none"}
                   onClick={() => onSort(c.key)}
-                  className={`cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-soft hover:text-text-primary ${
-                    c.numeric ? "w-28 text-right" : "text-left"
+                  className={`cursor-pointer select-none whitespace-nowrap py-3 text-xs font-semibold uppercase tracking-wider text-text-soft hover:text-text-primary ${
+                    c.numeric ? "px-3 text-right" : "w-full max-w-0 px-4 text-left"
                   }`}
                 >
                   {/* The header cell keeps the mouse click; the button inside is what the keyboard reaches
@@ -96,12 +99,12 @@ export default function UsageTable({ rows = [], groupBy, onSelect, selectedId })
               const selected = selectedId === r.id;
               return (
                 <tr key={r.id} className={`border-l-2 transition-colors ${selected ? "border-primary bg-primary/8" : "border-transparent"} ${r.drillable ? "hover:bg-primary/5" : ""}`}>
-                  <td className="px-4 py-3">
+                  <td className="w-full max-w-0 px-4 py-3">
                     <NameCell row={r} groupBy={groupBy} onSelect={onSelect} selected={selected} />
                   </td>
                   {COLUMNS.slice(1).map((c) =>
                     c.key === "costUsd" ? (
-                      <td key={c.key} className="relative px-4 py-3 text-right tabular-nums text-text-primary">
+                      <td key={c.key} className="relative whitespace-nowrap px-3 py-3 text-right tabular-nums text-text-primary">
                         <span
                           aria-hidden="true"
                           className="pointer-events-none absolute inset-y-1 right-2 rounded-sm bg-primary/8"
@@ -110,7 +113,7 @@ export default function UsageTable({ rows = [], groupBy, onSelect, selectedId })
                         <span className="relative">{c.fmt(r[c.key])}</span>
                       </td>
                     ) : (
-                      <td key={c.key} className={`px-4 py-3 text-right tabular-nums ${c.key === "failedRunCount" && r.failedRunCount ? "text-status-danger" : "text-text-muted"}`}>
+                      <td key={c.key} className={`whitespace-nowrap px-3 py-3 text-right tabular-nums ${c.key === "failedRunCount" && r.failedRunCount ? "text-status-danger" : "text-text-muted"}`}>
                         {c.fmt(r[c.key])}
                       </td>
                     )

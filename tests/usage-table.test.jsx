@@ -64,6 +64,18 @@ describe("UsageTable", () => {
     expect(within(screen.getByRole("table")).getByText("Hops Travel")).toBeInTheDocument();
   });
 
+  it("scrolls sideways instead of clipping the Cost column when the pane is squeezed", () => {
+    render(<UsageTable rows={rows} groupBy="user" onSelect={vi.fn()} />);
+    const table = screen.getByRole("table");
+    const wrapper = table.parentElement;
+    expect(wrapper).toHaveClass("overflow-x-auto");
+    expect(wrapper).not.toHaveClass("overflow-hidden");
+    // Fixed layout with equal wide numeric columns is what squeezed the name and clipped the cost.
+    expect(table).not.toHaveClass("table-fixed");
+    // The cost stays inside its own cell, whatever its width.
+    expect(within(table).getAllByRole("columnheader").at(-1)).toHaveClass("whitespace-nowrap");
+  });
+
   it("names the table after its grouping so it can be told apart from the chart's data table", () => {
     const { rerender } = render(<UsageTable rows={rows} groupBy="user" onSelect={vi.fn()} />);
     expect(screen.getByRole("table", { name: "Usage by user" })).toBeInTheDocument();
