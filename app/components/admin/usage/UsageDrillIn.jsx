@@ -5,8 +5,9 @@ import { fetchUsageRun, fetchUsageRuns } from "../../../lib/api/admin.js";
 import Button from "../../ui/Button.jsx";
 import { GROUP_FILTER_KEY, fmtInt, fmtUsd, roleTagLine } from "./usageFormat.js";
 
+// UTC, to match the chart's day buckets: a run near midnight is on the same day here as in the chart.
 const fmtWhen = (iso) =>
-  new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  `${new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" })} UTC`;
 
 const plural = (n, one, many = `${one}s`) => `${fmtInt(n)} ${n === 1 ? one : many}`;
 

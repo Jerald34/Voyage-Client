@@ -54,6 +54,14 @@ describe("UsageDrillIn", () => {
     expect(within(dl).getAllByText("—")).toHaveLength(3);
   });
 
+  it("writes each run's time in UTC, like the chart's days, whatever the browser's time zone", async () => {
+    fetchUsageRuns.mockResolvedValue({ runs: [{ ...runs[0], createdAt: "2026-10-22T23:30:00.000Z" }, runs[1]] });
+    render(<UsageDrillIn row={row} groupBy="user" range="7d" />);
+    await screen.findByText("Zambales 2-day");
+    expect(screen.getByText(/Oct 22, 11:30 PM UTC · 4 calls/)).toBeInTheDocument();
+    expect(screen.getByText(/Oct 21, 9:00 AM UTC · 2 calls/)).toBeInTheDocument();
+  });
+
   it("expands a run into its model calls", async () => {
     render(<UsageDrillIn row={row} groupBy="user" range="this_month" />);
     fireEvent.click(await screen.findByRole("button", { name: /Zambales 2-day/ }));
