@@ -71,17 +71,6 @@ export default function UsageSection({ initialSelection = null, renderRowActions
     };
   }, [load]);
 
-  // Keep the open row's numbers in step with the latest load (e.g. arriving from the account panel).
-  // A row with no usage in the new range shows zeros rather than the old range's figures.
-  useEffect(() => {
-    if (!loaded || loaded.groupBy !== groupBy) return;
-    setSelected((current) => {
-      if (!current) return current;
-      const fresh = loaded.data.rows.find((r) => r.id === current.id);
-      return fresh ?? { ...current, runCount: 0, failedRunCount: 0, totalTokens: 0, costUsd: 0 };
-    });
-  }, [loaded, groupBy]);
-
   const changeGroup = (next) => {
     setSelected(null);
     setGroupBy(next);
@@ -103,6 +92,16 @@ export default function UsageSection({ initialSelection = null, renderRowActions
 
   const data = loaded?.data;
   const rowsReady = loaded?.groupBy === groupBy;
+  // The latest load answers the range and grouping on screen. Until it does (a range switch in flight, or
+  // arriving from the account panel before the first load) the open row's figures are not this query's.
+  const figuresReady = loaded?.range === range && rowsReady;
+  // Once it does, the open row takes its figures from that load. A row with no usage in the range shows
+  // zeros rather than another range's figures. Derived here, not copied into state by an effect, so the
+  // pane never paints a frame of stale numbers between the load landing and the copy.
+  const openRow =
+    selected && figuresReady
+      ? (data.rows.find((r) => r.id === selected.id) ?? { ...selected, runCount: 0, failedRunCount: 0, totalTokens: 0, costUsd: 0 })
+      : selected;
   const startsBeforeMetering = Boolean(data?.meteredSince && data?.from && new Date(data.from) < new Date(data.meteredSince));
 
   const describeQuery = (r, g) => `${labelOf(RANGE_OPTIONS, r).toLowerCase()}, by ${labelOf(GROUP_OPTIONS, g).toLowerCase()}`;
@@ -176,7 +175,7 @@ export default function UsageSection({ initialSelection = null, renderRowActions
       {selected && (
         // Keyed by row so choosing another row while one is open hands focus to the new panel too.
         <DetailPane key={selected.id} open onClose={closePane} title={selected.label} ariaLabel={selected.label}>
-          <UsageDrillIn row={selected} groupBy={groupBy} range={range} actions={renderRowActions?.(selected, groupBy, load) ?? null} />
+          <UsageDrillIn row={openRow} groupBy={groupBy} range={range} figuresPending={!figuresReady} actions={renderRowActions?.(openRow, groupBy, load) ?? null} />
         </DetailPane>
       )}
     </div>

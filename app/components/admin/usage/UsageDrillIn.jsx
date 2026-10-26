@@ -75,7 +75,7 @@ function CallTable({ state, onRetry, label }) {
  *
  * `actions` is a slot for row-level buttons (Part 3 adds Pause agent).
  */
-export default function UsageDrillIn({ row, groupBy, range, actions = null }) {
+export default function UsageDrillIn({ row, groupBy, range, figuresPending = false, actions = null }) {
   const panelIdBase = useId();
   const [runs, setRuns] = useState(null);
   const [error, setError] = useState(null);
@@ -144,7 +144,7 @@ export default function UsageDrillIn({ row, groupBy, range, actions = null }) {
 
   const sub = groupBy === "user" ? roleTagLine(row) : groupBy === "chat" ? row.agencyName : "";
   // Known from the runs that loaded: a run with an unpriced call recorded a cost without it, so the total is a floor.
-  const costIncomplete = Boolean(runs?.some((r) => !r.costComplete));
+  const costIncomplete = !figuresPending && Boolean(runs?.some((r) => !r.costComplete));
 
   return (
     <div className="flex flex-col gap-4">
@@ -152,7 +152,9 @@ export default function UsageDrillIn({ row, groupBy, range, actions = null }) {
         {announcement}
       </p>
       {sub && <p className="-mt-2 text-sm text-text-muted">{sub}</p>}
-      <dl className="grid grid-cols-3 gap-3">
+      {/* While the header's row is still the previous range's (or has not loaded at all), its numbers are
+          not this range's, so they are not shown. */}
+      <dl aria-busy={figuresPending} className="grid grid-cols-3 gap-3">
         {[
           ["Cost", fmtUsd(row.costUsd), costIncomplete ? "Incomplete" : null],
           ["Runs", `${fmtInt(row.runCount)}${row.failedRunCount ? ` · ${row.failedRunCount} failed` : ""}`, null],
@@ -161,7 +163,7 @@ export default function UsageDrillIn({ row, groupBy, range, actions = null }) {
           <div key={label} className="min-w-0 rounded-sm border border-border/10 bg-surface p-3">
             <dt className="text-xs text-text-muted">{label}</dt>
             <dd className="m-0 mt-1 text-sm font-semibold tabular-nums text-text-primary">
-              {value}
+              {figuresPending ? "—" : value}
               {note && <span className="block text-xs font-normal text-status-warning">{note}</span>}
             </dd>
           </div>

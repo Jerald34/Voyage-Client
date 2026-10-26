@@ -43,6 +43,17 @@ describe("UsageDrillIn", () => {
     expect(within(cost).queryByText("Incomplete")).not.toBeInTheDocument();
   });
 
+  it("hides the header figures, and says it is busy, while they belong to another range", async () => {
+    render(<UsageDrillIn row={row} groupBy="user" range="7d" figuresPending />);
+    await screen.findByText("Zambales 2-day");
+    const dl = screen.getByText("Cost", { selector: "dt" }).closest("dl");
+    expect(dl).toHaveAttribute("aria-busy", "true");
+    expect(within(dl).queryByText("$0.040")).not.toBeInTheDocument();
+    expect(within(dl).queryByText("3,000")).not.toBeInTheDocument();
+    expect(within(dl).queryByText("Incomplete")).not.toBeInTheDocument();
+    expect(within(dl).getAllByText("—")).toHaveLength(3);
+  });
+
   it("expands a run into its model calls", async () => {
     render(<UsageDrillIn row={row} groupBy="user" range="this_month" />);
     fireEvent.click(await screen.findByRole("button", { name: /Zambales 2-day/ }));

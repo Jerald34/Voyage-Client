@@ -196,6 +196,39 @@ describe("UsageSection", () => {
       expect(screen.queryByText("$9.00")).not.toBeInTheDocument();
     });
 
+    it("does not show the old range's figures in the open drill-in while the new range loads", async () => {
+      render(<UsageSection />);
+      fireEvent.click(within(await findBreakdown()).getByRole("button", { name: /Ana/ }));
+      const dialog = await screen.findByRole("dialog", { name: "Ana" });
+      expect(within(dialog).getByText("$0.750")).toBeInTheDocument();
+
+      const second = deferred();
+      fetchUsage.mockReturnValueOnce(second.promise);
+      fireEvent.click(screen.getByRole("radio", { name: "7 days" }));
+
+      // Right away, before the response: the header's cost, runs and tokens are not last range's.
+      expect(within(dialog).queryByText("$0.750")).not.toBeInTheDocument();
+      expect(within(dialog).queryByText("280")).not.toBeInTheDocument();
+      expect(within(dialog).getByText("Cost").closest("dl")).toHaveAttribute("aria-busy", "true");
+
+      const ana = response().rows[0];
+      await act(async () => second.resolve(response({ range: "7d", rows: [{ ...ana, costUsd: 0.1, totalTokens: 40 }] })));
+      expect(within(dialog).getByText("$0.100")).toBeInTheDocument();
+      expect(within(dialog).getByText("Cost").closest("dl")).not.toHaveAttribute("aria-busy", "true");
+    });
+
+    it("does not show zeros as if they were figures while a drill-in opened from the account panel waits for its first load", async () => {
+      const first = deferred();
+      fetchUsage.mockReturnValueOnce(first.promise);
+      render(<UsageSection initialSelection={{ id: ANA, label: "Ana" }} />);
+      const dialog = screen.getByRole("dialog", { name: "Ana" });
+      expect(within(dialog).queryByText("$0.00")).not.toBeInTheDocument();
+      expect(within(dialog).getByText("Cost").closest("dl")).toHaveAttribute("aria-busy", "true");
+
+      await act(async () => first.resolve(response()));
+      expect(await within(dialog).findByText("$0.750")).toBeInTheDocument();
+    });
+
     it("keeps the open row's numbers in step with a reload, and zeroes them when the row has no usage in the new range", async () => {
       render(<UsageSection />);
       fireEvent.click(within(await findBreakdown()).getByRole("button", { name: /Ana/ }));
