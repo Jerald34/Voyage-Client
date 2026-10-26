@@ -80,6 +80,10 @@ export default function AgentCommandCenter({
   travelerNeeds = null,
   onEditTravelerNeeds = null,
   needsToggleRef = undefined,
+  // Optional — the pause ({ pausedAt, until, reason }) when an administrator has paused the agent for this
+  // user: the composer is replaced by a locked strip whose "Why?" calls onShowAgentPause.
+  agentPause = null,
+  onShowAgentPause = undefined,
 }) {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -302,7 +306,12 @@ export default function AgentCommandCenter({
     const hasContent = composerInput.trim() || imageAttachments.hasAttachments;
     if (!hasContent) return;
     // Pass image URLs (will be [] if no attachments); the parent handles upload
-    void dispatchAgentMessage(composerInput, imageAttachments.attachments.map((a) => a.file));
+    const files = imageAttachments.attachments.map((a) => a.file);
+    // The parent resolves `handled` when the server refused the send and the user was told why (the agent is
+    // paused): the typed text comes back through the parent, the images are put back here.
+    void Promise.resolve(dispatchAgentMessage(composerInput, files)).then((outcome) => {
+      if (outcome?.handled && files.length > 0) imageAttachments.addFiles(files);
+    });
     setComposerInput("");
     imageAttachments.clear();
   }
@@ -430,6 +439,8 @@ export default function AgentCommandCenter({
           travelerNeeds={travelerNeeds}
           onEditTravelerNeeds={onEditTravelerNeeds ?? undefined}
           needsToggleRef={needsToggleRef}
+          agentPause={agentPause}
+          onShowAgentPause={onShowAgentPause}
         />
           </div>
         </div>

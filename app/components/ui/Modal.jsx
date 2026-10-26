@@ -40,6 +40,14 @@ export default function Modal({
 }) {
   const panelRef = useRef(null);
   const previousFocus = useRef(null);
+  // The latest onClose, read when a key is pressed. Callers often hand over a new function on
+  // every render (an inline arrow, or a guard that depends on state), and the open/focus effect
+  // must not re-run for that: its cleanup would give focus back to whatever sat behind the
+  // dialog and then look for a control to focus again.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
   // The title names the dialog for screen readers.
   const titleId = useId();
 
@@ -58,7 +66,12 @@ export default function Modal({
 
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        onClose();
+        // The dialog owns Escape while it is open, even if onClose chooses to ignore it (a form
+        // that is saving). Without this the key carries on to window listeners behind the
+        // dialog, such as a side panel that closes itself on Escape.
+        e.preventDefault();
+        e.stopPropagation();
+        onCloseRef.current?.();
         return;
       }
       if (e.key !== "Tab") return;
@@ -70,6 +83,14 @@ export default function Modal({
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
+      // Focus fell to the page when the control that had it went away or was disabled (a submit
+      // button while it saves). Tab brings it back into the dialog instead of into the page behind.
+      const active = document.activeElement;
+      if (!active || active === document.body) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
       if (e.shiftKey) {
         if (document.activeElement === first) {
           e.preventDefault();
@@ -98,7 +119,7 @@ export default function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocus.current?.focus?.();
     };
-  }, [open, onClose, initialFocusRef]);
+  }, [open, initialFocusRef]);
 
   // Prevent body scroll while open
   useEffect(() => {

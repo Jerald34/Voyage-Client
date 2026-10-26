@@ -10,6 +10,7 @@ export { fetchApi, API_URL } from "./client.js";
 
 // Auth
 export {
+  fetchCurrentUser,
   updateCurrentUserProfile,
   setAccountType,
   requestEmailVerification,
@@ -89,6 +90,12 @@ export {
   fetchAllAgencies,
   fetchAllAccounts,
   fetchAccountDetail,
+  adminDisableUser,
+  adminEnableUser,
+  adminSignOutUser,
+  adminDeleteUser,
+  adminPauseAgent,
+  adminResumeAgent,
   fetchPendingCount,
   fetchAgencyDetail,
   adminApproveAgency,
@@ -96,6 +103,8 @@ export {
   adminSuspendAgency,
   adminUnsuspendAgency,
   fetchUsage,
+  fetchUsageRuns,
+  fetchUsageRun,
   fetchReports,
   fetchReportDetail,
   updateReport,
