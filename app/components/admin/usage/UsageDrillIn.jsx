@@ -143,6 +143,8 @@ export default function UsageDrillIn({ row, groupBy, range, actions = null }) {
   };
 
   const sub = groupBy === "user" ? roleTagLine(row) : groupBy === "chat" ? row.agencyName : "";
+  // Known from the runs that loaded: a run with an unpriced call recorded a cost without it, so the total is a floor.
+  const costIncomplete = Boolean(runs?.some((r) => !r.costComplete));
 
   return (
     <div className="flex flex-col gap-4">
@@ -152,13 +154,16 @@ export default function UsageDrillIn({ row, groupBy, range, actions = null }) {
       {sub && <p className="-mt-2 text-sm text-text-muted">{sub}</p>}
       <dl className="grid grid-cols-3 gap-3">
         {[
-          ["Cost", fmtUsd(row.costUsd)],
-          ["Runs", `${fmtInt(row.runCount)}${row.failedRunCount ? ` · ${row.failedRunCount} failed` : ""}`],
-          ["Tokens", fmtInt(row.totalTokens)],
-        ].map(([label, value]) => (
+          ["Cost", fmtUsd(row.costUsd), costIncomplete ? "Incomplete" : null],
+          ["Runs", `${fmtInt(row.runCount)}${row.failedRunCount ? ` · ${row.failedRunCount} failed` : ""}`, null],
+          ["Tokens", fmtInt(row.totalTokens), null],
+        ].map(([label, value, note]) => (
           <div key={label} className="min-w-0 rounded-sm border border-border/10 bg-surface p-3">
             <dt className="text-xs text-text-muted">{label}</dt>
-            <dd className="m-0 mt-1 text-sm font-semibold tabular-nums text-text-primary">{value}</dd>
+            <dd className="m-0 mt-1 text-sm font-semibold tabular-nums text-text-primary">
+              {value}
+              {note && <span className="block text-xs font-normal text-status-warning">{note}</span>}
+            </dd>
           </div>
         ))}
       </dl>

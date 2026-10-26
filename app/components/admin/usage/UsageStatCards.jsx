@@ -23,7 +23,10 @@ function changeLine(current, previous) {
   return `${d > 0 ? "Up" : "Down"} ${pct}% vs previous period`;
 }
 
-export default function UsageStatCards({ totals, previous, projectedMonthEndCostUsd, series }) {
+/**
+ * @param {boolean} [costIncomplete] some runs used a model with no price, so spend (and the projection built from it) is a floor
+ */
+export default function UsageStatCards({ totals, previous, projectedMonthEndCostUsd, series, costIncomplete = false }) {
   const t = totals || {};
   const failedShare = t.runCount ? t.failedRunCount / t.runCount : 0;
   const costSeries = Array.isArray(series) ? series.map((d) => d.costUsd || 0) : [];
@@ -31,8 +34,13 @@ export default function UsageStatCards({ totals, previous, projectedMonthEndCost
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Card label="Spend" value={fmtUsd(t.costUsd)}>
+        {costIncomplete && <Sub className="text-status-warning">Excludes unpriced models</Sub>}
         <Sub>{changeLine(t.costUsd ?? 0, previous?.costUsd ?? 0)}</Sub>
-        {projectedMonthEndCostUsd != null && <Sub>About {fmtUsd(projectedMonthEndCostUsd)} by month end</Sub>}
+        {projectedMonthEndCostUsd != null && (
+          <Sub>
+            {costIncomplete ? "At least" : "About"} {fmtUsd(projectedMonthEndCostUsd)} by month end
+          </Sub>
+        )}
         <div className="text-primary/60">
           <Sparkline values={costSeries} testId="usage-sparkline" />
         </div>

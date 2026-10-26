@@ -452,6 +452,23 @@ describe("AccountDetail", () => {
       expect(onOpenUsage).toHaveBeenCalledWith({ id: "u2", label: "Ana Reyes" });
     });
 
+    it("says so when some of this month's runs have no price, so the cost is a floor", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 0.9, runCount: 12, costComplete: false } }));
+      expect(screen.getByText("$0.900 · 12 runs")).toBeInTheDocument();
+      expect(screen.getByText("Incomplete: some runs have no price")).toBeInTheDocument();
+    });
+
+    it("says nothing about completeness when the cost is complete", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 1.4, runCount: 71, costComplete: true } }));
+      expect(screen.getByText("$1.40 · 71 runs")).toBeInTheDocument();
+      expect(screen.queryByText(/Incomplete/)).not.toBeInTheDocument();
+    });
+
+    it("says nothing about completeness when the server did not say", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 1.4, runCount: 71 } }));
+      expect(screen.queryByText(/Incomplete/)).not.toBeInTheDocument();
+    });
+
     it("labels the person by email when they have no display name", async () => {
       const onOpenUsage = vi.fn();
       await renderDetail(detail({ displayName: "", usageThisMonth: { costUsd: 0.2, runCount: 3 } }), { onOpenUsage });

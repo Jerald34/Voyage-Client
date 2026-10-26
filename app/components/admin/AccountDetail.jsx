@@ -134,7 +134,11 @@ export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsag
         <Section title="Agent usage this month">
           <div className="flex items-center justify-between gap-3 rounded-sm border border-border/10 bg-surface p-3">
             <span className="min-w-0 text-sm tabular-nums text-text-primary">
-              {fmtUsd(usage.costUsd)} · {fmtInt(usage.runCount)} {usage.runCount === 1 ? "run" : "runs"}
+              <span className="block">
+                {fmtUsd(usage.costUsd)} · {fmtInt(usage.runCount)} {usage.runCount === 1 ? "run" : "runs"}
+              </span>
+              {/* `=== false`: a server that predates the flag says nothing, which is not "incomplete". */}
+              {usage.costComplete === false && <span className="block text-xs text-status-warning">Incomplete: some runs have no price</span>}
             </span>
             {onOpenUsage && (
               <button

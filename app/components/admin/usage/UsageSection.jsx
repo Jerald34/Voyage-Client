@@ -147,7 +147,13 @@ export default function UsageSection({ initialSelection = null, renderRowActions
             )}
             {startsBeforeMetering && <p className="text-xs text-text-muted">Usage is recorded from {fmtDay(data.meteredSince)}. Earlier runs have no token data.</p>}
 
-            <UsageStatCards totals={data.totals} previous={data.previous} projectedMonthEndCostUsd={data.projectedMonthEndCostUsd} series={data.series} />
+            <UsageStatCards
+              totals={data.totals}
+              previous={data.previous}
+              projectedMonthEndCostUsd={data.projectedMonthEndCostUsd}
+              series={data.series}
+              costIncomplete={data.unpricedModels?.length > 0}
+            />
             <UsageBarChart series={data.series} metric={metric} />
 
             <div className="flex flex-wrap items-center justify-between gap-3">

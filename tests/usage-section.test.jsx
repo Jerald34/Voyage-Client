@@ -84,6 +84,19 @@ describe("UsageSection", () => {
     expect(await screen.findByText(/Cost is incomplete/)).toHaveTextContent("gemini-x");
   });
 
+  it("marks the Spend card as a lower bound when some models have no price, not otherwise", async () => {
+    fetchUsage.mockResolvedValue(response({ unpricedModels: ["gemini-x"] }));
+    const { unmount } = render(<UsageSection />);
+    expect(await screen.findByText("Excludes unpriced models")).toBeInTheDocument();
+    expect(screen.getByText("At least $0.950 by month end")).toBeInTheDocument();
+    unmount();
+
+    fetchUsage.mockResolvedValue(response());
+    render(<UsageSection />);
+    expect(await screen.findByText("About $0.950 by month end")).toBeInTheDocument();
+    expect(screen.queryByText("Excludes unpriced models")).not.toBeInTheDocument();
+  });
+
   it("says when the range starts before usage was recorded", async () => {
     fetchUsage.mockResolvedValue(response({ from: "2026-05-01T00:00:00.000Z" }));
     render(<UsageSection />);

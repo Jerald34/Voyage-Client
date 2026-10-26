@@ -18,6 +18,18 @@ describe("UsageStatCards", () => {
     expect(screen.getByText("45%")).toBeInTheDocument();
   });
 
+  it("does not call a complete cost incomplete", () => {
+    render(<UsageStatCards totals={totals} previous={{ costUsd: 3.49 }} projectedMonthEndCostUsd={7.1} series={[]} />);
+    expect(screen.queryByText(/unpriced/i)).not.toBeInTheDocument();
+  });
+
+  it("marks spend as a lower bound when some models have no price", () => {
+    render(<UsageStatCards totals={totals} previous={{ costUsd: 3.49 }} projectedMonthEndCostUsd={7.1} series={[]} costIncomplete />);
+    expect(screen.getByText("Excludes unpriced models")).toBeInTheDocument();
+    expect(screen.getByText("At least $7.10 by month end")).toBeInTheDocument();
+    expect(screen.queryByText(/^About/)).not.toBeInTheDocument();
+  });
+
   it("says when there's nothing to compare with and hides the projection", () => {
     render(<UsageStatCards totals={{ ...totals, failedRunCount: 0 }} previous={{ costUsd: 0 }} projectedMonthEndCostUsd={null} series={[]} />);
     expect(screen.getByText("No spend in the previous period")).toBeInTheDocument();

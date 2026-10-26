@@ -28,6 +28,21 @@ describe("UsageDrillIn", () => {
     expect(screen.getByText("Cost incomplete")).toBeInTheDocument();
   });
 
+  it("flags the header cost as incomplete when any of the row's runs has an unpriced call", async () => {
+    render(<UsageDrillIn row={row} groupBy="user" range="7d" />);
+    await screen.findByText("Zambales 2-day");
+    const cost = screen.getByText("Cost", { selector: "dt" }).parentElement;
+    expect(within(cost).getByText("Incomplete")).toBeInTheDocument();
+  });
+
+  it("does not flag the header cost when every run was fully priced", async () => {
+    fetchUsageRuns.mockResolvedValue({ runs: [runs[1]] });
+    render(<UsageDrillIn row={row} groupBy="user" range="7d" />);
+    await screen.findByText("Baguio");
+    const cost = screen.getByText("Cost", { selector: "dt" }).parentElement;
+    expect(within(cost).queryByText("Incomplete")).not.toBeInTheDocument();
+  });
+
   it("expands a run into its model calls", async () => {
     render(<UsageDrillIn row={row} groupBy="user" range="this_month" />);
     fireEvent.click(await screen.findByRole("button", { name: /Zambales 2-day/ }));
