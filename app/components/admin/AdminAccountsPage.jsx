@@ -32,7 +32,10 @@ function withCount(label, count) {
   );
 }
 
-export default function AdminAccountsPage() {
+/**
+ * @param {(selection: { id: string, label: string }) => void} [onOpenUsage] jump to the Usage tab with this person open
+ */
+export default function AdminAccountsPage({ onOpenUsage }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -234,6 +237,7 @@ export default function AdminAccountsPage() {
               key={selectedAccountId}
               userId={selectedAccountId}
               onChanged={refreshQuietly}
+              onOpenUsage={onOpenUsage}
               onDeleted={() => {
                 const name = selected ? displayName(selected) : "";
                 setDeletedNotice(name ? `${name} was deleted.` : "The account was deleted.");

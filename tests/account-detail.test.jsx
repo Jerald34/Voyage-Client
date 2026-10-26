@@ -441,6 +441,67 @@ describe("AccountDetail", () => {
     });
   });
 
+  describe("usage this month", () => {
+    it("shows the month's spend and opens the Usage tab for this person", async () => {
+      const onOpenUsage = vi.fn();
+      await renderDetail(detail({ usageThisMonth: { costUsd: 1.4, runCount: 71 } }), { onOpenUsage });
+
+      expect(screen.getByRole("heading", { name: "Agent usage this month" })).toBeInTheDocument();
+      expect(screen.getByText("$1.40 · 71 runs")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "View in Usage" }));
+      expect(onOpenUsage).toHaveBeenCalledWith({ id: "u2", label: "Ana Reyes" });
+    });
+
+    it("labels the person by email when they have no display name", async () => {
+      const onOpenUsage = vi.fn();
+      await renderDetail(detail({ displayName: "", usageThisMonth: { costUsd: 0.2, runCount: 3 } }), { onOpenUsage });
+
+      fireEvent.click(screen.getByRole("button", { name: "View in Usage" }));
+      expect(onOpenUsage).toHaveBeenCalledWith({ id: "u2", label: "ana@alpha.com" });
+    });
+
+    it("says $0.00 and 0 runs for someone who has not used the agent", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 0, runCount: 0 } }));
+      expect(screen.getByText("$0.00 · 0 runs")).toBeInTheDocument();
+    });
+
+    it("groups thousands of runs with commas", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 12.5, runCount: 1204 } }));
+      expect(screen.getByText("$12.50 · 1,204 runs")).toBeInTheDocument();
+    });
+
+    it("uses the singular for exactly one run", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 0.0123, runCount: 1 } }));
+      expect(screen.getByText("$0.012 · 1 run")).toBeInTheDocument();
+    });
+
+    it("is still shown for a deleted account, whose past usage still counts", async () => {
+      await renderDetail(detail({ status: "DELETED", usageThisMonth: { costUsd: 2.5, runCount: 10 } }), { onOpenUsage: vi.fn() });
+      expect(screen.getByText("$2.50 · 10 runs")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "View in Usage" })).toBeInTheDocument();
+    });
+
+    it("shows the figures without a button when the page gives no way to open Usage", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 1.4, runCount: 71 } }));
+      expect(screen.getByText("$1.40 · 71 runs")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "View in Usage" })).not.toBeInTheDocument();
+    });
+
+    it("leaves the section out when the server sent no usage figures", async () => {
+      await renderDetail(detail(), { onOpenUsage: vi.fn() });
+      expect(screen.queryByText("Agent usage this month")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "View in Usage" })).not.toBeInTheDocument();
+    });
+
+    it("sets its heading in the sans label style", async () => {
+      await renderDetail(detail({ usageThisMonth: { costUsd: 1.4, runCount: 71 } }));
+      const h = screen.getByRole("heading", { name: "Agent usage this month" });
+      expect(h.tagName).toBe("H3");
+      expect(h.className).toContain("font-sans");
+      expect(h.className).toContain("uppercase");
+    });
+  });
+
   describe("typography", () => {
     it("sets section headings in the sans label style, not the default serif h3", async () => {
       await renderDetail(detail({ auditEvents: [{ id: "e1", action: "USER_ENABLED", reason: null, createdAt: "2026-10-18T00:00:00.000Z", adminName: "Jerald" }] }));

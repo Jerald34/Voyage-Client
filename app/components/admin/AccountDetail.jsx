@@ -6,7 +6,8 @@ import AgencyStatusPill from "./AgencyStatusPill.jsx";
 import AccountActionDialog from "./AccountActionDialog.jsx";
 import DeleteAccountDialog from "./DeleteAccountDialog.jsx";
 import { AccountTypePill, AccountStatusPill, SuperAdminChip } from "./AccountPills.jsx";
-import { AUDIT_ACTION_LABELS, MEMBERSHIP_ROLE_LABELS, SIGN_IN_LABELS, formatDate } from "./accountLabels.js";
+import { AUDIT_ACTION_LABELS, MEMBERSHIP_ROLE_LABELS, SIGN_IN_LABELS, displayName, formatDate } from "./accountLabels.js";
+import { fmtInt, fmtUsd } from "./usage/usageFormat.js";
 
 // The same small uppercase label AgencyDetail uses. Headings default to the serif face
 // (400 only), so section headings opt back into the sans (`font-sans`) rather than faking a bold serif.
@@ -34,7 +35,7 @@ function Section({ title, children }) {
   );
 }
 
-export default function AccountDetail({ userId, onChanged, onDeleted }) {
+export default function AccountDetail({ userId, onChanged, onDeleted, onOpenUsage }) {
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -100,6 +101,8 @@ export default function AccountDetail({ userId, onChanged, onDeleted }) {
   const verified = account.emailVerified ? (account.emailVerifiedAt ? formatDate(account.emailVerifiedAt) : "Verified") : "Not verified";
   const activity = account.activity || {};
   const auditEvents = account.auditEvents || [];
+  // Kept for a deleted account too: what it spent this month is still part of the bill.
+  const usage = account.usageThisMonth || null;
 
   // The server refuses all three for a super admin (this includes the signed-in admin's own account,
   // since only super admins reach this page) and for an account that is already deleted.
@@ -126,6 +129,25 @@ export default function AccountDetail({ userId, onChanged, onDeleted }) {
         <Field label="Sign-in methods">{signIn || "—"}</Field>
         <Field label="Joined">{formatDate(account.createdAt)}</Field>
       </dl>
+
+      {usage && (
+        <Section title="Agent usage this month">
+          <div className="flex items-center justify-between gap-3 rounded-sm border border-border/10 bg-surface p-3">
+            <span className="min-w-0 text-sm tabular-nums text-text-primary">
+              {fmtUsd(usage.costUsd)} · {fmtInt(usage.runCount)} {usage.runCount === 1 ? "run" : "runs"}
+            </span>
+            {onOpenUsage && (
+              <button
+                type="button"
+                className={`flex-none ${SECONDARY_ACTION}`}
+                onClick={() => onOpenUsage({ id: account.id, label: displayName(account) })}
+              >
+                View in Usage
+              </button>
+            )}
+          </div>
+        </Section>
+      )}
 
       <Section title="Agencies">
         {memberships.length === 0 ? (

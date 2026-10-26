@@ -16,7 +16,7 @@ vi.mock("../app/lib/api/index.js", () => ({
 
 // The panel is tested on its own; here it is a stub that exposes the two callbacks the page wires up.
 vi.mock("../app/components/admin/AccountDetail.jsx", () => ({
-  default: ({ userId, onChanged, onDeleted }) => (
+  default: ({ userId, onChanged, onDeleted, onOpenUsage }) => (
     <div data-testid="account-detail">
       detail for {userId}
       <button type="button" onClick={onChanged}>
@@ -25,6 +25,11 @@ vi.mock("../app/components/admin/AccountDetail.jsx", () => ({
       <button type="button" onClick={onDeleted}>
         stub deleted
       </button>
+      {onOpenUsage && (
+        <button type="button" onClick={() => onOpenUsage({ id: userId, label: `person ${userId}` })}>
+          stub open usage
+        </button>
+      )}
     </div>
   ),
 }));
@@ -294,6 +299,26 @@ describe("AdminAccountsPage", () => {
       expect(screen.getByText("Select an account")).toBeInTheDocument();
       await waitFor(() => expect(screen.getByRole("radio", { name: /deleted 1/i })).toBeInTheDocument());
       expect(screen.queryByTestId("account-row-u2")).not.toBeInTheDocument(); // moved out of All
+    });
+  });
+
+  describe("opening Usage for a person", () => {
+    it("hands the panel's choice to the page that owns the tabs", async () => {
+      const onOpenUsage = vi.fn();
+      fetchAllAccounts.mockResolvedValue({ users: ACCOUNTS });
+      render(<AdminAccountsPage onOpenUsage={onOpenUsage} />);
+      await screen.findByTestId("account-row-u2");
+      fireEvent.click(screen.getByTestId("account-row-u2"));
+
+      fireEvent.click(screen.getByRole("button", { name: "stub open usage" }));
+
+      expect(onOpenUsage).toHaveBeenCalledWith({ id: "u2", label: "person u2" });
+    });
+
+    it("gives the panel no usage link when the page was not given one", async () => {
+      await renderLoaded();
+      fireEvent.click(screen.getByTestId("account-row-u2"));
+      expect(screen.queryByRole("button", { name: "stub open usage" })).not.toBeInTheDocument();
     });
   });
 
