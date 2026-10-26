@@ -50,6 +50,23 @@ describe("UsageBarChart", () => {
     expect(screen.getByRole("img", { name: "Cost per day, Oct 1 to Oct 3. No usage on any day." })).toBeInTheDocument();
   });
 
+  it("labels the real peak above the chart", () => {
+    render(<UsageBarChart series={series} metric="costUsd" />);
+    expect(screen.getByText("Peak $0.500")).toBeInTheDocument();
+  });
+
+  it("does not invent a peak when nothing was used: it says there was no usage instead", () => {
+    const quiet = series.map((d) => ({ ...d, costUsd: 0, totalTokens: 0, runCount: 0, failedRunCount: 0 }));
+    const { rerender } = render(<UsageBarChart series={quiet} metric="costUsd" />);
+    expect(screen.queryByText(/^Peak/)).not.toBeInTheDocument();
+    expect(screen.getByText("No usage in this range")).toBeInTheDocument();
+    rerender(<UsageBarChart series={quiet} metric="totalTokens" />);
+    expect(screen.queryByText(/^Peak/)).not.toBeInTheDocument();
+    rerender(<UsageBarChart series={quiet} metric="runCount" />);
+    expect(screen.queryByText(/^Peak/)).not.toBeInTheDocument();
+    expect(screen.getByText("No usage in this range")).toBeInTheDocument();
+  });
+
   it("gives screen-reader users the numbers in a hidden table", () => {
     render(<UsageBarChart series={series} metric="costUsd" />);
     const table = screen.getByRole("table", { name: "Cost per day" });

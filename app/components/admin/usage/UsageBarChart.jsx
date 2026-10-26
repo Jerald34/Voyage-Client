@@ -48,7 +48,10 @@ export default function UsageBarChart({ series, metric = "costUsd", height = 160
   }
 
   const fmt = FORMAT[metric];
-  const max = Math.max(...series.map((d) => d[metric] || 0), metric === "costUsd" ? 0.0001 : 1);
+  // `peak` is what the data really reached (and is what the label prints); `max` is only the scale,
+  // floored so an all-zero range does not divide by zero.
+  const peak = Math.max(...series.map((d) => d[metric] || 0));
+  const max = Math.max(peak, metric === "costUsd" ? 0.0001 : 1);
   const barW = 100 / series.length;
   const mid = Math.floor((series.length - 1) / 2);
   const activeDatum = active != null ? series[active] : null;
@@ -56,7 +59,7 @@ export default function UsageBarChart({ series, metric = "costUsd", height = 160
   return (
     <div className="rounded-md border border-border/12 bg-surface-elevated p-4 shadow-soft">
       <div className="mb-1 flex items-center justify-between gap-3 text-xs text-text-soft">
-        <span className="tabular-nums">Peak {fmt(max)}</span>
+        <span className="tabular-nums">{peak > 0 ? `Peak ${fmt(peak)}` : "No usage in this range"}</span>
         {activeDatum && <span className="font-semibold tabular-nums text-text-primary">{describe(activeDatum, metric)}</span>}
       </div>
 
