@@ -1,24 +1,37 @@
 "use client";
 
+import { useState } from "react";
 import { FREE_TRIAL_DAYS, PLAN_INCLUDES, PLANS, formatPeso } from "../../lib/pricing/plans.js";
 import { LANDING_SECTION, PRIMARY_BUTTON, SECONDARY_BUTTON } from "./landingClasses.js";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "./landingMotion.jsx";
+import { PriceBreakdown, PriceBreakdownToggle } from "../pricing/PriceBreakdown.jsx";
 
 const LIST = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
 /** Display-only prices. Every button starts the free trial through the normal sign-up. */
 export default function PricingSection({ onStartPlanning }) {
+  const [showCosts, setShowCosts] = useState(false);
+
   return (
     <section id="pricing" aria-labelledby="pricing-title" className={LANDING_SECTION}>
-      <Reveal>
-        <h2 id="pricing-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
-          Pricing
-        </h2>
-      </Reveal>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <Reveal>
+          <h2 id="pricing-title" className="m-0 font-sans text-2xl font-semibold text-text-primary md:text-3xl">
+            Pricing
+          </h2>
+        </Reveal>
+        <PriceBreakdownToggle
+          open={showCosts}
+          onToggle={() => setShowCosts((open) => !open)}
+          controls="pricing-costs"
+          className="-mr-3"
+        />
+      </div>
       <Reveal as="p" delay={0.08} className="m-0 mt-2 max-w-2xl text-base leading-relaxed text-text-muted">
         One monthly price per agency, starting with a {FREE_TRIAL_DAYS}-day free trial. Every plan has the whole
         planner; plans differ only in team size and new itineraries a month.
       </Reveal>
+      {showCosts ? <PriceBreakdown id="pricing-costs" onSurface className="mt-6" /> : null}
       {/* role="list": list-style:none drops list semantics in Safari/VoiceOver. */}
       <RevealGroup as="ul" gap={0.1} role="list" aria-label="Plans" className="m-0 mt-6 grid list-none gap-4 p-0 md:grid-cols-3">
         {PLANS.map((plan) => (

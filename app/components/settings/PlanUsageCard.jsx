@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchPlanUsage } from "../../lib/api/agency.js";
 import { PLANS, formatPeso, suggestPlan } from "../../lib/pricing/plans.js";
+import { PriceBreakdown, PriceBreakdownToggle } from "../pricing/PriceBreakdown.jsx";
 
 const MONTH_NAME = new Intl.DateTimeFormat("en-PH", { month: "long", timeZone: "Asia/Manila" });
 
@@ -28,6 +29,7 @@ const ERROR_MESSAGE = "Couldn't load this month's usage. Try again later.";
 /** This month's usage next to the price list. Display only: the agency pays nothing during the pilot. */
 export default function PlanUsageCard({ agencyId }) {
   const [state, setState] = useState({ status: "loading", usage: null });
+  const [showCosts, setShowCosts] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,8 +52,17 @@ export default function PlanUsageCard({ agencyId }) {
   const statusMessage = state.status === "loading" ? LOADING_MESSAGE : usage ? "" : ERROR_MESSAGE;
 
   return (
-    <div>
-      <p role="status" className="m-0 text-sm text-text-muted">{statusMessage}</p>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-4">
+        <p role="status" className="m-0 text-sm text-text-muted">{statusMessage}</p>
+        <PriceBreakdownToggle
+          open={showCosts}
+          onToggle={() => setShowCosts((open) => !open)}
+          controls="plan-usage-costs"
+          className="-mr-3 ml-auto"
+        />
+      </div>
+      {showCosts ? <PriceBreakdown id="plan-usage-costs" /> : null}
       {usage ? <PlanUsageBody usage={usage} /> : null}
     </div>
   );

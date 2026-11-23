@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ fetchPlanUsage: vi.fn() }));
@@ -36,6 +36,17 @@ describe("PlanUsageCard", () => {
     expect(api.fetchPlanUsage).toHaveBeenCalledWith("agency-1");
   });
 
+  it("hides how prices are set behind a toggle, even while usage is loading", async () => {
+    api.fetchPlanUsage.mockReturnValue(new Promise(() => {}));
+    render(<PlanUsageCard agencyId="agency-1" />);
+
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "How prices are set" }));
+    const table = screen.getByRole("table");
+    expect(within(table).getByRole("rowheader", { name: "Server and PostgreSQL database (Railway)" })).toBeInTheDocument();
+    expect(within(table).getByRole("rowheader", { name: "Total cost" })).toBeInTheDocument();
+  });
+
   it("shows a loading message while the usage is on its way", () => {
     api.fetchPlanUsage.mockReturnValue(new Promise(() => {}));
     render(<PlanUsageCard agencyId="agency-1" />);
@@ -65,7 +76,7 @@ describe("PlanUsageCard", () => {
     api.fetchPlanUsage.mockResolvedValue(usage());
     render(<PlanUsageCard agencyId="agency-1" />);
 
-    expect(await screen.findByText("At this month's usage, Pro (₱6,990 a month) covers you.")).toBeInTheDocument();
+    expect(await screen.findByText("At this month's usage, Pro (₱3,380 a month) covers you.")).toBeInTheDocument();
     const plans = screen.getByRole("list", { name: "Plans" });
     expect(within(plans).getAllByRole("listitem")).toHaveLength(3);
     const pro = within(plans).getByText(/Pro/).closest("li");
