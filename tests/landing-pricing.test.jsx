@@ -9,9 +9,9 @@ describe("PricingSection", () => {
     const section = screen.getByRole("region", { name: "Pricing" });
     const tiers = within(section).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
     expect(tiers).toEqual(["Starter", "Pro", "Agency"]);
-    expect(within(section).getByText("₱2,990")).toBeInTheDocument();
-    expect(within(section).getByText("₱6,990")).toBeInTheDocument();
-    expect(within(section).getByText("₱16,990")).toBeInTheDocument();
+    expect(within(section).getByText("₱2,375")).toBeInTheDocument();
+    expect(within(section).getByText("₱3,380")).toBeInTheDocument();
+    expect(within(section).getByText("₱9,880")).toBeInTheDocument();
     expect(within(section).getByText("Up to 5 team members")).toBeInTheDocument();
     expect(within(section).getByText("40 new itineraries a month")).toBeInTheDocument();
     expect(within(section).getByText(/14-day free trial/)).toBeInTheDocument();
@@ -31,6 +31,25 @@ describe("PricingSection", () => {
     const footnote = screen.getByText(/free during the pilot/);
     expect(footnote).toHaveTextContent(/post-trip ratings/);
     expect(footnote).toHaveTextContent(/, and post-trip ratings/);
+  });
+
+  it("keeps the cost breakdown hidden until 'How prices are set' is opened", () => {
+    render(<PricingSection onStartPlanning={vi.fn()} />);
+
+    const toggle = screen.getByRole("button", { name: "How prices are set" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const table = screen.getByRole("table");
+    expect(toggle).toHaveAttribute("aria-controls", table.closest("[id]").id);
+    expect(within(table).getByRole("rowheader", { name: "Server and PostgreSQL database (Railway)" })).toBeInTheDocument();
+    const profit = within(table).getByRole("rowheader", { name: "Profit" }).closest("tr");
+    expect(within(profit).getAllByText("₱100")).toHaveLength(3);
+
+    fireEvent.click(toggle);
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("starts every free trial through the normal sign-up", () => {

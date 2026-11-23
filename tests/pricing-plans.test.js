@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { FREE_TRIAL_DAYS, PLANS, formatPeso, suggestPlan } from "../app/lib/pricing/plans.js";
+import { FREE_TRIAL_DAYS, PLANS, PROFIT_PER_AGENCY, RUNNING_COST_TOTAL, formatPeso, planCosting, suggestPlan } from "../app/lib/pricing/plans.js";
 
 describe("price list", () => {
-  it("has three tiers, cheapest first, matching the costing doc", () => {
+  it("has three tiers, cheapest first", () => {
     expect(PLANS.map((plan) => [plan.id, plan.monthlyPrice, plan.teamMembers, plan.itinerariesPerMonth])).toEqual([
-      ["starter", 2990, 2, 15],
-      ["pro", 6990, 5, 40],
-      ["agency", 16990, 15, 100],
+      ["starter", 2375, 2, 15],
+      ["pro", 3380, 5, 40],
+      ["agency", 9880, 15, 100],
     ]);
     expect(PLANS.filter((plan) => plan.featured).map((plan) => plan.id)).toEqual(["pro"]);
     expect(FREE_TRIAL_DAYS).toBe(14);
@@ -15,6 +15,18 @@ describe("price list", () => {
   it("formats pesos without centavos", () => {
     expect(formatPeso(2990)).toBe("₱2,990");
     expect(formatPeso(16990)).toBe("₱16,990");
+  });
+});
+
+describe("planCosting", () => {
+  it("runs on ₱1,900 a month of servers, database and domain", () => {
+    expect(RUNNING_COST_TOTAL).toBe(1900);
+  });
+
+  it("prices every plan at one agency's full-allowance cost plus the set profit", () => {
+    expect(PLANS.map((plan) => planCosting(plan).total)).toEqual([2275, 3280, 9780]);
+    for (const plan of PLANS) expect(planCosting(plan).profit).toBe(PROFIT_PER_AGENCY);
+    expect(PROFIT_PER_AGENCY).toBe(100);
   });
 });
 
