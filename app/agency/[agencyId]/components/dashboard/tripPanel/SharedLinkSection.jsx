@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { extendShare } from "@/app/lib/api/index.js";
+import { timeAgo } from "@/app/lib/relativeTime.js";
 import { describeLinkState, describeLinkViews } from "./tripPanelFormat";
 
 const EXTEND_DAYS = [7, 30];
@@ -20,6 +21,35 @@ const REFUSED = {
   SHARE_REVOKED: { kind: "revoked", message: "This link was turned off. Share the itinerary again instead." },
   SHARE_NEVER_EXPIRES: { kind: "never", message: "This link never expires." },
 };
+
+/** The client's star rating from the share page, with what they wrote alongside it. */
+function ClientRating({ share, now }) {
+  const rating = share.proposalRating;
+  const comment = share.proposalRatingComment?.trim();
+  const when = share.proposalRatedAt ? timeAgo(share.proposalRatedAt, now) : "";
+  return (
+    <div className="flex flex-col gap-1 rounded-lg bg-text-primary/5 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span aria-hidden="true" className="text-[14px] leading-none tracking-[1px]">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <span key={n} style={{ color: n <= rating ? "var(--rating-star)" : "var(--color-text-soft)" }}>
+              ★
+            </span>
+          ))}
+        </span>
+        <span className="text-[12px] font-semibold text-text-primary">Rated {rating} out of 5</span>
+        {when ? <span className="text-[12px] text-text-muted">· {when}</span> : null}
+      </div>
+      {comment ? (
+        <p className="m-0 whitespace-pre-line break-words text-[13px] leading-[1.5] text-text-primary">
+          &ldquo;{comment}&rdquo;
+        </p>
+      ) : (
+        <p className="m-0 text-[12px] text-text-muted">No comment left with the rating.</p>
+      )}
+    </div>
+  );
+}
 
 /**
  * The trip panel's share link: views, rating and expiry, with Extend 7 / 30
@@ -80,9 +110,7 @@ export default function SharedLinkSection({ agencyId, share, onExtended, now, re
               {state.label}
             </span>
           </div>
-          {shown.proposalRating != null ? (
-            <span className="text-[12px] text-text-muted">Rated {shown.proposalRating} out of 5</span>
-          ) : null}
+          {shown.proposalRating != null ? <ClientRating share={shown} now={clock} /> : null}
           {state.canExtend ? (
             <div className="flex flex-wrap gap-2">
               {EXTEND_DAYS.map((days) => (
