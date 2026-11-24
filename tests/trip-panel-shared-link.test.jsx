@@ -33,6 +33,19 @@ describe("SharedLinkSection", () => {
     expect(screen.getByRole("button", { name: "Extend 30 days" })).toBeInTheDocument();
   });
 
+  it("shows the comment the client left with their rating", () => {
+    const rated = { ...share, proposalRating: 5, proposalRatingComment: "Good job", proposalRatedAt: "2026-10-20T09:00:00.000Z" };
+    render(<SharedLinkSection agencyId="a1" share={rated} now={NOW} />);
+    expect(screen.getByText("Rated 5 out of 5")).toBeInTheDocument();
+    expect(screen.getByText("· 3h ago")).toBeInTheDocument();
+    expect(screen.getByText("“Good job”")).toBeInTheDocument();
+  });
+
+  it("says so when the rating came without a comment", () => {
+    render(<SharedLinkSection agencyId="a1" share={share} now={NOW} />);
+    expect(screen.getByText("No comment left with the rating.")).toBeInTheDocument();
+  });
+
   it("extends the link and hands back the saved link", async () => {
     mocks.fetchApi.mockResolvedValue({ share: { ...share, expiresAt: "2026-10-28T08:00:00.000Z" } });
     const onExtended = vi.fn();
